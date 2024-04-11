@@ -1,0 +1,13 @@
+[package]
+name = "Memechan"
+version = "0.0.1"
+published-at = "0x"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.19.1" }
+
+# Mocked contracts for the purpose of testing
+TurbosCLMM = { local = "../protocols/turbos" }
+
+[addresses]
+memechan = "0x"
