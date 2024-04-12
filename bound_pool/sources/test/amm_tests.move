@@ -80,7 +80,7 @@ module amm::interest_protocol_amm_tests {
       assert_eq(interest_protocol_amm::decimals_x<AC_B_USDC, SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
       assert_eq(interest_protocol_amm::decimals_y<AC_B_USDC, SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
       assert_eq(interest_protocol_amm::seed_liquidity<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
-      assert_eq(interest_protocol_amm::locked<AC_B_USDC, SUI, USDC>(&request.pool), false);
+      assert_eq(interest_protocol_amm::is_ready_to_launch<AC_B_USDC, SUI, USDC>(&request.pool), false);
       assert_eq(interest_protocol_amm::admin_balance_x<AC_B_USDC, SUI, USDC>(&request.pool), 0);
       assert_eq(interest_protocol_amm::admin_balance_y<AC_B_USDC, SUI, USDC>(&request.pool), 0);
 

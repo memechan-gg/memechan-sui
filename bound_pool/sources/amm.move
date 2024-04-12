@@ -51,7 +51,7 @@ module amm::interest_protocol_amm {
     admin_balance_y: Balance<CoinY>,
     launch_balance: Balance<MemeCoin>,
     fees: Fees,
-    locked: bool     
+    locked: bool
   } 
 
   struct SwapAmount has store, drop, copy {
@@ -154,7 +154,7 @@ module amm::interest_protocol_amm {
     pool_state.fees
   }
 
-  public fun locked<CoinX, CoinY, MemeCoin>(pool: &InterestPool): bool {
+  public fun is_ready_to_launch<CoinX, CoinY, MemeCoin>(pool: &InterestPool): bool {
     let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     pool_state.locked
   }
@@ -350,7 +350,7 @@ module amm::interest_protocol_amm {
 
     //coin::take(&mut pool_state.balance_x, swap_amount.amount_out, ctx) 
     amm::staked_lp::new(balance::split(&mut pool_state.balance_x, swap_amount.amount_out), clock, ctx)
-  }  
+  }
 
   fun new_fees(): Fees {
       fees::new(ADMIN_FEE, ADMIN_FEE)
