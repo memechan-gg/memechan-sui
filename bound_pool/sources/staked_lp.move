@@ -1,6 +1,6 @@
 module amm::staked_lp {
     use sui::object::{Self, UID, delete};
-    use sui::balance::Balance;
+    use sui::balance::{Self, Balance};
     use sui::tx_context::TxContext;
     use sui::clock::{Self, Clock};
     use sui::token::{Token, TokenPolicy};
@@ -28,5 +28,16 @@ module amm::staked_lp {
         delete(id);
         
         token_ir::from_balance(policy, balance, ctx)
+    }
+
+    public fun balance<CoinX>(staked_lp: &StakedLP<CoinX>): u64 {
+        balance::value(&staked_lp.balance)
+    }
+
+    #[test_only]
+    public fun destroy_for_testing<CoinX>(staked_lp: StakedLP<CoinX>) {
+        let StakedLP { id, balance, until_timestamp: _ }  = staked_lp;
+        balance::destroy_for_testing(balance);
+        delete(id);
     }
 }

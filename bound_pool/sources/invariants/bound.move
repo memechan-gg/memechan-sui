@@ -14,13 +14,33 @@ module amm::bound {
   const DECIMALS_Y: u256 = 1_000_000_000;
 
   public fun invariant_(x: u64, y: u64): u256 {
-    let res_y = MAX_Y - (y as u256);
-     (x as u256) - res_y * res_y //f(x)    integrate f(x) = F(x1) - F(x0)    kx+b  = k/2 * x^2 + bx ...
+    std::debug::print(&std::string::utf8(b"invariant_"));
+    std::debug::print(&x);
+    std::debug::print(&y);
+    let res_y = MAX_Y - ((y as u256) * PRECISION) / DECIMALS_Y;
+    let x = (x as u256) * PRECISION / DECIMALS_X;
+
+    
+    std::debug::print(&res_y);
+    std::debug::print(&x);
+
+    (x as u256) - res_y * res_y / PRECISION //f(x)    integrate f(x) = F(x1) - F(x0)    kx+b  = k/2 * x^2 + bx ...
   }
 
   public fun get_amount_out(coin_in_amount: u64, balance_x: u64, balance_y: u64, is_x: bool): u64 {
+    std::debug::print(&std::string::utf8(b"amt_out"));
     assert!(coin_in_amount != 0, errors::no_zero_coin());
-    assert!(balance_x != 0 && if (is_x) {(balance_x - coin_in_amount as u256) >= 0} else {balance_y >= coin_in_amount}, errors::insufficient_liquidity());
+    assert!(balance_x != 0, errors::insufficient_liquidity());
+    let check_bounds = if (is_x) {
+      let cumulative_balance = (balance_x + coin_in_amount as u256) * PRECISION;
+      cumulative_balance / DECIMALS_X <= MAX_X
+    } else {
+      let cumulative_balance = (balance_y + coin_in_amount as u256) * PRECISION;
+      cumulative_balance / DECIMALS_Y <= MAX_Y
+    };
+
+    assert!(check_bounds, errors::insufficient_liquidity());
+
     let (coin_in_amount, balance_x, balance_y) = (
           ((coin_in_amount as u256) * PRECISION) / if (is_x) {DECIMALS_X} else {DECIMALS_Y},
           ((balance_x as u256) * PRECISION) / DECIMALS_X,
@@ -41,6 +61,9 @@ module amm::bound {
     };
 
     let nres = (res * if (is_x) {DECIMALS_Y} else {DECIMALS_X}) / (PRECISION * PRECISION);
+
+    std::debug::print(&balance_x);
+    std::debug::print(&balance_y);
 
     (nres as u64)
   }
@@ -68,6 +91,10 @@ module amm::bound {
     };
 
     let nres = (res * if (is_x) {DECIMALS_Y} else {DECIMALS_X}) / (PRECISION * PRECISION);
+
+    std::debug::print(&std::string::utf8(b"amt_in"));
+    std::debug::print(&balance_x);
+    std::debug::print(&balance_y);
 
     (nres as u64)
   }

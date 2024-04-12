@@ -5,10 +5,10 @@ module amm::utils_tests {
   use sui::coin::CoinMetadata;
   use sui::test_utils::assert_eq;
   use sui::test_scenario::{Self as test, next_tx, ctx};
-
+  use sui::sui::SUI;
+  
   use amm::btc::BTC;
   use amm::eth::ETH;
-  use amm::sui::SUI;
   use amm::ac_b_btc::{Self, AC_B_BTC};
   use amm::ac_btc_wrong_decimals::{Self, AC_BTC_WRONG_DECIMALS};
   use amm::ac_btc_wrong_name::{Self, AC_BTC_WRONG_NAME};
@@ -95,7 +95,6 @@ module amm::utils_tests {
     next_tx(test, alice); 
     {
       let btc_metadata = test::take_shared<CoinMetadata<BTC>>(test);
-      let sui_metadata = test::take_shared<CoinMetadata<SUI>>(test);
 
       assert_eq(get_ticket_coin_name<BTC>(
         &btc_metadata
@@ -104,7 +103,6 @@ module amm::utils_tests {
       );
 
       test::return_shared(btc_metadata);
-      test::return_shared(sui_metadata);
     };
 
     test::end(scenario);
@@ -122,7 +120,6 @@ module amm::utils_tests {
     next_tx(test, alice); 
     {
       let btc_metadata = test::take_shared<CoinMetadata<BTC>>(test);
-      let sui_metadata = test::take_shared<CoinMetadata<SUI>>(test);
 
       assert_eq(get_ticket_coin_symbol<BTC>(
         &btc_metadata
@@ -131,7 +128,6 @@ module amm::utils_tests {
       );
 
       test::return_shared(btc_metadata);
-      test::return_shared(sui_metadata);
     };
 
     test::end(scenario);

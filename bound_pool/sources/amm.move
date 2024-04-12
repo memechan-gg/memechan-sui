@@ -1,4 +1,4 @@
-module amm::interest_protocol_amm {
+module amm::bound_curve_amm {
   // === Imports ===
 
   use std::option::{Self, Option};
@@ -220,7 +220,7 @@ module amm::interest_protocol_amm {
   // === Private Functions ===    
 
   fun new_pool_internal<Curve, CoinX, CoinY, MemeCoin>(
-    registry: &Registry,
+    registry: &mut Registry,
     coin_x: Balance<CoinX>,
     coin_y: Coin<CoinY>,
     launch_coin: Coin<MemeCoin>,
@@ -253,7 +253,12 @@ module amm::interest_protocol_amm {
       fields: object::new(ctx),
     };
 
+    let pool_address = object::uid_to_address(&pool.id);
+
     df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
+
+    table::add(&mut registry.pools, registry_key, pool_address);
+    //table::add(&mut registry.lp_coins, type_name::get<LpCoin>(), pool_address);
 
     pool
   }
@@ -448,6 +453,7 @@ module amm::interest_protocol_amm {
     UID, // Fields
   ) {
     let state = df::remove(fields_mut(&mut pool), PoolStateKey {});
+    
 
     let InterestPool { id, fields } = pool;
     object::delete(id);

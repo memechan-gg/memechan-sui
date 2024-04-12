@@ -6,7 +6,7 @@ module amm::token_ir {
     use sui::dynamic_field as df;
     use sui::token::{Self, Token, ActionRequest, TokenPolicy};
 
-    friend amm::interest_protocol_amm;
+    friend amm::bound_curve_amm;
     friend amm::staked_lp;
     friend amm::staking_pool;
 
