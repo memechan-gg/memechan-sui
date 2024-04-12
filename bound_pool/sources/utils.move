@@ -40,77 +40,71 @@ module amm::utils {
 
     let optimal_x_amount = quote_liquidity(desired_amount_y, reserve_y, reserve_x);
     (optimal_x_amount, desired_amount_y)
-  } 
+  }
 
   public fun quote_liquidity(amount_a: u64, reserves_a: u64, reserves_b: u64): u64 {
     mul_div_up(amount_a, reserves_b, reserves_a)
   }
 
-  public fun get_lp_coin_name<CoinX, CoinY>(
-    coin_x_metadata: &CoinMetadata<CoinX>,
-    coin_y_metadata: &CoinMetadata<CoinY>,  
+  public fun get_ticket_coin_name<MemeCoin>(
+    meme_coin_metadata: &CoinMetadata<MemeCoin>,
   ): String {
-    let coin_x_name = coin::get_name(coin_x_metadata);
-    let coin_y_name = coin::get_name(coin_y_metadata);
+    let meme_coin_name = coin::get_name(meme_coin_metadata);
 
-    let expected_lp_coin_name = string::utf8(b"");
-    string::append_utf8(&mut expected_lp_coin_name, b"ipx ");
-    string::append_utf8(&mut expected_lp_coin_name, b"bound ");
-    string::append_utf8(&mut expected_lp_coin_name, *string::bytes(&coin_x_name));
-    string::append_utf8(&mut expected_lp_coin_name, b" ");
-    string::append_utf8(&mut expected_lp_coin_name, *string::bytes(&coin_y_name));
-    string::append_utf8(&mut expected_lp_coin_name, b" Lp Coin");
-    expected_lp_coin_name
+    let expected_ticket_coin_name = string::utf8(b"");
+    string::append_utf8(&mut expected_ticket_coin_name, b"ac ");
+    string::append_utf8(&mut expected_ticket_coin_name, b"bound ");
+    string::append_utf8(&mut expected_ticket_coin_name, *string::bytes(&meme_coin_name));
+    string::append_utf8(&mut expected_ticket_coin_name, b" Ticket Coin");
+    expected_ticket_coin_name
   }
 
-  public fun get_lp_coin_symbol<CoinX, CoinY>(
-    coin_x_metadata: &CoinMetadata<CoinX>,
-    coin_y_metadata: &CoinMetadata<CoinY>, 
+  public fun get_ticket_coin_symbol<MemeCoin>(
+    meme_coin_metadata: &CoinMetadata<MemeCoin>,
   ): ascii::String {
-    let coin_x_symbol = coin::get_symbol(coin_x_metadata);
-    let coin_y_symbol = coin::get_symbol(coin_y_metadata);
+    let meme_coin_symbol = coin::get_symbol(meme_coin_metadata);
 
-    let expected_lp_coin_symbol = string::utf8(b"");
-    string::append_utf8(&mut expected_lp_coin_symbol, b"ipx-");
-    string::append_utf8(&mut expected_lp_coin_symbol, b"b-" );
-    string::append_utf8(&mut expected_lp_coin_symbol, ascii::into_bytes(coin_x_symbol));
-    string::append_utf8(&mut expected_lp_coin_symbol, b"-");
-    string::append_utf8(&mut expected_lp_coin_symbol, ascii::into_bytes(coin_y_symbol));
-    string::to_ascii(expected_lp_coin_symbol)
+    let expected_ticket_coin_symbol = string::utf8(b"");
+    string::append_utf8(&mut expected_ticket_coin_symbol, b"ac-");
+    string::append_utf8(&mut expected_ticket_coin_symbol, b"b-" );
+    string::append_utf8(&mut expected_ticket_coin_symbol, ascii::into_bytes(meme_coin_symbol));
+    string::to_ascii(expected_ticket_coin_symbol)
   }
 
 
- public fun assert_coin_integrity<CoinX, CoinY>(coin_x_treasury: &TreasuryCap<CoinX>, coin_x_metadata: &CoinMetadata<CoinX>) {
-    are_coins_suitable<CoinX, CoinY>();
+ public fun assert_coin_integrity<TicketCoin, CoinY, MemeCoin>(ticket_cap: &TreasuryCap<TicketCoin>, ticket_meta: &CoinMetadata<TicketCoin>, meme_cap: &TreasuryCap<MemeCoin>, meme_meta: &CoinMetadata<MemeCoin>) {
+    are_coins_suitable<TicketCoin, CoinY>();
     
     let coin_b_type_name = type_name::get<CoinY>();
     
     assert!(coin_b_type_name == type_name::get<SUI>(), errors::invalid_quote_token());
 
-    assert!(coin::get_decimals(coin_x_metadata) == 6, errors::base_coin_must_have_6_decimals());
-    
-    assert!(coin::total_supply<CoinX>(coin_x_treasury) == 0, errors::should_have_0_total_supply())
-  }
-  public fun assert_lp_coin_integrity<CoinX, CoinY, LpCoin>(lp_coin_metadata: &CoinMetadata<LpCoin>) {
-     assert!(coin::get_decimals(lp_coin_metadata) == 9, errors::lp_coins_must_have_9_decimals());
-     assert_lp_coin_otw<CoinX, CoinY, LpCoin>()
+    assert_coin_integrity_tm(ticket_cap, ticket_meta);
+    assert_coin_integrity_tm(meme_cap, meme_meta);
   }
 
-  fun assert_lp_coin_otw<CoinX, CoinY, LpCoin>() {
-    are_coins_suitable<CoinX, CoinY>();
-    let coin_x_module_name = type_name::get_module(&type_name::get<CoinX>());
-    let coin_y_module_name = type_name::get_module(&type_name::get<CoinY>());
-    let lp_coin_module_name = type_name::get_module(&type_name::get<LpCoin>());
+  public fun assert_coin_integrity_tm<Coin>(coin_cap: &TreasuryCap<Coin>, coin_metadata: &CoinMetadata<Coin>) {
+    assert!(coin::get_decimals(coin_metadata) == 6, errors::meme_and_ticket_coins_must_have_6_decimals());
+    assert!(coin::total_supply(coin_cap) == 0, errors::should_have_0_total_supply());
+  }
 
-    let expected_lp_coin_module_name = string::utf8(b"");
-    string::append_utf8(&mut expected_lp_coin_module_name, b"ipx_");
-    string::append_utf8(&mut expected_lp_coin_module_name, b"b_");
-    string::append_utf8(&mut expected_lp_coin_module_name, ascii::into_bytes(coin_x_module_name));
-    string::append_utf8(&mut expected_lp_coin_module_name, b"_");
-    string::append_utf8(&mut expected_lp_coin_module_name, ascii::into_bytes(coin_y_module_name));
+  public fun assert_ticket_coin_integrity<TicketCoin, CoinY, MemeCoin>(coin_metadata: &CoinMetadata<TicketCoin>) {
+     assert!(coin::get_decimals(coin_metadata) == 6, errors::meme_and_ticket_coins_must_have_6_decimals());
+     assert_ticket_coin_otw<TicketCoin, CoinY, MemeCoin>()
+  }
+
+  fun assert_ticket_coin_otw<TicketCoin, CoinY, MemeCoin>() {
+    are_coins_suitable<TicketCoin, CoinY>();
+    let meme_coin_module_name = type_name::get_module(&type_name::get<MemeCoin>());
+    let ticket_coin_module_name = type_name::get_module(&type_name::get<TicketCoin>());
+
+    let expected_ticket_coin_module_name = string::utf8(b"");
+    string::append_utf8(&mut expected_ticket_coin_module_name, b"ac_");
+    string::append_utf8(&mut expected_ticket_coin_module_name, b"b_");
+    string::append_utf8(&mut expected_ticket_coin_module_name, ascii::into_bytes(meme_coin_module_name));
 
     assert!(
-      comparator::eq(&comparator::compare(&lp_coin_module_name, &string::to_ascii(expected_lp_coin_module_name))), 
+      comparator::eq(&comparator::compare(&ticket_coin_module_name, &string::to_ascii(expected_ticket_coin_module_name))), 
       errors::wrong_module_name()
     );
   }

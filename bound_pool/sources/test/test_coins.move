@@ -141,7 +141,7 @@ module amm::usdt {
   fun init(witness: USDT, ctx: &mut TxContext) {
       let (treasury_cap, metadata) = coin::create_currency<USDT>(
             witness, 
-            9, 
+            6, 
             b"USDT",
             b"USD Tether", 
             b"Stable coin", 
@@ -160,20 +160,20 @@ module amm::usdt {
 }
 
 #[test_only]
-module amm::ipx_b_btc_sui {
+module amm::ac_b_btc {
   use std::option;
 
   use sui::transfer;
   use sui::coin;
   use sui::tx_context::{Self, TxContext};
 
-  struct IPX_B_BTC_SUI has drop {}
+  struct AC_B_BTC has drop {}
 
   #[lint_allow(share_owned)]
-  fun init(witness: IPX_B_BTC_SUI, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<IPX_B_BTC_SUI>(
+  fun init(witness: AC_B_BTC, ctx: &mut TxContext) {
+      let (treasury_cap, metadata) = coin::create_currency<AC_B_BTC>(
             witness, 
-            9, 
+            6, 
             b"",
             b"", 
             b"", 
@@ -187,25 +187,25 @@ module amm::ipx_b_btc_sui {
 
   #[test_only]
   public fun init_for_testing(ctx: &mut TxContext) {
-    init(IPX_B_BTC_SUI {}, ctx);
+    init(AC_B_BTC {}, ctx);
   }  
 }
 
 #[test_only]
-module amm::ipx_b_usdc_sui {
+module amm::ac_b_usdc {
   use std::option;
 
   use sui::transfer;
   use sui::coin;
   use sui::tx_context::{Self, TxContext};
 
-  struct IPX_B_USDC_SUI has drop {}
+  struct AC_B_USDC has drop {}
     
   #[lint_allow(share_owned)]
-  fun init(witness: IPX_B_USDC_SUI, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<IPX_B_USDC_SUI>(
+  fun init(witness: AC_B_USDC, ctx: &mut TxContext) {
+      let (treasury_cap, metadata) = coin::create_currency<AC_B_USDC>(
             witness, 
-            9, 
+            6, 
             b"",
             b"", 
             b"", 
@@ -219,27 +219,27 @@ module amm::ipx_b_usdc_sui {
 
   #[test_only]
   public fun init_for_testing(ctx: &mut TxContext) {
-    init(IPX_B_USDC_SUI {}, ctx);
+    init(AC_B_USDC {}, ctx);
   }  
 }
 
 // * Invalid Coin
 
 #[test_only]
-module amm::ipx_btce_eth {
+module amm::ac_btce {
   use std::option;
 
   use sui::transfer;
   use sui::coin;
   use sui::tx_context::{Self, TxContext};
 
-  struct IPX_BTCE_ETH has drop {}
+  struct AC_BTCE has drop {}
 
   #[lint_allow(share_owned)]
-  fun init(witness: IPX_BTCE_ETH, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<IPX_BTCE_ETH>(
+  fun init(witness: AC_BTCE, ctx: &mut TxContext) {
+      let (treasury_cap, metadata) = coin::create_currency<AC_BTCE>(
             witness, 
-            9, 
+            8, 
             b"",
             b"", 
             b"", 
@@ -253,6 +253,6 @@ module amm::ipx_btce_eth {
 
   #[test_only]
   public fun init_for_testing(ctx: &mut TxContext) {
-    init(IPX_BTCE_ETH {}, ctx);
+    init(AC_BTCE {}, ctx);
   }  
 }

@@ -12,7 +12,7 @@ module amm::quote_tests {
   use amm::usdc::USDC;
   use amm::fees::{Self, Fees};
   use amm::curves::Bound;
-  use amm::ipx_b_usdc_sui::IPX_B_USDC_SUI;
+  use amm::ac_b_usdc::AC_B_USDC;
   use amm::interest_protocol_amm::{Self, Registry, InterestPool};
   use amm::deploy_utils::{people, scenario, deploy_usdc_sui_pool};
 
@@ -31,28 +31,30 @@ module amm::quote_tests {
 
     next_tx(scenario_mut, alice);
     {
-      let request = request<Bound, USDC, SUI, IPX_B_USDC_SUI>(scenario_mut);
+      let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
 
       let amount_in = 5_000 * SUI_DECIMAL_SCALAR;
       let amount_in_fee = fees::get_fee_in_amount(&request.pool_fees, amount_in);
       let expected_amount_out = bound::get_amount_out(amount_in - amount_in_fee,  400_000_000 * USDC_DECIMAL_SCALAR, 10_000 * SUI_DECIMAL_SCALAR, false);
-      let expected_amount_out = expected_amount_out - fees::get_fee_out_amount(&request.pool_fees, expected_amount_out); 
+      let expected_amount_out = expected_amount_out - fees::get_fee_out_amount(&request.pool_fees, expected_amount_out);
 
-      assert_eq(quote::amount_out<SUI, USDC, IPX_B_USDC_SUI>(&request.pool, amount_in), expected_amount_out);
+      let res = quote::amount_out<SUI, AC_B_USDC, USDC>(&request.pool, amount_in);
+      assert_eq(res, expected_amount_out);
 
       destroy_request(request);
     };
 
     next_tx(scenario_mut, alice);
     {
-      let request = request<Bound, USDC, SUI, IPX_B_USDC_SUI>(scenario_mut);
+      let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
 
       let amount_in = 175_000_000 * USDC_DECIMAL_SCALAR;
       let amount_in_fee = fees::get_fee_in_amount(&request.pool_fees, amount_in);
       let expected_amount_out = bound::get_amount_out(amount_in - amount_in_fee, 400_000_000 * USDC_DECIMAL_SCALAR, 10_000 * SUI_DECIMAL_SCALAR, true);
-      let expected_amount_out = expected_amount_out - fees::get_fee_out_amount(&request.pool_fees, expected_amount_out); 
+      let expected_amount_out = expected_amount_out - fees::get_fee_out_amount(&request.pool_fees, expected_amount_out);
 
-      assert_eq(quote::amount_out<USDC, SUI, IPX_B_USDC_SUI>(&request.pool, amount_in), expected_amount_out);
+      let res = quote::amount_out<AC_B_USDC, SUI, USDC>(&request.pool, amount_in);
+      assert_eq(res, expected_amount_out);
 
       destroy_request(request);
     };
@@ -71,7 +73,7 @@ module amm::quote_tests {
 
     next_tx(scenario_mut, alice);
     {
-      let request = request<Bound, USDC, SUI, IPX_B_USDC_SUI>(scenario_mut);
+      let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
 
       let amount_out = 5_000 * SUI_DECIMAL_SCALAR;
       let amount_out_before_fee = fees::get_fee_out_initial_amount(&request.pool_fees, amount_out);
@@ -81,14 +83,14 @@ module amm::quote_tests {
         bound::get_amount_in(amount_out_before_fee, 400_000_000 * USDC_DECIMAL_SCALAR, 10_000 * SUI_DECIMAL_SCALAR, false)
       );
 
-      assert_eq(quote::amount_in<SUI, USDC, IPX_B_USDC_SUI>(&request.pool, amount_out), expected_amount_in);
+      assert_eq(quote::amount_in<SUI, AC_B_USDC, USDC>(&request.pool, amount_out), expected_amount_in);
 
       destroy_request(request);
     };
 
     next_tx(scenario_mut, alice);
     {
-      let request = request<Bound, USDC, SUI, IPX_B_USDC_SUI>(scenario_mut);     
+      let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);     
 
       let amount_out = 175_000_000 * USDC_DECIMAL_SCALAR;
       let amount_out_before_fee = fees::get_fee_out_initial_amount(&request.pool_fees, amount_out);
@@ -98,7 +100,7 @@ module amm::quote_tests {
         bound::get_amount_in(amount_out_before_fee, 400_000_000 * USDC_DECIMAL_SCALAR, 10_000 * SUI_DECIMAL_SCALAR, true)
       );
 
-      assert_eq(quote::amount_in<USDC, SUI, IPX_B_USDC_SUI>(&request.pool, amount_out), expected_amount_in);
+      assert_eq(quote::amount_in<AC_B_USDC, SUI, USDC>(&request.pool, amount_out), expected_amount_in);
 
       destroy_request(request);
     };

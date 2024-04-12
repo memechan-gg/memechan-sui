@@ -9,17 +9,17 @@ module amm::utils_tests {
   use amm::btc::BTC;
   use amm::eth::ETH;
   use amm::sui::SUI;
-  use amm::ipx_b_btc_sui::{Self, IPX_B_BTC_SUI};
-  use amm::ipx_btce_eth::{Self, IPX_BTCE_ETH};
-  use amm::ipx_btc_eth_wrong_decimals::{Self, IPX_BTC_ETH_WRONG_DECIMALS};
+  use amm::ac_b_btc::{Self, AC_B_BTC};
+  use amm::ac_btc_wrong_decimals::{Self, AC_BTC_WRONG_DECIMALS};
+  use amm::ac_btc_wrong_name::{Self, AC_BTC_WRONG_NAME};
   use amm::deploy_utils::{scenario, people, deploy_coins};
   use amm::utils::{
     is_coin_x, 
     quote_liquidity,
-    get_lp_coin_name,
+    get_ticket_coin_name,
     are_coins_suitable, 
-    get_lp_coin_symbol,
-    assert_lp_coin_integrity,
+    get_ticket_coin_symbol,
+    assert_ticket_coin_integrity,
     get_optimal_add_liquidity, 
   };
 
@@ -97,11 +97,10 @@ module amm::utils_tests {
       let btc_metadata = test::take_shared<CoinMetadata<BTC>>(test);
       let sui_metadata = test::take_shared<CoinMetadata<SUI>>(test);
 
-      assert_eq(get_lp_coin_name<BTC, SUI>(
-        &btc_metadata,
-        &sui_metadata,
+      assert_eq(get_ticket_coin_name<BTC>(
+        &btc_metadata
       ),
-      utf8(b"ipx bound Bitcoin Sui Lp Coin")
+      utf8(b"ac bound Bitcoin Ticket Coin")
       );
 
       test::return_shared(btc_metadata);
@@ -125,11 +124,10 @@ module amm::utils_tests {
       let btc_metadata = test::take_shared<CoinMetadata<BTC>>(test);
       let sui_metadata = test::take_shared<CoinMetadata<SUI>>(test);
 
-      assert_eq(get_lp_coin_symbol<BTC, SUI>(
-        &btc_metadata,
-        &sui_metadata
+      assert_eq(get_ticket_coin_symbol<BTC>(
+        &btc_metadata
       ),
-      to_ascii(utf8(b"ipx-b-BTC-SUI"))
+      to_ascii(utf8(b"ac-b-BTC"))
       );
 
       test::return_shared(btc_metadata);
@@ -140,7 +138,7 @@ module amm::utils_tests {
   }
 
   #[test]
-  fun test_assert_lp_coin_integrity() {
+  fun test_assert_ticket_coin_integrity() {
    let scenario = scenario();
     let (alice, _) = people();
 
@@ -150,14 +148,14 @@ module amm::utils_tests {
 
     next_tx(test, alice);
     {
-      ipx_b_btc_sui::init_for_testing(ctx(test));
+      ac_b_btc::init_for_testing(ctx(test));
     };
 
     next_tx(test, alice); 
     {
-      let metadata = test::take_shared<CoinMetadata<IPX_B_BTC_SUI>>(test);
+      let metadata = test::take_shared<CoinMetadata<AC_B_BTC>>(test);
 
-      assert_lp_coin_integrity<BTC, SUI, IPX_B_BTC_SUI>(&metadata);
+      assert_ticket_coin_integrity<AC_B_BTC, SUI, BTC>(&metadata);
 
       test::return_shared(metadata);
     };
@@ -166,8 +164,8 @@ module amm::utils_tests {
   }
 
   #[test]
-  #[expected_failure(abort_code = amm::errors::ELpCoinsMustHave9Decimals, location = amm::utils)]
-  fun test_assert_lp_coin_integrity_wrong_decimal() {
+  #[expected_failure(abort_code = amm::errors::EMemeAndTicketCoinsMustHave6Decimals, location = amm::utils)]
+  fun test_assert_ticket_coin_integrity_wrong_decimal() {
    let scenario = scenario();
     let (alice, _) = people();
 
@@ -177,14 +175,14 @@ module amm::utils_tests {
 
     next_tx(test, alice);
     {
-      ipx_btc_eth_wrong_decimals::init_for_testing(ctx(test));
+      ac_btc_wrong_decimals::init_for_testing(ctx(test));
     };
 
     next_tx(test, alice); 
     {
-      let metadata = test::take_shared<CoinMetadata<IPX_BTC_ETH_WRONG_DECIMALS>>(test);
+      let metadata = test::take_shared<CoinMetadata<AC_BTC_WRONG_DECIMALS>>(test);
 
-      assert_lp_coin_integrity<BTC, ETH, IPX_BTC_ETH_WRONG_DECIMALS>(&metadata);
+      assert_ticket_coin_integrity<AC_BTC_WRONG_DECIMALS, ETH, BTC>(&metadata);
 
       test::return_shared(metadata);
     };
@@ -194,7 +192,7 @@ module amm::utils_tests {
 
   #[test]
   #[expected_failure(abort_code = amm::errors::EWrongModuleName, location = amm::utils)]
-  fun test_assert_lp_coin_integrity_wrong_lp_module_name() {
+  fun test_assert_ticket_coin_integrity_wrong_lp_module_name() {
     let scenario = scenario();
     let (alice, _) = people();
 
@@ -204,14 +202,14 @@ module amm::utils_tests {
 
     next_tx(test, alice);
     {
-      ipx_btce_eth::init_for_testing(ctx(test));
+      ac_btc_wrong_name::init_for_testing(ctx(test));
     };
 
     next_tx(test, alice); 
     {
-      let metadata = test::take_shared<CoinMetadata<IPX_BTCE_ETH>>(test);
+      let metadata = test::take_shared<CoinMetadata<AC_BTC_WRONG_NAME>>(test);
 
-      assert_lp_coin_integrity<BTC, SUI, IPX_BTCE_ETH>(&metadata);
+      assert_ticket_coin_integrity<AC_BTC_WRONG_NAME, SUI, BTC>(&metadata);
 
       test::return_shared(metadata);
     };
@@ -227,17 +225,17 @@ module amm::utils_tests {
 }
 
 #[test_only]
-module amm::ipx_btc_eth_wrong_decimals {
+module amm::ac_btc_wrong_decimals {
   use std::option;
 
   use sui::transfer;
   use sui::coin;
   use sui::tx_context::{Self, TxContext};
 
-  struct IPX_BTC_ETH_WRONG_DECIMALS has drop {}
+  struct AC_BTC_WRONG_DECIMALS has drop {}
 
   #[lint_allow(share_owned)]
-  fun init(witness: IPX_BTC_ETH_WRONG_DECIMALS, ctx: &mut TxContext) {
+  fun init(witness: AC_BTC_WRONG_DECIMALS, ctx: &mut TxContext) {
       let (treasury_cap, metadata) = coin::create_currency(
             witness, 
             8, 
@@ -254,6 +252,38 @@ module amm::ipx_btc_eth_wrong_decimals {
 
   #[test_only]
   public fun init_for_testing(ctx: &mut TxContext) {
-    init(IPX_BTC_ETH_WRONG_DECIMALS {}, ctx);
+    init(AC_BTC_WRONG_DECIMALS {}, ctx);
+  }  
+}
+
+#[test_only]
+module amm::ac_btc_wrong_name {
+  use std::option;
+
+  use sui::transfer;
+  use sui::coin;
+  use sui::tx_context::{Self, TxContext};
+
+  struct AC_BTC_WRONG_NAME has drop {}
+
+  #[lint_allow(share_owned)]
+  fun init(witness: AC_BTC_WRONG_NAME, ctx: &mut TxContext) {
+      let (treasury_cap, metadata) = coin::create_currency(
+            witness, 
+            6, 
+            b"",
+            b"", 
+            b"", 
+            option::none(), 
+            ctx
+        );
+
+      transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+      transfer::public_share_object(metadata);
+  }
+
+  #[test_only]
+  public fun init_for_testing(ctx: &mut TxContext) {
+    init(AC_BTC_WRONG_NAME {}, ctx);
   }  
 }

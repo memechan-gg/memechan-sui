@@ -11,7 +11,7 @@ module amm::deploy_utils {
   use amm::sui::{Self, SUI};
   use amm::usdc::{Self, USDC};
   use amm::curves::Bound;
-  use amm::ipx_b_usdc_sui::{Self, IPX_B_USDC_SUI};
+  use amm::ac_b_usdc::{Self, AC_B_USDC};
   use amm::interest_protocol_amm::{Self, InterestPool, Registry};
 
   public fun deploy_coins(test: &mut Scenario) {
@@ -33,40 +33,26 @@ module amm::deploy_utils {
 
     next_tx(test, alice);
     {
-      ipx_b_usdc_sui::init_for_testing(ctx(test));
+      ac_b_usdc::init_for_testing(ctx(test));
     };
 
     next_tx(test, alice);
     {
       let registry = test::take_shared<Registry>(test);
-      let lp_coin_cap = test::take_from_sender<TreasuryCap<IPX_B_USDC_SUI>>(test);
+      let lp_coin_cap = test::take_from_sender<TreasuryCap<AC_B_USDC>>(test);
       let sui_metadata = test::take_shared<CoinMetadata<SUI>>(test);
       let usdc_metadata = test::take_shared<CoinMetadata<USDC>>(test);
-      let lp_coin_metadata = test::take_shared<CoinMetadata<IPX_B_USDC_SUI>>(test);
+      let lp_coin_metadata = test::take_shared<CoinMetadata<AC_B_USDC>>(test);
       
-      interest_protocol_amm::new(
+      interest_protocol_amm::new<AC_B_USDC, SUI, USDC>(
         &mut registry,
-        create_treasury_cap_for_testing(ctx(test)),
-        //mint_for_testing<USDC>(usdc_amount, ctx(test)),
         lp_coin_cap,
-        &usdc_metadata,
-        &sui_metadata,
+        create_treasury_cap_for_testing(ctx(test)),
         &mut lp_coin_metadata,
+        &sui_metadata,
+        &usdc_metadata,
         ctx(test)
       );
-
-      //   let pool_address = interest_protocol_amm::pool_address<Bound, USDC, SUI>(&registry);
-      //   let pool = test::take_shared_by_id<InterestPool>(
-      //   test, object::id_from_address(option::destroy_some(pool_address))
-      // );
-
-
-      
-      //let pool_state = interest_protocol_amm::pool_state_mut<CoinX, CoinY, LpCoin>(&mut pool);
-
-      
-
-      //interest_protocol_amm::swap_coin_y(pool, mint_for_testing<SUI>(sui_amount, ctx(test)), 0, clock, ctx(test));
 
       test::return_shared(sui_metadata);
       test::return_shared(usdc_metadata);
@@ -77,9 +63,9 @@ module amm::deploy_utils {
     next_tx(test, alice);
     {
       let registry = test::take_shared<Registry>(test);
-      let pool_address = interest_protocol_amm::pool_address<Bound, USDC, SUI>(&registry);
+      let pool_address = interest_protocol_amm::pool_address<Bound, AC_B_USDC, SUI>(&registry);
       let pool = test::take_shared_by_id<InterestPool>(test, object::id_from_address(option::destroy_some(pool_address)) );
-      interest_protocol_amm::set_liquidity<USDC, SUI, IPX_B_USDC_SUI>(&mut pool, mint_for_testing<USDC>(usdc_amount, ctx(test)),mint_for_testing<SUI>(sui_amount, ctx(test)));
+      interest_protocol_amm::set_liquidity<AC_B_USDC, SUI, USDC>(&mut pool, mint_for_testing<AC_B_USDC>(usdc_amount, ctx(test)), mint_for_testing<SUI>(sui_amount, ctx(test)));
       test::return_shared(pool);
       test::return_shared(registry);
     }

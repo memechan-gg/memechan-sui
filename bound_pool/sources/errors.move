@@ -5,8 +5,7 @@ module amm::errors {
   const ESelectDifferentCoins: u64 = 2;
   const EProvideBothCoins: u64 = 3;
   const EPoolAlreadyDeployed: u64 = 5;
-  const ESupplyMustHaveZeroValue: u64 = 6;
-  const ELpCoinsMustHave9Decimals: u64 = 7;
+  const EMemeAndTicketCoinsMustHave6Decimals: u64 = 7;
   const ESlippage: u64 = 8;
   const ENoZeroCoin: u64 = 9;
   const EInvalidInvariant: u64 = 10;
@@ -17,9 +16,8 @@ module amm::errors {
   const EDepositAmountIsTooLow: u64 = 16;
   const EInvalidRentPerSecond: u64 = 17;
   const EInvalidQuoteToken: u64 = 18;
-  const EBaseCoinMustHave6Decimals: u64 = 19;
   const EInvalidActiveAccount: u64 = 20;
-  const EBaseCoinShouldHaveZeroTotalSupply: u64 = 21;
+  const EMemeAndTicketCoinsShouldHaveZeroTotalSupply: u64 = 21;
   const ELPStakeTimeNotPassed: u64 = 22;
   
   public fun not_enough_funds_to_lend(): u64 {
@@ -42,20 +40,12 @@ module amm::errors {
     EPoolAlreadyDeployed
   }
 
-  public fun supply_must_have_zero_value(): u64 {
-    ESupplyMustHaveZeroValue
-  }
-
-  public fun lp_coins_must_have_9_decimals(): u64 {
-    ELpCoinsMustHave9Decimals
-  }
-
-  public fun base_coin_must_have_6_decimals(): u64 {
-    EBaseCoinMustHave6Decimals
+  public fun meme_and_ticket_coins_must_have_6_decimals(): u64 {
+    EMemeAndTicketCoinsMustHave6Decimals
   }
 
   public fun should_have_0_total_supply(): u64 {
-    EBaseCoinShouldHaveZeroTotalSupply
+    EMemeAndTicketCoinsShouldHaveZeroTotalSupply
   }
   public fun lp_stake_time_not_passed(): u64 {
     ELPStakeTimeNotPassed

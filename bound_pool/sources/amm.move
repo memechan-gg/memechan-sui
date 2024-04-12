@@ -1,12 +1,9 @@
 module amm::interest_protocol_amm {
   // === Imports ===
 
-  use std::ascii;
-  use std::string;
   use std::option::{Self, Option};
   use std::type_name::{Self, TypeName};
 
-  use sui::math::pow;
   use sui::object::{Self, UID};
   use sui::dynamic_field as df;
   use sui::table::{Self, Table};
@@ -47,16 +44,12 @@ module amm::interest_protocol_amm {
 
   struct PoolStateKey has drop, copy, store {}
 
-  struct PoolState<phantom CoinX, phantom CoinY, phantom LpCoin> has store {
-    lp_coin_cap: TreasuryCap<LpCoin>,
+  struct PoolState<phantom CoinX, phantom CoinY, phantom MemeCoin> has store {
     balance_x: Balance<CoinX>,
     balance_y: Balance<CoinY>,
-    decimals_x: u64,
-    decimals_y: u64,
     admin_balance_x: Balance<CoinX>,
     admin_balance_y: Balance<CoinY>,
-    seed_liquidity: Balance<LpCoin>,
-    launch_balance: Balance<CoinX>,
+    launch_balance: Balance<MemeCoin>,
     fees: Fees,
     locked: bool     
   } 
@@ -82,30 +75,29 @@ module amm::interest_protocol_amm {
   // === DEX ===
 
   #[lint_allow(share_owned)]
-  public fun new<CoinX, CoinY, LpCoin>(
+  public fun new<CoinX, CoinY, MemeCoin>(
     registry: &mut Registry,
-    coin_x_treasury: TreasuryCap<CoinX>,
-    lp_coin_cap: TreasuryCap<LpCoin>,
-    coin_x_metadata: &CoinMetadata<CoinX>,
-    coin_y_metadata: &CoinMetadata<CoinY>,  
-    lp_coin_metadata: &mut CoinMetadata<LpCoin>,
-    ctx: &mut TxContext    
+    ticket_coin_cap: TreasuryCap<CoinX>,
+    meme_coin_cap: TreasuryCap<MemeCoin>,
+    ticket_coin_metadata: &mut CoinMetadata<CoinX>,
+    coin_y_metadata: &CoinMetadata<CoinY>,
+    meme_coin_metadata: &CoinMetadata<MemeCoin>,
+    ctx: &mut TxContext
   ) {
-    utils::assert_coin_integrity<CoinX, CoinY>(&coin_x_treasury, coin_x_metadata);
-    utils::assert_lp_coin_integrity<CoinX, CoinY, LpCoin>(lp_coin_metadata);
-    
-    let coin_x = coin::mint<CoinX>(&mut coin_x_treasury, BASE_TOKEN_CURVED, ctx);
-    let launch_coin = coin::mint<CoinX>(&mut coin_x_treasury, BASE_TOKEN_LAUNCHED, ctx);
+    utils::assert_ticket_coin_integrity<CoinX, CoinY, MemeCoin>(ticket_coin_metadata);
+    utils::assert_coin_integrity<CoinX, CoinY, MemeCoin>(&ticket_coin_cap, ticket_coin_metadata, &meme_coin_cap, meme_coin_metadata);
 
-    coin::update_name(&lp_coin_cap, lp_coin_metadata, utils::get_lp_coin_name(coin_x_metadata, coin_y_metadata));
-    coin::update_symbol(&lp_coin_cap, lp_coin_metadata, utils::get_lp_coin_symbol(coin_x_metadata, coin_y_metadata));
+    coin::update_name(&ticket_coin_cap, ticket_coin_metadata, utils::get_ticket_coin_name(meme_coin_metadata));
+    coin::update_symbol(&ticket_coin_cap, ticket_coin_metadata, utils::get_ticket_coin_symbol(meme_coin_metadata));
 
-    let decimals_x = pow(10, coin::get_decimals(coin_x_metadata));
-    let decimals_y = pow(10, coin::get_decimals(coin_y_metadata));
+    let launch_coin = coin::mint<MemeCoin>(&mut meme_coin_cap, BASE_TOKEN_CURVED + BASE_TOKEN_LAUNCHED, ctx);
 
-    sui::transfer::public_transfer(coin_x_treasury, @0x2);
+    let coin_x = coin::mint<CoinX>(&mut ticket_coin_cap, BASE_TOKEN_CURVED, ctx);
 
-    new_pool_internal<Bound, CoinX, CoinY, LpCoin>(registry, coin_x, coin::zero(ctx), lp_coin_cap, decimals_x, decimals_y, launch_coin, ctx);
+    sui::transfer::public_transfer(ticket_coin_cap, @0x2);
+    sui::transfer::public_transfer(meme_coin_cap, @0x2);
+
+    new_pool_internal<Bound, CoinX, CoinY, MemeCoin>(registry, coin_x, coin::zero(ctx), launch_coin, ctx);
   }
 
   // === Public-View Functions ===
@@ -127,59 +119,64 @@ module amm::interest_protocol_amm {
     table::contains(&registry.pools, type_name::get<RegistryKey<Curve, CoinX, CoinY>>())   
   }
 
-  public fun lp_coin_supply<CoinX, CoinY, LpCoin>(pool: &InterestPool): u64 {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
-    balance::supply_value(coin::supply_immut(&pool_state.lp_coin_cap))  
-  }
-
-  public fun balance_x<CoinX, CoinY, LpCoin>(pool: &InterestPool): u64 {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+  public fun ticket_coin_supply<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     balance::value(&pool_state.balance_x)
   }
 
-  public fun balance_y<CoinX, CoinY, LpCoin>(pool: &InterestPool): u64 {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+  public fun meme_coin_supply<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
+    balance::value(&pool_state.launch_balance)
+  }
+
+  public fun balance_x<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
+    balance::value(&pool_state.balance_x)
+  }
+
+  public fun balance_y<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     balance::value(&pool_state.balance_y)
   }
 
-  public fun decimals_x<CoinX, CoinY, LpCoin>(pool: &InterestPool): u64 {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
-    pool_state.decimals_x
+  public fun decimals_x<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let _ = pool_state<CoinX, CoinY, MemeCoin>(pool);
+    1_000_000
   }
 
-  public fun decimals_y<CoinX, CoinY, LpCoin>(pool: &InterestPool): u64 {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
-    pool_state.decimals_y
+  public fun decimals_y<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let _ = pool_state<CoinX, CoinY, MemeCoin>(pool);
+    1_000_000_000
   }
 
-  public fun fees<CoinX, CoinY, LpCoin>(pool: &InterestPool): Fees {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+  public fun fees<CoinX, CoinY, MemeCoin>(pool: &InterestPool): Fees {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     pool_state.fees
   }
 
-  public fun locked<CoinX, CoinY, LpCoin>(pool: &InterestPool): bool {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+  public fun locked<CoinX, CoinY, MemeCoin>(pool: &InterestPool): bool {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     pool_state.locked
   }
 
-  public fun admin_balance_x<CoinX, CoinY, LpCoin>(pool: &InterestPool): u64 {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+  public fun admin_balance_x<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     balance::value(&pool_state.admin_balance_x)
   }
 
-  public fun admin_balance_y<CoinX, CoinY, LpCoin>(pool: &InterestPool): u64 {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+  public fun admin_balance_y<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     balance::value(&pool_state.admin_balance_y)
   }
 
   // === Admin Functions ===
 
-  public fun take_fees<CoinX, CoinY, LpCoin>(
+  public fun take_fees<CoinX, CoinY, MemeCoin>(
     _: &Admin,
     pool: &mut InterestPool,
     ctx: &mut TxContext
   ): (Coin<CoinX>, Coin<CoinY>) {
-    let pool_state = pool_state_mut<CoinX, CoinY, LpCoin>(pool);
+    let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
 
     let amount_x = balance::value(&pool_state.admin_balance_x);
     let amount_y = balance::value(&pool_state.admin_balance_y);
@@ -189,85 +186,71 @@ module amm::interest_protocol_amm {
       coin::take(&mut pool_state.admin_balance_y, amount_y, ctx)
     )
   }
-
-  public fun update_name<CoinX, CoinY, LpCoin>(
+/*
+  public fun update_name<CoinX, CoinY, MemeCoin>(
     _: &Admin,
     pool: &InterestPool, 
-    metadata: &mut CoinMetadata<LpCoin>, 
+    metadata: &mut CoinMetadata<MemeCoin>, 
     name: string::String
   ) {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     coin::update_name(&pool_state.lp_coin_cap, metadata, name);  
   }
 
-  public fun update_symbol<CoinX, CoinY, LpCoin>(
+  public fun update_symbol<CoinX, CoinY, MemeCoin>(
     _: &Admin,
     pool: &InterestPool, 
-    metadata: &mut CoinMetadata<LpCoin>, 
+    metadata: &mut CoinMetadata<MemeCoin>, 
     symbol: ascii::String
   ) {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     coin::update_symbol(&pool_state.lp_coin_cap, metadata, symbol);
   }
 
-  public fun update_description<CoinX, CoinY, LpCoin>(
+  public fun update_description<CoinX, CoinY, MemeCoin>(
     _: &Admin,
     pool: &InterestPool, 
-    metadata: &mut CoinMetadata<LpCoin>, 
+    metadata: &mut CoinMetadata<MemeCoin>, 
     description: string::String
   ) {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     coin::update_description(&pool_state.lp_coin_cap, metadata, description);
   }
 
-  public fun update_icon_url<CoinX, CoinY, LpCoin>(
+  public fun update_icon_url<CoinX, CoinY, MemeCoin>(
     _: &Admin,
     pool: &InterestPool, 
-    metadata: &mut CoinMetadata<LpCoin>, 
+    metadata: &mut CoinMetadata<MemeCoin>, 
     url: ascii::String
   ) {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     coin::update_icon_url(&pool_state.lp_coin_cap, metadata, url);
   }
-
+*/
   // === Private Functions ===    
 
-  fun new_pool_internal<Curve, CoinX, CoinY, LpCoin>(
+  fun new_pool_internal<Curve, CoinX, CoinY, MemeCoin>(
     registry: &mut Registry,
     coin_x: Coin<CoinX>,
     coin_y: Coin<CoinY>,
-    lp_coin_cap: TreasuryCap<LpCoin>,
-    decimals_x: u64,
-    decimals_y: u64,
-    launch_coin: Coin<CoinX>,
+    launch_coin: Coin<MemeCoin>,
     ctx: &mut TxContext
   ) {
-    assert!(
-      balance::supply_value(coin::supply_immut(&lp_coin_cap)) == 0, 
-      errors::supply_must_have_zero_value()
-    );
-
     let coin_x_value = coin::value(&coin_x);
     let coin_y_value = coin::value(&coin_y);
+    let launch_coin_value = coin::value(&launch_coin);
 
     assert!(coin_x_value == BASE_TOKEN_CURVED, errors::provide_both_coins());
-
+    assert!(coin_y_value == 0, errors::provide_both_coins());
+    assert!(launch_coin_value == BASE_TOKEN_CURVED + BASE_TOKEN_LAUNCHED, errors::provide_both_coins());
+    
     let registry_key = type_name::get<RegistryKey<Curve, CoinX, CoinY>>();
 
     assert!(!table::contains(&registry.pools, registry_key), errors::pool_already_deployed());
 
-    let seed_liquidity = balance::increase_supply(
-      coin::supply_mut(&mut lp_coin_cap),
-      coin::value(&coin_x)
-    );
-
     let pool_state = PoolState {
-      lp_coin_cap,
       balance_x: coin::into_balance(coin_x),
       balance_y: coin::into_balance(coin_y),
-      decimals_x,
-      decimals_y,
-      seed_liquidity,
       fees: new_fees(),
       locked: false,
       launch_balance: coin::into_balance(launch_coin),
@@ -290,7 +273,7 @@ module amm::interest_protocol_amm {
     share_object(pool);
   }
 
-  public fun swap_coin_x<CoinX, CoinY, LpCoin>(
+  public fun swap_coin_x<CoinX, CoinY, MemeCoin>(
     pool: &mut InterestPool,
     coin_x: Coin<CoinX>,
     coin_y_min_value: u64,
@@ -299,7 +282,7 @@ module amm::interest_protocol_amm {
     assert!(coin::value(&coin_x) != 0, errors::no_zero_coin());
 
     let pool_address = object::uid_to_address(&pool.id);
-    let pool_state = pool_state_mut<CoinX, CoinY, LpCoin>(pool);
+    let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
     assert!(!pool_state.locked, errors::pool_is_locked());
 
     let coin_in_amount = coin::value(&coin_x);
@@ -327,7 +310,7 @@ module amm::interest_protocol_amm {
     
   }
 
-  public fun swap_coin_y<CoinX, CoinY, LpCoin>(
+  public fun swap_coin_y<CoinX, CoinY, MemeCoin>(
     pool: &mut InterestPool,
     coin_y: Coin<CoinY>,
     coin_x_min_value: u64,
@@ -337,7 +320,7 @@ module amm::interest_protocol_amm {
     assert!(coin::value(&coin_y) != 0, errors::no_zero_coin());
 
     let pool_address = object::uid_to_address(&pool.id);
-    let pool_state = pool_state_mut<CoinX, CoinY, LpCoin>(pool);
+    let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
     assert!(!pool_state.locked, errors::pool_is_locked());
 
     let coin_in_amount = coin::value(&coin_y);
@@ -373,21 +356,20 @@ module amm::interest_protocol_amm {
       fees::new(ADMIN_FEE, ADMIN_FEE)
   }
 
-  fun amounts<CoinX, CoinY, LpCoin>(state: &PoolState<CoinX, CoinY, LpCoin>): (u64, u64, u64) {
+  fun amounts<CoinX, CoinY, MemeCoin>(state: &PoolState<CoinX, CoinY, MemeCoin>): (u64, u64) {
     ( 
       balance::value(&state.balance_x), 
-      balance::value(&state.balance_y),
-      balance::supply_value(coin::supply_immut(&state.lp_coin_cap))
+      balance::value(&state.balance_y)
     )
   }
 
-  fun swap_amounts<CoinX, CoinY, LpCoin>(
-    pool_state: &PoolState<CoinX, CoinY, LpCoin>,
+  fun swap_amounts<CoinX, CoinY, MemeCoin>(
+    pool_state: &PoolState<CoinX, CoinY, MemeCoin>,
     coin_in_amount: u64,
     coin_out_min_value: u64,
     is_x: bool
   ): SwapAmount {
-    let (balance_x, balance_y, _) = amounts(pool_state);
+    let (balance_x, balance_y) = amounts(pool_state);
 
     let prev_k = bound::invariant_(balance_x, balance_y);
 
@@ -419,11 +401,11 @@ module amm::interest_protocol_amm {
     }  
   }
 
-  fun pool_state<CoinX, CoinY, LpCoin>(pool: &InterestPool): &PoolState<CoinX, CoinY, LpCoin> {
+  fun pool_state<CoinX, CoinY, MemeCoin>(pool: &InterestPool): &PoolState<CoinX, CoinY, MemeCoin> {
     df::borrow(&pool.id, PoolStateKey {})
   }
 
-  fun pool_state_mut<CoinX, CoinY, LpCoin>(pool: &mut InterestPool): &mut PoolState<CoinX, CoinY, LpCoin> {
+  fun pool_state_mut<CoinX, CoinY, MemeCoin>(pool: &mut InterestPool): &mut PoolState<CoinX, CoinY, MemeCoin> {
     df::borrow_mut(&mut pool.id, PoolStateKey {})
   }
 
@@ -435,14 +417,14 @@ module amm::interest_protocol_amm {
   }
 
   #[test_only]
-  public fun seed_liquidity<CoinX, CoinY, LpCoin>(pool: &InterestPool): u64 {
-    let pool_state = pool_state<CoinX, CoinY, LpCoin>(pool);
-    balance::value(&pool_state.seed_liquidity)
+  public fun seed_liquidity<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
+    balance::value(&pool_state.launch_balance)
   }
 
   #[test_only]
-  public fun set_liquidity<CoinX, CoinY, LpCoin>(pool: &mut InterestPool, coin_x: Coin<CoinX>, coin_y: Coin<CoinY>) {
-    let pool_state = pool_state_mut<CoinX, CoinY, LpCoin>(pool);
+  public fun set_liquidity<CoinX, CoinY, MemeCoin>(pool: &mut InterestPool, coin_x: Coin<CoinX>, coin_y: Coin<CoinY>) {
+    let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
     let balance_x = balance::withdraw_all(&mut pool_state.balance_x);
     let balance_y = balance::withdraw_all(&mut pool_state.balance_y);
 

@@ -41,7 +41,7 @@ module amm::bound {
     };
 
     let nres = (res * if (is_x) {DECIMALS_Y} else {DECIMALS_X}) / (PRECISION * PRECISION);
-  
+
     (nres as u64)
   }
 
