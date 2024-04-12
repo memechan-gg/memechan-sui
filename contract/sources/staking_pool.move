@@ -8,7 +8,7 @@ module memechan::staking_pool {
 
     use memechan::vesting::{Self, VestingData, VestingConfig};
 
-    struct StakingPool<T: key> has key {
+    struct StakingPool<T: key, LP: key> has key {
         id: UID,
         amm_pool: ID,
         balances: Table<address, Balance<T>>,
@@ -17,7 +17,6 @@ module memechan::staking_pool {
     }
 
     public(friend) fun new<T: key>(
-        amm_pool: ID,
         balances: Table<address, Balance<T>>,
         vesting_config: VestingConfig,
         ctx: &mut TxContext,
