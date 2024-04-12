@@ -434,4 +434,41 @@ module amm::interest_protocol_amm {
     balance::join(&mut pool_state.balance_x, coin::into_balance(coin_x));
     balance::join(&mut pool_state.balance_y, coin::into_balance(coin_y));
   }
+
+  // TODO: This is only here temporarily but will be replaced with a safe solution
+  // once the contracts are properly integrated.
+  public fun destroy_pool<CoinX, CoinY, MemeCoin>(pool: InterestPool): (
+    Balance<CoinX>,
+    Balance<CoinY>,
+    Balance<CoinX>,
+    Balance<CoinY>,
+    Balance<MemeCoin>,
+    Fees,
+    bool
+  ) {
+    let state = df::remove(&mut pool.id, PoolStateKey {});
+
+    let InterestPool { id } = pool;
+    object::delete(id);
+
+    let PoolState {
+      balance_x,
+      balance_y,
+      admin_balance_x,
+      admin_balance_y,
+      launch_balance,
+      fees,
+      locked,
+    } = state;
+
+    (
+      balance_x,
+      balance_y,
+      admin_balance_x,
+      admin_balance_y,
+      launch_balance,
+      fees,
+      locked,
+    )
+  }
 }
