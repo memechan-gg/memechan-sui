@@ -4,7 +4,7 @@ module amm::utils {
   use std::string::{Self, String};
 
   use sui::coin::{Self, CoinMetadata, TreasuryCap};
-  use amm::sui::SUI;
+  use sui::sui::SUI;
 
   use suitears::comparator;
   use suitears::math64::mul_div_up;

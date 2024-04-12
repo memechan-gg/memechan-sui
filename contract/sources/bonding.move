@@ -2,6 +2,7 @@ module memechan::bonding {
     use std::type_name::{Self, TypeName};
     use sui::object::UID;
     use sui::table::{Self, Table};
+    use sui::transfer;
     use sui::table_vec::{Self, TableVec};
     use sui::balance::{Self, Balance};
     use sui::sui::SUI;
@@ -12,7 +13,10 @@ module memechan::bonding {
     use memechan::vesting::{Self, VestingData, VestingConfig};
     use memechan::math::div_mul;
     use clamm::interest_clamm_volatile as volatile;
+    use amm::interest_protocol_amm::{Self as seed_pool, InterestPool as SeedPool};
     use suitears::coin_decimals;
+
+    const ADMIN_ADDR: address = @0xfff; // TODO
 
     const SUI_THRESHOLD: u64 = 69_000;
     const BPS: u64 = 10_000;
@@ -33,7 +37,6 @@ module memechan::bonding {
     /// 10^-9 of a Sui token
     const MIST_PER_SUI: u64 = 1_000_000_000;
 
-
     public fun sui(mist: u64): u64 { MIST_PER_SUI * mist }
 
     struct BondingPool<MEME: key> has key {
@@ -44,21 +47,45 @@ module memechan::bonding {
         addresses: TableVec<address>,
     }
 
-    public fun init_secondary_market<MEME: key, LP: key>(
-        seed_pool: BondingPool<MEME>,
+    // struct PoolState<phantom CoinX, phantom CoinY, phantom MemeCoin> has store {
+
+    public fun init_secondary_market<xMEME: key, MEME: key, LP: key>(
+        seed_pool: SeedPool,
         sui_meta: &CoinMetadata<SUI>,
         meme_meta: &CoinMetadata<MEME>,
         treasury_cap: TreasuryCap<LP>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        let BondingPool {
-            id,
+        let (
+            xmeme_balance,
             sui_balance,
+            admin_xmeme_balance,
+            admin_sui_balance,
             meme_balance,
-            shares,
-            addresses,
-        } = seed_pool;
+            _,
+            locked,
+        ) = seed_pool::destroy_pool<xMEME, SUI, MEME>(seed_pool);
+
+        assert!(locked, 0);
+        assert!(balance::value(&xmeme_balance) == 0, 0);
+        balance::destroy_zero(xmeme_balance);
+
+        let total_xmeme_supply = balance::value(&xmeme_balance) + balance::value(&admin_xmeme_balance);
+        
+        // TODO: we need to figure out what to do with this xmeme fee balance
+        transfer::public_transfer(coin::from_balance(admin_xmeme_balance, ctx), ADMIN_ADDR);
+        transfer::public_transfer(coin::from_balance(admin_sui_balance, ctx), ADMIN_ADDR);
+
+
+
+        // let BondingPool {
+        //     id,
+        //     sui_balance,
+        //     meme_balance,
+        //     shares,
+        //     addresses,
+        // } = seed_pool;
 
         // 1. Verify if we reached the threshold of SUI amount raised
         let sui_supply = balance::value(&meme_balance);

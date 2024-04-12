@@ -5,9 +5,10 @@ published-at = "0x"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.22.0" }
+AMM = { local = "../bound_pool" }
 CLAMM = { local = "../interest/clamm" }
 SuiTears = { local = "../interest/suitears" }
 
 [addresses]
-memechan = "0x0"
+memechan = "0xff"
 clamm = "0x100"
