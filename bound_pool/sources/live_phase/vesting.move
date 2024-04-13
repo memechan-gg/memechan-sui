@@ -3,8 +3,10 @@ module amm::vesting {
     
     friend amm::staking_pool;
 
-    const DEFAULT_CLIFF: u64 = 0; // TODO
-    const DEFAULT_LINEAR: u64 = 0; // TODO
+    48 hours cliff + 14 days linear
+
+    const DEFAULT_CLIFF: u64 = 172800000; // 48 hours; TODO: test
+    const DEFAULT_LINEAR: u64 = 1209600000; // 14 days; TODO: test
 
     struct VestingConfig has store {
         start_ts: u64,
