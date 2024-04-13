@@ -19,6 +19,8 @@ module amm::errors {
   const EInvalidActiveAccount: u64 = 20;
   const EMemeAndTicketCoinsShouldHaveZeroTotalSupply: u64 = 21;
   const ELPStakeTimeNotPassed: u64 = 22;
+
+  const ENoFundsToWithdraw: u64 = 100;
   
   public fun not_enough_funds_to_lend(): u64 {
     ENotEnoughFundsToLend
@@ -95,4 +97,7 @@ module amm::errors {
     EInvalidActiveAccount
   }
 
+  public fun no_funds_to_withdraw(): u64 {
+    ENoFundsToWithdraw
+  }
 }

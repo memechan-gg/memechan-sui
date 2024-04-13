@@ -2,8 +2,18 @@
 
 [move]
 version = 0
-manifest_digest = "466D1C00A897578EE60ADCF00B5432A2F6D30D34B4461FD244CC9DDA02E1FFAE"
-deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
+manifest_digest = "FD81D7ACB901940E4B059C82B06B9FEC91EF3634EAA795E7EC127F3A157685B9"
+deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
+
+dependencies = [
+  { name = "CLAMM" },
+  { name = "Sui" },
+  { name = "SuiTears" },
+]
+
+[[move.package]]
+name = "CLAMM"
+source = { local = "../interest/clamm" }
 
 dependencies = [
   { name = "Sui" },

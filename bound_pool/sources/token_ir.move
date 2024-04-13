@@ -8,11 +8,11 @@ module amm::token_ir {
 
     friend amm::interest_protocol_amm;
     friend amm::staked_lp;
+    friend amm::staking_pool;
 
     struct Witness has drop {}
 
     struct PolicyCapDfKey<phantom T> has store, copy, drop {}
-    struct TreasuryCapDfKey<phantom T> has store, copy, drop {}
 
     public(friend) fun init_token<T>(
         pool_uid: &mut UID,
