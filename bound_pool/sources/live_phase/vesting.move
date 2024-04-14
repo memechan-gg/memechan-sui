@@ -3,7 +3,7 @@ module amm::vesting {
     
     friend amm::staking_pool;
 
-    48 hours cliff + 14 days linear
+    //48 hours cliff + 14 days linear
 
     const DEFAULT_CLIFF: u64 = 172800000; // 48 hours; TODO: test
     const DEFAULT_LINEAR: u64 = 1209600000; // 14 days; TODO: test
@@ -49,4 +49,11 @@ module amm::vesting {
     public(friend) fun release(self: &mut VestingData, amount: u64) {
         self.released = self.released + amount;
     }
+
+    // Getters
+    public fun released(self: &VestingData) : u64 {self.released}
+
+    public fun notional(self: &VestingData) : u64 {self.notional}
+
+    public fun current_stake(self: &VestingData) : u64 {self.notional - self.released}
 }
