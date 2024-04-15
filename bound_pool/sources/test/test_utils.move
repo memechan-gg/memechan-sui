@@ -49,7 +49,6 @@ module amm::deploy_utils {
         lp_coin_cap,
         create_treasury_cap_for_testing(ctx(test)),
         &mut lp_coin_metadata,
-        &sui_metadata,
         &usdc_metadata,
         ctx(test)
       );

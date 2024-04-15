@@ -54,7 +54,6 @@ module amm::interest_protocol_amm_tests {
         ticket_coin_cap,
         create_treasury_cap_for_testing(ctx(scenario_mut)),
         &mut ticket_coin_metadata,
-        &eth_metadata,
         &usdc_metadata,
         ctx(scenario_mut)
       );
@@ -121,7 +120,6 @@ module amm::interest_protocol_amm_tests {
         create_treasury_cap_for_testing(ctx(scenario_mut)),
         //mint_for_testing(100, ctx(scenario_mut)),
         &mut lp_coin_metadata,
-        &eth_metadata,
         &btc_metadata,
         ctx(scenario_mut)
       );
@@ -160,7 +158,6 @@ module amm::interest_protocol_amm_tests {
         create_treasury_cap_for_testing(ctx(scenario_mut)),
         //mint_for_testing(100, ctx(scenario_mut)),
         &mut lp_coin_metadata,
-        &eth_metadata,
         &btc_metadata,
         ctx(scenario_mut)
       );
@@ -201,7 +198,6 @@ module amm::interest_protocol_amm_tests {
         create_treasury_cap_for_testing(ctx(scenario_mut)),
         //mint_for_testing(100, ctx(scenario_mut)),
         &mut lp_coin_metadata,
-        &eth_metadata,
         &usdc_metadata,
         ctx(scenario_mut)
       );
