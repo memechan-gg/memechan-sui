@@ -3,11 +3,13 @@ module amm::events {
   use sui::event::emit;
 
   friend amm::interest_protocol_amm;
+  friend amm::token_ir;
 
   struct NewPool<phantom Curve, phantom CoinX, phantom CoinY> has copy, drop {
     pool_address: address,
     amount_x: u64,
-    amount_y: u64
+    amount_y: u64,
+    policy_address: address,
   }
 
   struct Swap<phantom CoinIn, phantom CoinOut, T: drop + copy + store> has copy, drop {
@@ -35,9 +37,10 @@ module amm::events {
   public(friend) fun new_pool<Curve, CoinX, CoinY>(
     pool_address: address,
     amount_x: u64,
-    amount_y: u64
+    amount_y: u64,
+    policy_address: address,
   ) {
-    emit(NewPool<Curve, CoinX, CoinY>{ pool_address, amount_x, amount_y });
+    emit(NewPool<Curve, CoinX, CoinY>{ pool_address, amount_x, amount_y, policy_address });
   }
 
   public(friend) fun swap<CoinIn, CoinOut, T: copy + drop + store>(

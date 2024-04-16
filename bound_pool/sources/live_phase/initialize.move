@@ -1,19 +1,17 @@
-module memechan::bonding {
-    use std::type_name::{Self, TypeName};
-    use sui::object::UID;
-    use sui::table::{Self, Table};
+#[allow(lint(share_owned))]
+module amm::initialize {
     use sui::transfer;
-    use sui::table_vec::{Self, TableVec};
-    use sui::balance::{Self, Balance};
+    use sui::balance;
     use sui::sui::SUI;
     use sui::tx_context::TxContext;
-    use sui::clock::{Self, Clock};
-    use sui::coin::{Self, TreasuryCap, CoinMetadata, Coin};
+    use sui::clock::Clock;
+    use sui::coin::{Self, TreasuryCap, CoinMetadata};
 
-    use memechan::vesting::{Self, VestingData, VestingConfig};
-    use memechan::math::div_mul;
+    use amm::vesting;
+    use amm::math::div_mul;
     use clamm::interest_clamm_volatile as volatile;
     use amm::interest_protocol_amm::{Self as seed_pool, InterestPool as SeedPool};
+    use amm::staking_pool;
     use suitears::coin_decimals;
 
     const ADMIN_ADDR: address = @0xfff; // TODO
@@ -39,20 +37,10 @@ module memechan::bonding {
 
     public fun sui(mist: u64): u64 { MIST_PER_SUI * mist }
 
-    struct BondingPool<MEME: key> has key {
-        id: UID,
-        sui_balance: Balance<SUI>,
-        meme_balance: Balance<MEME>,
-        shares: Table<address, u64>,
-        addresses: TableVec<address>,
-    }
-
-    // struct PoolState<phantom CoinX, phantom CoinY, phantom MemeCoin> has store {
-
-    public fun init_secondary_market<xMEME: key, MEME: key, LP: key>(
+    public fun init_secondary_market<CoinX: key, Meme: key, LP: key>(
         seed_pool: SeedPool,
         sui_meta: &CoinMetadata<SUI>,
-        meme_meta: &CoinMetadata<MEME>,
+        meme_meta: &CoinMetadata<Meme>,
         treasury_cap: TreasuryCap<LP>,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -65,27 +53,16 @@ module memechan::bonding {
             meme_balance,
             _,
             locked,
-        ) = seed_pool::destroy_pool<xMEME, SUI, MEME>(seed_pool);
+            fields,
+        ) = seed_pool::destroy_pool<CoinX, SUI, Meme>(seed_pool);
 
         assert!(locked, 0);
         assert!(balance::value(&xmeme_balance) == 0, 0);
         balance::destroy_zero(xmeme_balance);
-
-        let total_xmeme_supply = balance::value(&xmeme_balance) + balance::value(&admin_xmeme_balance);
         
-        // TODO: we need to figure out what to do with this xmeme fee balance
+        // 0. Transfer admin funds to admin
         transfer::public_transfer(coin::from_balance(admin_xmeme_balance, ctx), ADMIN_ADDR);
         transfer::public_transfer(coin::from_balance(admin_sui_balance, ctx), ADMIN_ADDR);
-
-
-
-        // let BondingPool {
-        //     id,
-        //     sui_balance,
-        //     meme_balance,
-        //     shares,
-        //     addresses,
-        // } = seed_pool;
 
         // 1. Verify if we reached the threshold of SUI amount raised
         let sui_supply = balance::value(&meme_balance);
@@ -94,7 +71,6 @@ module memechan::bonding {
         // 2. Split MEME balance amounts into 80/20
         let meme_supply = balance::value(&meme_balance);
         let meme_supply_80 = div_mul(meme_supply, BPS, LOCKED);
-        let meme_supply_20 = meme_supply - meme_supply_80;
 
         let amm_meme_balance = balance::split(&mut meme_balance, meme_supply_80);
         let decimals = coin_decimals::new(ctx);
@@ -103,7 +79,7 @@ module memechan::bonding {
         coin_decimals::add(&mut decimals, meme_meta);
 
         // 3. Create AMM Pool
-        let lp_tokens = volatile::new_2_pool(
+        let (lp_tokens, pool_id) = volatile::new_2_pool(
             clock,
             coin::from_balance(sui_balance, ctx), // coin_a
             coin::from_balance(amm_meme_balance, ctx), // coin_b
@@ -117,14 +93,21 @@ module memechan::bonding {
         );
 
         // 4. Create staking pool
+        let staking_pool = staking_pool::new<CoinX, Meme, LP>(
+            pool_id,
+            meme_balance,
+            coin::into_balance(lp_tokens),
+            vesting::default_config(clock),
+            fields,
+            ctx,
+        );
 
+        transfer::public_share_object(staking_pool);
 
+        // Cleanup
+        coin_decimals::destroy_decimals(coin_decimals::remove<SUI>(&mut decimals));
+        coin_decimals::destroy_decimals(coin_decimals::remove<Meme>(&mut decimals));
 
-        // 2. Move 80% of MEME to staking Pool
-
-        // 3. Create AMM pool 20% MEME and 100% SUI
-
-
+        coin_decimals::destroy_coin_decimals(decimals);
     }
-
 }

@@ -445,7 +445,7 @@ module clamm::interest_clamm_volatile {
     price: u256, // @ on a pool with 2 coins, we only need 1 price
     fee_params: vector<u256>, 
     ctx: &mut TxContext
-  ): Coin<LpCoin> {
+  ): (Coin<LpCoin>, ID) {
     let coin_a_value = coin::value(&coin_a);
     let coin_b_value = coin::value(&coin_b);
     assert!(
@@ -500,9 +500,10 @@ module clamm::interest_clamm_volatile {
 
     events::emit_new_2_pool<Volatile, CoinA, CoinB, LpCoin>(object::id(&pool));
 
+    let pool_id = object::id(&pool);
     public_share_object(pool);
 
-    lp_coin
+    (lp_coin, pool_id)
   }
 
   #[lint_allow(share_owned)]

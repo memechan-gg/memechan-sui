@@ -7,12 +7,13 @@ module amm::interest_protocol_amm {
   use sui::object::{Self, UID};
   use sui::dynamic_field as df;
   use sui::table::{Self, Table};
-  use sui::tx_context::TxContext;
+  use sui::tx_context::{TxContext, sender};
   use sui::transfer::share_object;
   use sui::balance::{Self, Balance};
   use sui::coin::{Self, Coin, CoinMetadata, TreasuryCap};
   use sui::clock::Clock;
   use sui::math;
+  use sui::token::{Self, Token, TokenPolicy};
  
   use amm::utils;
   use amm::errors;
@@ -22,6 +23,9 @@ module amm::interest_protocol_amm {
   use amm::fees::{Self, Fees};
   use amm::curves::Bound;
   use amm::staked_lp::StakedLP;
+  use amm::token_ir;
+
+  friend amm::initialize;
 
   // === Constants ===
 
@@ -40,16 +44,19 @@ module amm::interest_protocol_amm {
 
   struct Registry has key {
     id: UID,
-    pools: Table<TypeName, address>
+    pools: Table<TypeName, address>,
+    policies: Table<TypeName, address>
   }
   
   struct InterestPool has key {
-    id: UID 
+    id: UID,
+    fields: UID,
   }
 
   struct RegistryKey<phantom Curve, phantom CoinX, phantom CoinY> has drop {}
 
   struct PoolStateKey has drop, copy, store {}
+  struct AccountingDfKey has drop, copy, store {}
 
   struct PoolState<phantom CoinX, phantom CoinY, phantom MemeCoin> has store {
     balance_x: Balance<CoinX>,
@@ -75,7 +82,8 @@ module amm::interest_protocol_amm {
     share_object(
       Registry {
         id: object::new(ctx),
-        pools: table::new(ctx)
+        pools: table::new(ctx),
+        policies: table::new(ctx),
       }
     );
   }  
@@ -99,12 +107,21 @@ module amm::interest_protocol_amm {
 
     let launch_coin = coin::mint<MemeCoin>(&mut meme_coin_cap, BASE_TOKEN_CURVED + BASE_TOKEN_LAUNCHED, ctx);
 
-    let coin_x = coin::mint<CoinX>(&mut ticket_coin_cap, BASE_TOKEN_CURVED, ctx);
+    let balance_x: Balance<CoinX> = balance::increase_supply(coin::supply_mut(&mut ticket_coin_cap), BASE_TOKEN_CURVED);
+    let coin_x_value = balance::value(&balance_x);
 
+    let pool = new_pool_internal<Bound, CoinX, CoinY, MemeCoin>(registry, balance_x, coin::zero(ctx), launch_coin, ctx);
+    let pool_address = object::uid_to_address(&pool.id);
+
+    let (policy, policy_address) = token_ir::init_token<CoinX>(&mut pool.id, &ticket_coin_cap, ctx);
+    table::add(&mut registry.policies, type_name::get<CoinX>(), policy_address);
+
+    events::new_pool<Bound, CoinX, CoinY>(pool_address, coin_x_value, 0, policy_address);
+
+    token::share_policy(policy);
     sui::transfer::public_transfer(ticket_coin_cap, @0x2);
     sui::transfer::public_transfer(meme_coin_cap, @0x2);
-
-    new_pool_internal<Bound, CoinX, CoinY, MemeCoin>(registry, coin_x, coin::zero(ctx), launch_coin, ctx);
+    share_object(pool);
   }
 
   // === Public-View Functions ===
@@ -120,6 +137,11 @@ module amm::interest_protocol_amm {
       option::some(*table::borrow(&registry.pools, registry_key))
     else
       option::none()
+  }
+
+  public fun get_policy_id<T>(registry: &Registry): address {
+      let type_name = type_name::get<T>();
+      *table::borrow(&registry.policies, type_name)
   }
 
   public fun exists_<Curve, CoinX, CoinY>(registry: &Registry): bool {
@@ -181,15 +203,16 @@ module amm::interest_protocol_amm {
   public fun take_fees<CoinX, CoinY, MemeCoin>(
     _: &Admin,
     pool: &mut InterestPool,
+    policy: &TokenPolicy<CoinX>,
     ctx: &mut TxContext
-  ): (Coin<CoinX>, Coin<CoinY>) {
+  ): (Token<CoinX>, Coin<CoinY>) {
     let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
 
     let amount_x = balance::value(&pool_state.admin_balance_x);
     let amount_y = balance::value(&pool_state.admin_balance_y);
 
     (
-      coin::take(&mut pool_state.admin_balance_x, amount_x, ctx),
+      token_ir::take(policy, &mut pool_state.admin_balance_x, amount_x, ctx),
       coin::take(&mut pool_state.admin_balance_y, amount_y, ctx)
     )
   }
@@ -197,13 +220,13 @@ module amm::interest_protocol_amm {
   // === Private Functions ===    
 
   fun new_pool_internal<Curve, CoinX, CoinY, MemeCoin>(
-    registry: &mut Registry,
-    coin_x: Coin<CoinX>,
+    registry: &Registry,
+    coin_x: Balance<CoinX>,
     coin_y: Coin<CoinY>,
     launch_coin: Coin<MemeCoin>,
     ctx: &mut TxContext
-  ) {
-    let coin_x_value = coin::value(&coin_x);
+  ): InterestPool {
+    let coin_x_value = balance::value(&coin_x);
     let coin_y_value = coin::value(&coin_y);
     let launch_coin_value = coin::value(&launch_coin);
 
@@ -216,7 +239,7 @@ module amm::interest_protocol_amm {
     assert!(!table::contains(&registry.pools, registry_key), errors::pool_already_deployed());
 
     let pool_state = PoolState {
-      balance_x: coin::into_balance(coin_x),
+      balance_x: coin_x,
       balance_y: coin::into_balance(coin_y),
       fees: new_fees(),
       locked: false,
@@ -226,33 +249,29 @@ module amm::interest_protocol_amm {
     };
 
     let pool = InterestPool {
-      id: object::new(ctx)
+      id: object::new(ctx),
+      fields: object::new(ctx),
     };
 
-    let pool_address = object::uid_to_address(&pool.id);
+    df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
 
-    df::add(&mut pool.id, PoolStateKey {}, pool_state);
-
-    table::add(&mut registry.pools, registry_key, pool_address);
-
-    events::new_pool<Curve, CoinX, CoinY>(pool_address, coin_x_value, coin_y_value);
-
-    share_object(pool);
+    pool
   }
 
   public fun swap_coin_x<CoinX, CoinY, MemeCoin>(
     pool: &mut InterestPool,
-    coin_x: Coin<CoinX>,
+    coin_x: Token<CoinX>,
     coin_y_min_value: u64,
+    policy: &TokenPolicy<CoinX>,
     ctx: &mut TxContext
-  ): (Coin<CoinX>, Coin<CoinY>) {
-    assert!(coin::value(&coin_x) != 0, errors::no_zero_coin());
+  ): Coin<CoinY> {
+    assert!(token::value(&coin_x) != 0, errors::no_zero_coin());
 
     let pool_address = object::uid_to_address(&pool.id);
     let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
     assert!(!pool_state.locked, errors::pool_is_locked());
 
-    let coin_in_amount = coin::value(&coin_x);
+    let coin_in_amount = token::value(&coin_x);
     
     let swap_amount = swap_amounts(
       pool_state, 
@@ -262,35 +281,38 @@ module amm::interest_protocol_amm {
     );
 
     if (swap_amount.admin_fee_in != 0) {
-      balance::join(&mut pool_state.admin_balance_x, coin::into_balance(coin::split(&mut coin_x, swap_amount.admin_fee_in, ctx)));
+      balance::join(&mut pool_state.admin_balance_x, token_ir::into_balance(policy, token::split(&mut coin_x, swap_amount.admin_fee_in, ctx), ctx));
     };
 
     if (swap_amount.admin_fee_out != 0) {
       balance::join(&mut pool_state.admin_balance_y, balance::split(&mut pool_state.balance_y, swap_amount.admin_fee_out));  
     };
 
-    balance::join(&mut pool_state.balance_x, coin::into_balance(coin::split(&mut coin_x, swap_amount.amount_in, ctx)));
+    balance::join(&mut pool_state.balance_x, token_ir::into_balance(policy, coin_x, ctx));
 
     events::swap<CoinX, CoinY, SwapAmount>(pool_address, coin_in_amount, swap_amount);
 
-    (coin_x, coin::take(&mut pool_state.balance_y, swap_amount.amount_out, ctx))
-    
+    let coin_y = coin::take(&mut pool_state.balance_y, swap_amount.amount_out, ctx);
+
+    // We keep track of how much each address ownes of coin_x
+    subtract_from_token_acc(pool, coin_in_amount, sender(ctx));
+    coin_y
   }
 
   public fun swap_coin_y<CoinX, CoinY, MemeCoin>(
     pool: &mut InterestPool,
-    coin_y: Coin<CoinY>,
+    coin_y: &mut Coin<CoinY>,
     coin_x_min_value: u64,
     clock: &Clock,
     ctx: &mut TxContext
-  ): (StakedLP<CoinX>, Coin<CoinY>) {
-    assert!(coin::value(&coin_y) != 0, errors::no_zero_coin());
+  ): StakedLP<CoinX> {
+    assert!(coin::value(coin_y) != 0, errors::no_zero_coin());
 
     let pool_address = object::uid_to_address(&pool.id);
     let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
     assert!(!pool_state.locked, errors::pool_is_locked());
 
-    let coin_in_amount = coin::value(&coin_y);
+    let coin_in_amount = coin::value(coin_y);
 
     let swap_amount = swap_amounts(
       pool_state, 
@@ -300,14 +322,14 @@ module amm::interest_protocol_amm {
     );
 
     if (swap_amount.admin_fee_in != 0) {
-      balance::join(&mut pool_state.admin_balance_y, coin::into_balance(coin::split(&mut coin_y, swap_amount.admin_fee_in, ctx)));
+      balance::join(&mut pool_state.admin_balance_y, coin::into_balance(coin::split(coin_y, swap_amount.admin_fee_in, ctx)));
     };
 
     if (swap_amount.admin_fee_out != 0) {
       balance::join(&mut pool_state.admin_balance_x, balance::split(&mut pool_state.balance_x, swap_amount.admin_fee_out)); 
     };
 
-    balance::join(&mut pool_state.balance_y, coin::into_balance(coin::split(&mut coin_y, swap_amount.amount_in, ctx)));
+    balance::join(&mut pool_state.balance_y, coin::into_balance(coin::split(coin_y, swap_amount.amount_in, ctx)));
 
     events::swap<CoinY, CoinX, SwapAmount>(pool_address, coin_in_amount,swap_amount);
 
@@ -315,9 +337,15 @@ module amm::interest_protocol_amm {
       pool_state.locked = true;
     };
 
-    //coin::take(&mut pool_state.balance_x, swap_amount.amount_out, ctx) 
-    (amm::staked_lp::new(balance::split(&mut pool_state.balance_x, swap_amount.amount_out), clock, ctx), coin_y)
-  }
+
+    //coin::take(&mut pool_state.balance_x, swap_amount.amount_out, ctx)
+    let swap_amount = swap_amount.amount_out;
+    let staked_lp = amm::staked_lp::new(balance::split(&mut pool_state.balance_x, swap_amount), clock, ctx);
+
+    // We keep track of how much each address ownes of coin_x
+    add_from_token_acc(pool, swap_amount, sender(ctx));
+    staked_lp
+  }  
 
   fun new_fees(): Fees {
       fees::new(ADMIN_FEE, ADMIN_FEE)
@@ -375,11 +403,75 @@ module amm::interest_protocol_amm {
   }
 
   fun pool_state<CoinX, CoinY, MemeCoin>(pool: &InterestPool): &PoolState<CoinX, CoinY, MemeCoin> {
-    df::borrow(&pool.id, PoolStateKey {})
+    df::borrow(fields(pool), PoolStateKey {})
   }
 
   fun pool_state_mut<CoinX, CoinY, MemeCoin>(pool: &mut InterestPool): &mut PoolState<CoinX, CoinY, MemeCoin> {
-    df::borrow_mut(&mut pool.id, PoolStateKey {})
+    df::borrow_mut(fields_mut(pool), PoolStateKey {})
+  }
+
+  fun subtract_from_token_acc(
+    pool: &mut InterestPool,
+    amount: u64,
+    beneficiary: address,
+  ) {
+    let accounting: &mut Table<address, u64> = df::borrow_mut(fields_mut(pool), AccountingDfKey {});
+
+    let position = table::borrow_mut(accounting, beneficiary);
+    *position = *position - amount;
+  }
+  
+  fun add_from_token_acc(
+    pool: &mut InterestPool,
+    amount: u64,
+    beneficiary: address,
+  ) {
+    let accounting: &mut Table<address, u64> = df::borrow_mut(fields_mut(pool), AccountingDfKey {});
+
+    let position = table::borrow_mut(accounting, beneficiary);
+    *position = *position + amount;
+  }
+
+  public fun fields(pool: &InterestPool): &UID { &pool.fields }
+  fun fields_mut(pool: &mut InterestPool): &mut UID { &mut pool.fields }
+
+  // TODO: This is only here temporarily but will be replaced with a safe solution
+  // once the contracts are properly integrated.
+  public(friend) fun destroy_pool<CoinX, CoinY, MemeCoin>(pool: InterestPool): (
+    Balance<CoinX>,
+    Balance<CoinY>,
+    Balance<CoinX>,
+    Balance<CoinY>,
+    Balance<MemeCoin>,
+    Fees,
+    bool,
+    UID, // Fields
+  ) {
+    let state = df::remove(fields_mut(&mut pool), PoolStateKey {});
+
+    let InterestPool { id, fields } = pool;
+    object::delete(id);
+
+    let PoolState {
+      balance_x,
+      balance_y,
+      admin_balance_x,
+      admin_balance_y,
+      launch_balance,
+      fees,
+      locked,
+    } = state;
+
+    (
+      balance_x,
+      balance_y,
+      admin_balance_x,
+      admin_balance_y,
+      launch_balance,
+      fees,
+      locked,
+      fields,
+    )
   }
 
   // === Test Functions ===
@@ -396,15 +488,18 @@ module amm::interest_protocol_amm {
   }
 
   #[test_only]
-  public fun set_liquidity<CoinX, CoinY, MemeCoin>(pool: &mut InterestPool, coin_x: Coin<CoinX>, coin_y: Coin<CoinY>) {
+  public fun set_liquidity<CoinX, CoinY, MemeCoin>(pool: &mut InterestPool, coin_x: Token<CoinX>, coin_y: Coin<CoinY>) {
     let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
     let balance_x = balance::withdraw_all(&mut pool_state.balance_x);
     let balance_y = balance::withdraw_all(&mut pool_state.balance_y);
 
     balance::destroy_for_testing(balance_x);
     balance::destroy_for_testing(balance_y);
+
+    let coin_x_amount = token::value(&coin_x);
+    token::burn_for_testing(coin_x);
     
-    balance::join(&mut pool_state.balance_x, coin::into_balance(coin_x));
+    balance::join(&mut pool_state.balance_x, balance::create_for_testing(coin_x_amount));
     balance::join(&mut pool_state.balance_y, coin::into_balance(coin_y));
   }
 }
