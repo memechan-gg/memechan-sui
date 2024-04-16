@@ -24,6 +24,8 @@ module amm::interest_protocol_amm {
   use amm::staked_lp::StakedLP;
   use amm::token_ir;
 
+  friend amm::initialize;
+
   // === Constants ===
 
   const ADMIN_FEE: u256 = 5_000_000_000_000_000; // 0.5%
@@ -40,7 +42,8 @@ module amm::interest_protocol_amm {
   }
   
   struct InterestPool has key {
-    id: UID 
+    id: UID,
+    fields: UID,
   }
 
   struct RegistryKey<phantom Curve, phantom CoinX, phantom CoinY> has drop {}
@@ -279,10 +282,11 @@ module amm::interest_protocol_amm {
     };
 
     let pool = InterestPool {
-      id: object::new(ctx)
+      id: object::new(ctx),
+      fields: object::new(ctx),
     };
 
-    df::add(&mut pool.id, PoolStateKey {}, pool_state);
+    df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
 
     pool
   }
@@ -426,11 +430,11 @@ module amm::interest_protocol_amm {
   }
 
   fun pool_state<CoinX, CoinY, MemeCoin>(pool: &InterestPool): &PoolState<CoinX, CoinY, MemeCoin> {
-    df::borrow(&pool.id, PoolStateKey {})
+    df::borrow(fields(pool), PoolStateKey {})
   }
 
   fun pool_state_mut<CoinX, CoinY, MemeCoin>(pool: &mut InterestPool): &mut PoolState<CoinX, CoinY, MemeCoin> {
-    df::borrow_mut(&mut pool.id, PoolStateKey {})
+    df::borrow_mut(fields_mut(pool), PoolStateKey {})
   }
 
   fun subtract_from_token_acc(
@@ -438,7 +442,7 @@ module amm::interest_protocol_amm {
     amount: u64,
     beneficiary: address,
   ) {
-    let accounting: &mut Table<address, u64> = df::borrow_mut(&mut pool.id, AccountingDfKey {});
+    let accounting: &mut Table<address, u64> = df::borrow_mut(fields_mut(pool), AccountingDfKey {});
 
     let position = table::borrow_mut(accounting, beneficiary);
     *position = *position - amount;
@@ -449,10 +453,52 @@ module amm::interest_protocol_amm {
     amount: u64,
     beneficiary: address,
   ) {
-    let accounting: &mut Table<address, u64> = df::borrow_mut(&mut pool.id, AccountingDfKey {});
+    let accounting: &mut Table<address, u64> = df::borrow_mut(fields_mut(pool), AccountingDfKey {});
 
     let position = table::borrow_mut(accounting, beneficiary);
     *position = *position + amount;
+  }
+
+  public fun fields(pool: &InterestPool): &UID { &pool.fields }
+  fun fields_mut(pool: &mut InterestPool): &mut UID { &mut pool.fields }
+
+  // TODO: This is only here temporarily but will be replaced with a safe solution
+  // once the contracts are properly integrated.
+  public(friend) fun destroy_pool<CoinX, CoinY, MemeCoin>(pool: InterestPool): (
+    Balance<CoinX>,
+    Balance<CoinY>,
+    Balance<CoinX>,
+    Balance<CoinY>,
+    Balance<MemeCoin>,
+    Fees,
+    bool,
+    UID, // Fields
+  ) {
+    let state = df::remove(fields_mut(&mut pool), PoolStateKey {});
+
+    let InterestPool { id, fields } = pool;
+    object::delete(id);
+
+    let PoolState {
+      balance_x,
+      balance_y,
+      admin_balance_x,
+      admin_balance_y,
+      launch_balance,
+      fees,
+      locked,
+    } = state;
+
+    (
+      balance_x,
+      balance_y,
+      admin_balance_x,
+      admin_balance_y,
+      launch_balance,
+      fees,
+      locked,
+      fields,
+    )
   }
 
   // === Test Functions ===
