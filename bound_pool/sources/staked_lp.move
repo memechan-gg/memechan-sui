@@ -1,10 +1,10 @@
 module amm::staked_lp {
-
     use sui::object::{Self, UID, delete};
-    use sui::coin::{Self, Coin};
     use sui::balance::Balance;
     use sui::tx_context::TxContext;
     use sui::clock::{Self, Clock};
+    use sui::token::{Token, TokenPolicy};
+    use amm::token_ir;
 
     use amm::errors::lp_stake_time_not_passed;
 
@@ -20,13 +20,13 @@ module amm::staked_lp {
         StakedLP  { id: object::new(ctx), balance, until_timestamp: clock::timestamp_ms(clock) + SELL_DELAY_MS }
     }
 
-    public fun into_coin<CoinX>(staked_lp: StakedLP<CoinX>, clock: &Clock, ctx: &mut TxContext): Coin<CoinX> {
+    public fun into_coin<CoinX>(staked_lp: StakedLP<CoinX>, clock: &Clock, policy: &TokenPolicy<CoinX>, ctx: &mut TxContext): Token<CoinX> {
         let StakedLP { id, balance, until_timestamp } = staked_lp;
 
         assert!(clock::timestamp_ms(clock) >= until_timestamp, lp_stake_time_not_passed());
 
         delete(id);
         
-        coin::from_balance(balance, ctx)
+        token_ir::from_balance(policy, balance, ctx)
     }
 }
