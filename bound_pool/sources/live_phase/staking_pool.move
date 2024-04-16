@@ -10,6 +10,7 @@ module amm::staking_pool {
 
     use amm::vesting::{Self, VestingData, VestingConfig};
     use amm::token_ir;
+    use amm::fee_distribution::{Self, FeeState};
 
     friend amm::initialize;
 
@@ -21,6 +22,7 @@ module amm::staking_pool {
         balance_x: Balance<CoinX>,
         vesting_data: Table<address, VestingData>,
         vesting_config: VestingConfig,
+        fee_state: FeeState<Meme, LP>,
         fields: UID,
     }
 
@@ -32,6 +34,9 @@ module amm::staking_pool {
         fields: UID,
         ctx: &mut TxContext,
     ): StakingPool<CoinX, Meme, LP> {
+
+        let stake_total = balance::value(&balance_lp);
+
         StakingPool {
             id: object::new(ctx),
             amm_pool,
@@ -40,17 +45,18 @@ module amm::staking_pool {
             balance_x: balance::zero(),
             vesting_data: table::new(ctx),
             vesting_config,
+            fee_state: fee_distribution::new(stake_total, ctx),
             fields
         }
     }
-    
+
     public fun unstake<CoinX: key, Meme: key, LP: key>(
         staking_pool: &mut StakingPool<CoinX, Meme, LP>,
         coin_x: Token<CoinX>,
         policy: &TokenPolicy<CoinX>,
         clock: &Clock,
         ctx: &mut TxContext,
-    ): Coin<Meme> {        
+    ): (Coin<Meme>, Coin<LP>) {        
         let vesting_data = table::borrow(&staking_pool.vesting_data, sender(ctx));
         
         let amount_available_to_release = vesting::to_release(
@@ -62,12 +68,36 @@ module amm::staking_pool {
         let release_amount = token::value(&coin_x);
         assert!(release_amount <= amount_available_to_release, 0);
         let vesting_data = table::borrow_mut(&mut staking_pool.vesting_data, sender(ctx));
+
+        let vesting_old = vesting::current_stake(vesting_data);
+
+        let (balance_meme, balance_sui) = fee_distribution::update_stake(vesting_old, release_amount, &mut staking_pool.fee_state, ctx);
+
         vesting::release(vesting_data, release_amount);
 
         balance::join(&mut staking_pool.balance_x, token_ir::into_balance(policy, coin_x, ctx));
 
-        coin::from_balance(
-            balance::split(&mut staking_pool.balance_meme, release_amount), ctx
+        balance::join(&mut balance_meme, balance::split(&mut staking_pool.balance_meme, release_amount));
+
+        (
+            coin::from_balance(balance_meme, ctx),
+            coin::from_balance(balance_sui, ctx)
         )
+    }
+
+    public fun withdraw_fees<CoinX: key, Meme: key, LP: key>(staking_pool: &mut StakingPool<CoinX, Meme, LP>, ctx: &mut TxContext): (Coin<Meme>, Coin<LP>) {
+        
+        let vesting_data = table::borrow(&staking_pool.vesting_data, sender(ctx));
+
+        let (balance_meme, balance_sui) = fee_distribution::withdraw(&mut staking_pool.fee_state, vesting::current_stake(vesting_data), ctx);
+
+        (
+            coin::from_balance(balance_meme, ctx),
+            coin::from_balance(balance_sui, ctx)
+        )
+    }
+
+    public fun add_fees<CoinX: key, Meme: key, LP: key>(staking_pool: &mut StakingPool<CoinX, Meme, LP>, coin_meme: Coin<Meme>, coin_sui: Coin<LP>) {
+        fee_distribution::add_fees(&mut staking_pool.fee_state, coin_meme, coin_sui);
     }
 }

@@ -47,4 +47,11 @@ module amm::vesting {
     public(friend) fun release(self: &mut VestingData, amount: u64) {
         self.released = self.released + amount;
     }
+
+    // Getters
+    public fun released(self: &VestingData) : u64 {self.released}
+
+    public fun notional(self: &VestingData) : u64 {self.notional}
+
+    public fun current_stake(self: &VestingData) : u64 {self.notional - self.released}
 }
