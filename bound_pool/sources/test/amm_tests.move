@@ -54,7 +54,6 @@ module amm::interest_protocol_amm_tests {
         ticket_coin_cap,
         create_treasury_cap_for_testing(ctx(scenario_mut)),
         &mut ticket_coin_metadata,
-        &eth_metadata,
         &usdc_metadata,
         ctx(scenario_mut)
       );
@@ -80,7 +79,7 @@ module amm::interest_protocol_amm_tests {
       assert_eq(interest_protocol_amm::decimals_x<AC_B_USDC, SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
       assert_eq(interest_protocol_amm::decimals_y<AC_B_USDC, SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
       assert_eq(interest_protocol_amm::seed_liquidity<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
-      assert_eq(interest_protocol_amm::locked<AC_B_USDC, SUI, USDC>(&request.pool), false);
+      assert_eq(interest_protocol_amm::is_ready_to_launch<AC_B_USDC, SUI, USDC>(&request.pool), false);
       assert_eq(interest_protocol_amm::admin_balance_x<AC_B_USDC, SUI, USDC>(&request.pool), 0);
       assert_eq(interest_protocol_amm::admin_balance_y<AC_B_USDC, SUI, USDC>(&request.pool), 0);
 
@@ -121,7 +120,6 @@ module amm::interest_protocol_amm_tests {
         create_treasury_cap_for_testing(ctx(scenario_mut)),
         //mint_for_testing(100, ctx(scenario_mut)),
         &mut lp_coin_metadata,
-        &eth_metadata,
         &btc_metadata,
         ctx(scenario_mut)
       );
@@ -160,7 +158,6 @@ module amm::interest_protocol_amm_tests {
         create_treasury_cap_for_testing(ctx(scenario_mut)),
         //mint_for_testing(100, ctx(scenario_mut)),
         &mut lp_coin_metadata,
-        &eth_metadata,
         &btc_metadata,
         ctx(scenario_mut)
       );
@@ -201,7 +198,6 @@ module amm::interest_protocol_amm_tests {
         create_treasury_cap_for_testing(ctx(scenario_mut)),
         //mint_for_testing(100, ctx(scenario_mut)),
         &mut lp_coin_metadata,
-        &eth_metadata,
         &usdc_metadata,
         ctx(scenario_mut)
       );

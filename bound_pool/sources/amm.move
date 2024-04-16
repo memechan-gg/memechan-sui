@@ -12,6 +12,7 @@ module amm::interest_protocol_amm {
   use sui::balance::{Self, Balance};
   use sui::coin::{Self, Coin, CoinMetadata, TreasuryCap};
   use sui::clock::Clock;
+  use sui::math;
   use sui::token::{Self, Token, TokenPolicy};
  
   use amm::utils;
@@ -32,6 +33,12 @@ module amm::interest_protocol_amm {
 
   const BASE_TOKEN_CURVED: u64 = 900_000_000_000_000;
   const BASE_TOKEN_LAUNCHED: u64 = 200_000_000_000_000;
+
+  const MAX_X: u256 = 900_000_000;
+  const MAX_Y: u256 =      30_000;
+
+  const DECIMALS_X: u256 = 1_000_000;
+  const DECIMALS_Y: u256 = 1_000_000_000;
 
   // === Structs ===
 
@@ -58,10 +65,11 @@ module amm::interest_protocol_amm {
     admin_balance_y: Balance<CoinY>,
     launch_balance: Balance<MemeCoin>,
     fees: Fees,
-    locked: bool     
+    locked: bool
   } 
 
   struct SwapAmount has store, drop, copy {
+    amount_in: u64,
     amount_out: u64,
     admin_fee_in: u64,
     admin_fee_out: u64,
@@ -88,7 +96,6 @@ module amm::interest_protocol_amm {
     ticket_coin_cap: TreasuryCap<CoinX>,
     meme_coin_cap: TreasuryCap<MemeCoin>,
     ticket_coin_metadata: &mut CoinMetadata<CoinX>,
-    coin_y_metadata: &CoinMetadata<CoinY>,
     meme_coin_metadata: &CoinMetadata<MemeCoin>,
     ctx: &mut TxContext
   ) {
@@ -176,7 +183,7 @@ module amm::interest_protocol_amm {
     pool_state.fees
   }
 
-  public fun locked<CoinX, CoinY, MemeCoin>(pool: &InterestPool): bool {
+  public fun is_ready_to_launch<CoinX, CoinY, MemeCoin>(pool: &InterestPool): bool {
     let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
     pool_state.locked
   }
@@ -209,47 +216,7 @@ module amm::interest_protocol_amm {
       coin::take(&mut pool_state.admin_balance_y, amount_y, ctx)
     )
   }
-/*
-  public fun update_name<CoinX, CoinY, MemeCoin>(
-    _: &Admin,
-    pool: &InterestPool, 
-    metadata: &mut CoinMetadata<MemeCoin>, 
-    name: string::String
-  ) {
-    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
-    coin::update_name(&pool_state.lp_coin_cap, metadata, name);  
-  }
 
-  public fun update_symbol<CoinX, CoinY, MemeCoin>(
-    _: &Admin,
-    pool: &InterestPool, 
-    metadata: &mut CoinMetadata<MemeCoin>, 
-    symbol: ascii::String
-  ) {
-    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
-    coin::update_symbol(&pool_state.lp_coin_cap, metadata, symbol);
-  }
-
-  public fun update_description<CoinX, CoinY, MemeCoin>(
-    _: &Admin,
-    pool: &InterestPool, 
-    metadata: &mut CoinMetadata<MemeCoin>, 
-    description: string::String
-  ) {
-    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
-    coin::update_description(&pool_state.lp_coin_cap, metadata, description);
-  }
-
-  public fun update_icon_url<CoinX, CoinY, MemeCoin>(
-    _: &Admin,
-    pool: &InterestPool, 
-    metadata: &mut CoinMetadata<MemeCoin>, 
-    url: ascii::String
-  ) {
-    let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
-    coin::update_icon_url(&pool_state.lp_coin_cap, metadata, url);
-  }
-*/
   // === Private Functions ===    
 
   fun new_pool_internal<Curve, CoinX, CoinY, MemeCoin>(
@@ -334,39 +301,39 @@ module amm::interest_protocol_amm {
 
   public fun swap_coin_y<CoinX, CoinY, MemeCoin>(
     pool: &mut InterestPool,
-    coin_y: Coin<CoinY>,
+    coin_y: &mut Coin<CoinY>,
     coin_x_min_value: u64,
     clock: &Clock,
     ctx: &mut TxContext
   ): StakedLP<CoinX> {
-    assert!(coin::value(&coin_y) != 0, errors::no_zero_coin());
+    assert!(coin::value(coin_y) != 0, errors::no_zero_coin());
 
     let pool_address = object::uid_to_address(&pool.id);
     let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
     assert!(!pool_state.locked, errors::pool_is_locked());
 
-    let coin_in_amount = coin::value(&coin_y);
+    let coin_in_amount = coin::value(coin_y);
 
     let swap_amount = swap_amounts(
       pool_state, 
       coin_in_amount, 
-      coin_x_min_value, 
+      coin_x_min_value,
       false,
     );
 
     if (swap_amount.admin_fee_in != 0) {
-      balance::join(&mut pool_state.admin_balance_y, coin::into_balance(coin::split(&mut coin_y, swap_amount.admin_fee_in, ctx)));
+      balance::join(&mut pool_state.admin_balance_y, coin::into_balance(coin::split(coin_y, swap_amount.admin_fee_in, ctx)));
     };
 
     if (swap_amount.admin_fee_out != 0) {
       balance::join(&mut pool_state.admin_balance_x, balance::split(&mut pool_state.balance_x, swap_amount.admin_fee_out)); 
     };
 
-    balance::join(&mut pool_state.balance_y, coin::into_balance(coin_y));
+    balance::join(&mut pool_state.balance_y, coin::into_balance(coin::split(coin_y, swap_amount.amount_in, ctx)));
 
     events::swap<CoinY, CoinX, SwapAmount>(pool_address, coin_in_amount,swap_amount);
 
-    if (balance::value(&pool_state.balance_x) <= BASE_TOKEN_CURVED / 100) {
+    if (balance::value(&pool_state.balance_x) == 0) {
       pool_state.locked = true;
     };
 
@@ -403,7 +370,12 @@ module amm::interest_protocol_amm {
 
     let admin_fee_in = fees::get_fee_in_amount(&pool_state.fees, coin_in_amount);
 
-    let coin_in_amount = coin_in_amount - admin_fee_in;
+    let coin_in_amount = {
+      if(is_x)
+        math::min(coin_in_amount - admin_fee_in, (MAX_X * DECIMALS_X as u64) - balance_x)
+      else 
+        math::min(coin_in_amount - admin_fee_in, (MAX_Y * DECIMALS_Y as u64) - balance_y)
+    };
 
     let amount_out = bound::get_amount_out(coin_in_amount, balance_x, balance_y, is_x);
 
@@ -423,10 +395,11 @@ module amm::interest_protocol_amm {
     assert!(new_k >= prev_k, errors::invalid_invariant());
 
     SwapAmount {
+      amount_in: coin_in_amount,
       amount_out,
       admin_fee_in,
       admin_fee_out,
-    }  
+    }
   }
 
   fun pool_state<CoinX, CoinY, MemeCoin>(pool: &InterestPool): &PoolState<CoinX, CoinY, MemeCoin> {
