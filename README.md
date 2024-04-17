@@ -16,4 +16,4 @@ To generate TypeScript interfaces of move smart contracts for the Memechan repo 
 
 5. **Code Quality Assurance**: After code generation, ensure code consistency and quality by running the following command: `yarn run fix:generated`. This command utilizes ESLint and Prettier to format and lint the generated code.
 
-Please note that to maintain a manageable repository size, the generated code is not included in the repository.
+Please note that to maintain a manageable repository size and to minimize unnecessary changes in version control history, the generated code is not included in the repository.
