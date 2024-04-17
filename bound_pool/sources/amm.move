@@ -371,20 +371,20 @@ module amm::bound_curve_amm {
     coin_in_amount: u64,
     coin_out_min_value: u64,
     is_x: bool
-  ): SwapAmount {
+  ): SwapAmount {    
     let (balance_x, balance_y) = amounts(pool_state);
 
     let prev_k = bound::invariant_(balance_x, balance_y);
 
     let max_coins_in = {
-      if(is_x)
+      if (is_x)
         (MAX_X * DECIMALS_X as u64) - balance_x
       else 
         (MAX_Y * DECIMALS_Y as u64) - balance_y
     };
 
     let max_admin_fee_in = {
-      if(is_x)
+      if (is_x)
         fees::get_fee_in_amount(&pool_state.fees, (MAX_X * DECIMALS_X as u64)) - balance::value(&pool_state.admin_balance_x)
       else
         fees::get_fee_in_amount(&pool_state.fees, (MAX_Y * DECIMALS_Y as u64)) - balance::value(&pool_state.admin_balance_y)
@@ -392,13 +392,25 @@ module amm::bound_curve_amm {
     
     let admin_fee_in = math::min(fees::get_fee_in_amount(&pool_state.fees, coin_in_amount), max_admin_fee_in);
 
+    let is_max = coin_in_amount - admin_fee_in > max_coins_in;
+
     let coin_in_amount = math::min(coin_in_amount - admin_fee_in, max_coins_in);
 
     let amount_out = bound::get_amount_out(coin_in_amount, balance_x, balance_y, is_x);
 
     let admin_fee_out = fees::get_fee_out_amount(&pool_state.fees, amount_out);
 
-    let amount_out = amount_out - admin_fee_out;
+    let lc_amt_out = 
+      if (is_max) {
+        if (is_x) {
+          (MAX_Y * DECIMALS_Y as u64) - balance_y - amount_out
+        }
+        else {
+          balance_x - amount_out
+        }
+      } else {0};
+    
+    let amount_out = amount_out - admin_fee_out + lc_amt_out;
 
     assert!(amount_out >= coin_out_min_value, errors::slippage());
 

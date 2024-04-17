@@ -1,6 +1,6 @@
 
 module amm::bound {
-
+  
   use suitears::math256::sqrt_down;
 
   use amm::errors;
@@ -15,9 +15,9 @@ module amm::bound {
 
   public fun invariant_(x: u64, y: u64): u256 {
     let res_y = MAX_Y - ((y as u256) * PRECISION) / DECIMALS_Y;
-    let x = (x as u256) * PRECISION / DECIMALS_X;
+    let x = ((x as u256) * PRECISION) / DECIMALS_X;
 
-    (x as u256) - res_y * res_y / PRECISION //f(x)    integrate f(x) = F(x1) - F(x0)    kx+b  = k/2 * x^2 + bx ...
+    (x as u256) * PRECISION - res_y * res_y
   }
 
   public fun get_amount_out(coin_in_amount: u64, balance_x: u64, balance_y: u64, is_x: bool): u64 {
@@ -40,21 +40,20 @@ module amm::bound {
         );
 
     let res_y = MAX_Y - balance_y;
-    let res_x = MAX_X - balance_x;
 
     let res = if (is_x) {
-      let new_balance_x = res_x + coin_in_amount;
+      let new_balance_x = balance_x + coin_in_amount;
       
-      sqrt_down(new_balance_x) - sqrt_down(res_x)
+      let nres = sqrt_down(new_balance_x) - sqrt_down(balance_x);
+      (nres * DECIMALS_Y) / sqrt_down(PRECISION)
     } else {
       let new_balance_y = res_y - coin_in_amount;
       
-      res_y * res_y - new_balance_y * new_balance_y
+      let nres = res_y * res_y - new_balance_y * new_balance_y;
+      (nres * DECIMALS_X) / (PRECISION * PRECISION)
     };
 
-    let nres = (res * if (is_x) {DECIMALS_Y} else {DECIMALS_X}) / (PRECISION * PRECISION);
-
-    (nres as u64)
+    (res as u64)
   }
 
   public fun get_amount_in(coin_out_amount: u64, balance_x: u64, balance_y: u64, is_x: bool): u64 {

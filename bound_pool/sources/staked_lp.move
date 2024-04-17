@@ -20,7 +20,7 @@ module amm::staked_lp {
         StakedLP  { id: object::new(ctx), balance, until_timestamp: clock::timestamp_ms(clock) + SELL_DELAY_MS }
     }
 
-    public fun into_coin<CoinX>(staked_lp: StakedLP<CoinX>, clock: &Clock, policy: &TokenPolicy<CoinX>, ctx: &mut TxContext): Token<CoinX> {
+    public fun into_token<CoinX>(staked_lp: StakedLP<CoinX>, clock: &Clock, policy: &TokenPolicy<CoinX>, ctx: &mut TxContext): Token<CoinX> {
         let StakedLP { id, balance, until_timestamp } = staked_lp;
 
         assert!(clock::timestamp_ms(clock) >= until_timestamp, lp_stake_time_not_passed());
