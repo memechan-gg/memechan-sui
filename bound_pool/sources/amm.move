@@ -211,6 +211,10 @@ module amm::bound_curve_amm {
     let amount_x = balance::value(&pool_state.admin_balance_x);
     let amount_y = balance::value(&pool_state.admin_balance_y);
 
+    add_from_token_acc(pool, amount_x, sender(ctx));
+
+    let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
+
     (
       token_ir::take(policy, &mut pool_state.admin_balance_x, amount_x, ctx),
       coin::take(&mut pool_state.admin_balance_y, amount_y, ctx)
@@ -345,7 +349,6 @@ module amm::bound_curve_amm {
       pool_state.locked = true;
     };
 
-
     //coin::take(&mut pool_state.balance_x, swap_amount.amount_out, ctx)
     let swap_amount = swap_amount.amount_out;
     let staked_lp = amm::staked_lp::new(balance::split(&mut pool_state.balance_x, swap_amount), clock, ctx);
@@ -409,7 +412,7 @@ module amm::bound_curve_amm {
           balance_x - amount_out
         }
       } else {0};
-    
+
     let amount_out = amount_out - admin_fee_out + lc_amt_out;
 
     assert!(amount_out >= coin_out_min_value, errors::slippage());

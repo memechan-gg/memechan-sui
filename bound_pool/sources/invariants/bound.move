@@ -1,6 +1,6 @@
 
 module amm::bound {
-  
+
   use suitears::math256::sqrt_down;
 
   use amm::errors;
