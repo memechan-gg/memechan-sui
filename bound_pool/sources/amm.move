@@ -256,6 +256,9 @@ module amm::bound_curve_amm {
     let pool_address = object::uid_to_address(&pool.id);
 
     df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
+    
+    df::add(fields_mut(&mut pool), AccountingDfKey {}, table::new<address, u64>(ctx));
+    
 
     table::add(&mut registry.pools, registry_key, pool_address);
     //table::add(&mut registry.lp_coins, type_name::get<LpCoin>(), pool_address);
@@ -350,7 +353,7 @@ module amm::bound_curve_amm {
     // We keep track of how much each address ownes of coin_x
     add_from_token_acc(pool, swap_amount, sender(ctx));
     staked_lp
-  }  
+  }
 
   fun new_fees(): Fees {
       fees::new(ADMIN_FEE, ADMIN_FEE)
@@ -373,14 +376,23 @@ module amm::bound_curve_amm {
 
     let prev_k = bound::invariant_(balance_x, balance_y);
 
-    let admin_fee_in = fees::get_fee_in_amount(&pool_state.fees, coin_in_amount);
-
-    let coin_in_amount = {
+    let max_coins_in = {
       if(is_x)
-        math::min(coin_in_amount - admin_fee_in, (MAX_X * DECIMALS_X as u64) - balance_x)
+        (MAX_X * DECIMALS_X as u64) - balance_x
       else 
-        math::min(coin_in_amount - admin_fee_in, (MAX_Y * DECIMALS_Y as u64) - balance_y)
+        (MAX_Y * DECIMALS_Y as u64) - balance_y
     };
+
+    let max_admin_fee_in = {
+      if(is_x)
+        fees::get_fee_in_amount(&pool_state.fees, (MAX_X * DECIMALS_X as u64)) - balance::value(&pool_state.admin_balance_x)
+      else
+        fees::get_fee_in_amount(&pool_state.fees, (MAX_Y * DECIMALS_Y as u64)) - balance::value(&pool_state.admin_balance_y)
+    };
+    
+    let admin_fee_in = math::min(fees::get_fee_in_amount(&pool_state.fees, coin_in_amount), max_admin_fee_in);
+
+    let coin_in_amount = math::min(coin_in_amount - admin_fee_in, max_coins_in);
 
     let amount_out = bound::get_amount_out(coin_in_amount, balance_x, balance_y, is_x);
 
@@ -392,9 +404,9 @@ module amm::bound_curve_amm {
 
     let new_k = {
       if (is_x)
-        bound::invariant_(balance_x + coin_in_amount + admin_fee_in, balance_y - amount_out)
+        bound::invariant_(balance_x + coin_in_amount, balance_y - amount_out)
       else
-        bound::invariant_(balance_x - amount_out, balance_y + coin_in_amount + admin_fee_in)
+        bound::invariant_(balance_x - amount_out, balance_y + coin_in_amount)
     };
 
     assert!(new_k >= prev_k, errors::invalid_invariant());
@@ -432,6 +444,10 @@ module amm::bound_curve_amm {
     beneficiary: address,
   ) {
     let accounting: &mut Table<address, u64> = df::borrow_mut(fields_mut(pool), AccountingDfKey {});
+
+    if (!table::contains(accounting, beneficiary)) {
+      table::add(accounting, beneficiary, 0);
+    };
 
     let position = table::borrow_mut(accounting, beneficiary);
     *position = *position + amount;
