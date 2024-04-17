@@ -1,14 +1,26 @@
 {
-  "name": "memechan",
+  "name": "@avernikoz/memechan-ts-interface",
   "version": "1.0.0",
-  "main": "index.js",
-  "repository": "git@github.com:aldrin-labs/memechan.git",
   "author": "aldrin-labs (@0xxgen, @comradekoval)",
   "license": "private",
-  "private": true,
+  "private": false,
+  "files": [
+    "__generated__",
+    "package.json",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aldrin-labs/memechan.git"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://registry.npmjs.org"
+  },
   "scripts": {
     "generate": "mkdir -p __generated__ && sui-client-gen --manifest generate.toml --out __generated__/ --clean",
-    "fix:generated": "ESLINT_USE_FLAT_CONFIG=false eslint __generated__/ --fix && prettier --write __generated__/**/*.ts"
+    "fix:generated": "ESLINT_USE_FLAT_CONFIG=false eslint __generated__/ --fix && prettier --write __generated__/**/*.ts",
+    "deploy": "yarn run generate && yarn run fix:generated && yarn publish"
   },
   "dependencies": {
     "@mysten/bcs": "0.11.1",
