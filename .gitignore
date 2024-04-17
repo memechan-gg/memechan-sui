@@ -4,3 +4,8 @@
 build
 local
 contracts/protocols
+
+# Node Modules for codegen
+node_modules/
+# Generated code from sui-client-gen
+codegen/__generated__
