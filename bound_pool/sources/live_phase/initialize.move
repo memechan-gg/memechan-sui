@@ -13,10 +13,11 @@ module amm::initialize {
     use amm::interest_protocol_amm::{Self as seed_pool, InterestPool as SeedPool};
     use amm::staking_pool;
     use suitears::coin_decimals;
+    use suitears::math256::mul_div_up;
 
     const ADMIN_ADDR: address = @0xfff; // TODO
 
-    const SUI_THRESHOLD: u64 = 69_000;
+    const SUI_THRESHOLD: u64 = 30_000;
     const BPS: u64 = 10_000;
     const LOCKED: u64 = 8_000;
     
@@ -34,6 +35,9 @@ module amm::initialize {
     /// The amount of Mist per Sui token based on the fact that mist is
     /// 10^-9 of a Sui token
     const MIST_PER_SUI: u64 = 1_000_000_000;
+
+    const LAUNCH_FEE: u256 =   50_000_000_000_000_000; // 5%
+    const PRECISION: u256 = 1_000_000_000_000_000_000;
 
     public fun sui(mist: u64): u64 { MIST_PER_SUI * mist }
 
@@ -65,10 +69,14 @@ module amm::initialize {
         transfer::public_transfer(coin::from_balance(admin_sui_balance, ctx), ADMIN_ADDR);
 
         // 1. Verify if we reached the threshold of SUI amount raised
-        let sui_supply = balance::value(&meme_balance);
+        let sui_supply = balance::value(&sui_balance);
         assert!(sui_supply == sui(SUI_THRESHOLD), 0);
 
-        // 2. Split MEME balance amounts into 80/20
+        // 2. Collect live fees
+        let live_fee_amt = (mul_div_up((sui_supply as u256), LAUNCH_FEE, PRECISION) as u64);
+        transfer::public_transfer(coin::from_balance(balance::split(&mut sui_balance, live_fee_amt), ctx), ADMIN_ADDR);
+
+        // 3. Split MEME balance amounts into 80/20
         let meme_supply = balance::value(&meme_balance);
         let meme_supply_80 = div_mul(meme_supply, BPS, LOCKED);
 
@@ -78,7 +86,7 @@ module amm::initialize {
         coin_decimals::add(&mut decimals, sui_meta);
         coin_decimals::add(&mut decimals, meme_meta);
 
-        // 3. Create AMM Pool
+        // 4. Create AMM Pool
         let (lp_tokens, pool_id) = volatile::new_2_pool(
             clock,
             coin::from_balance(sui_balance, ctx), // coin_a
@@ -92,7 +100,7 @@ module amm::initialize {
             ctx
         );
 
-        // 4. Create staking pool
+        // 5. Create staking pool
         let staking_pool = staking_pool::new<CoinX, Meme, LP>(
             pool_id,
             meme_balance,
