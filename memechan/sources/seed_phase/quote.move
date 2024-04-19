@@ -1,5 +1,4 @@
 module memechan::quote {
-
   use memechan::bound;
   use memechan::fees::{Self, Fees};
   use memechan::bound_curve_amm::{Self, InterestPool};

@@ -1,6 +1,5 @@
 
 module memechan::bound {
-
   use suitears::math256::sqrt_down;
 
   use memechan::errors;

@@ -1,5 +1,4 @@
 module memechan::fees {
-
   use suitears::math256::mul_div_up;
 
   const PRECISION: u256 = 1_000_000_000_000_000_000;
