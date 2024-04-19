@@ -1,4 +1,4 @@
-module amm::interest_protocol_amm {
+module amm::bound_curve_amm {
   // === Imports ===
 
   use std::option::{Self, Option};
@@ -211,6 +211,10 @@ module amm::interest_protocol_amm {
     let amount_x = balance::value(&pool_state.admin_balance_x);
     let amount_y = balance::value(&pool_state.admin_balance_y);
 
+    add_from_token_acc(pool, amount_x, sender(ctx));
+
+    let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
+
     (
       token_ir::take(policy, &mut pool_state.admin_balance_x, amount_x, ctx),
       coin::take(&mut pool_state.admin_balance_y, amount_y, ctx)
@@ -220,7 +224,7 @@ module amm::interest_protocol_amm {
   // === Private Functions ===    
 
   fun new_pool_internal<Curve, CoinX, CoinY, MemeCoin>(
-    registry: &Registry,
+    registry: &mut Registry,
     coin_x: Balance<CoinX>,
     coin_y: Coin<CoinY>,
     launch_coin: Coin<MemeCoin>,
@@ -253,7 +257,15 @@ module amm::interest_protocol_amm {
       fields: object::new(ctx),
     };
 
+    let pool_address = object::uid_to_address(&pool.id);
+
     df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
+    
+    df::add(fields_mut(&mut pool), AccountingDfKey {}, table::new<address, u64>(ctx));
+    
+
+    table::add(&mut registry.pools, registry_key, pool_address);
+    //table::add(&mut registry.lp_coins, type_name::get<LpCoin>(), pool_address);
 
     pool
   }
@@ -337,7 +349,6 @@ module amm::interest_protocol_amm {
       pool_state.locked = true;
     };
 
-
     //coin::take(&mut pool_state.balance_x, swap_amount.amount_out, ctx)
     let swap_amount = swap_amount.amount_out;
     let staked_lp = amm::staked_lp::new(balance::split(&mut pool_state.balance_x, swap_amount), clock, ctx);
@@ -345,7 +356,7 @@ module amm::interest_protocol_amm {
     // We keep track of how much each address ownes of coin_x
     add_from_token_acc(pool, swap_amount, sender(ctx));
     staked_lp
-  }  
+  }
 
   fun new_fees(): Fees {
       fees::new(ADMIN_FEE, ADMIN_FEE)
@@ -363,33 +374,54 @@ module amm::interest_protocol_amm {
     coin_in_amount: u64,
     coin_out_min_value: u64,
     is_x: bool
-  ): SwapAmount {
+  ): SwapAmount {    
     let (balance_x, balance_y) = amounts(pool_state);
 
     let prev_k = bound::invariant_(balance_x, balance_y);
 
-    let admin_fee_in = fees::get_fee_in_amount(&pool_state.fees, coin_in_amount);
-
-    let coin_in_amount = {
-      if(is_x)
-        math::min(coin_in_amount - admin_fee_in, (MAX_X * DECIMALS_X as u64) - balance_x)
+    let max_coins_in = {
+      if (is_x)
+        (MAX_X * DECIMALS_X as u64) - balance_x
       else 
-        math::min(coin_in_amount - admin_fee_in, (MAX_Y * DECIMALS_Y as u64) - balance_y)
+        (MAX_Y * DECIMALS_Y as u64) - balance_y
     };
+
+    let max_admin_fee_in = {
+      if (is_x)
+        fees::get_fee_in_amount(&pool_state.fees, (MAX_X * DECIMALS_X as u64)) - balance::value(&pool_state.admin_balance_x)
+      else
+        fees::get_fee_in_amount(&pool_state.fees, (MAX_Y * DECIMALS_Y as u64)) - balance::value(&pool_state.admin_balance_y)
+    };
+    
+    let admin_fee_in = math::min(fees::get_fee_in_amount(&pool_state.fees, coin_in_amount), max_admin_fee_in);
+
+    let is_max = coin_in_amount - admin_fee_in > max_coins_in;
+
+    let coin_in_amount = math::min(coin_in_amount - admin_fee_in, max_coins_in);
 
     let amount_out = bound::get_amount_out(coin_in_amount, balance_x, balance_y, is_x);
 
     let admin_fee_out = fees::get_fee_out_amount(&pool_state.fees, amount_out);
 
-    let amount_out = amount_out - admin_fee_out;
+    let lc_amt_out = 
+      if (is_max) {
+        if (is_x) {
+          (MAX_Y * DECIMALS_Y as u64) - balance_y - amount_out
+        }
+        else {
+          balance_x - amount_out
+        }
+      } else {0};
+
+    let amount_out = amount_out - admin_fee_out + lc_amt_out;
 
     assert!(amount_out >= coin_out_min_value, errors::slippage());
 
     let new_k = {
       if (is_x)
-        bound::invariant_(balance_x + coin_in_amount + admin_fee_in, balance_y - amount_out)
+        bound::invariant_(balance_x + coin_in_amount, balance_y - amount_out)
       else
-        bound::invariant_(balance_x - amount_out, balance_y + coin_in_amount + admin_fee_in)
+        bound::invariant_(balance_x - amount_out, balance_y + coin_in_amount)
     };
 
     assert!(new_k >= prev_k, errors::invalid_invariant());
@@ -428,6 +460,10 @@ module amm::interest_protocol_amm {
   ) {
     let accounting: &mut Table<address, u64> = df::borrow_mut(fields_mut(pool), AccountingDfKey {});
 
+    if (!table::contains(accounting, beneficiary)) {
+      table::add(accounting, beneficiary, 0);
+    };
+
     let position = table::borrow_mut(accounting, beneficiary);
     *position = *position + amount;
   }
@@ -447,6 +483,7 @@ module amm::interest_protocol_amm {
     UID, // Fields
   ) {
     let state = df::remove(fields_mut(&mut pool), PoolStateKey {});
+    
 
     let InterestPool { id, fields } = pool;
     object::delete(id);

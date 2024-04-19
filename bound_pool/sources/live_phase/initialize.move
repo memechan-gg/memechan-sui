@@ -14,15 +14,16 @@ module amm::initialize {
     use amm::math::div_mul;
     use clamm::interest_clamm_volatile_hooks as volatile_hooks;
     use clamm::interest_pool;
-    use amm::interest_protocol_amm::{Self as seed_pool, InterestPool as SeedPool};
+    use amm::bound_curve_amm::{Self as seed_pool, InterestPool as SeedPool};
     use amm::staking_pool;
     use suitears::coin_decimals;
+    use suitears::math256::mul_div_up;
 
     struct AddLiquidityHook has drop {}
 
     const SCALE: u256 = 1_000_000_000_000_000_000; // 1e18
 
-    const SUI_THRESHOLD: u64 = 69_000;
+    const SUI_THRESHOLD: u64 = 30_000;
     const BPS: u64 = 10_000;
     const LOCKED: u64 = 8_000;
     
@@ -40,6 +41,9 @@ module amm::initialize {
     /// The amount of Mist per Sui token based on the fact that mist is
     /// 10^-9 of a Sui token
     const MIST_PER_SUI: u64 = 1_000_000_000;
+
+    const LAUNCH_FEE: u256 =   50_000_000_000_000_000; // 5%
+    const PRECISION: u256 = 1_000_000_000_000_000_000;
 
     public fun sui(mist: u64): u64 { MIST_PER_SUI * mist }
 
@@ -73,10 +77,14 @@ module amm::initialize {
         transfer::public_transfer(coin::from_balance(admin_sui_balance, ctx), sender(ctx));
 
         // 1. Verify if we reached the threshold of SUI amount raised
-        let sui_supply = balance::value(&meme_balance);
+        let sui_supply = balance::value(&sui_balance);
         assert!(sui_supply == sui(SUI_THRESHOLD), 0);
 
-        // 2. Split MEME balance amounts into 80/20
+        // 2. Collect live fees
+        let live_fee_amt = (mul_div_up((sui_supply as u256), LAUNCH_FEE, PRECISION) as u64);
+        transfer::public_transfer(coin::from_balance(balance::split(&mut sui_balance, live_fee_amt), ctx), sender(ctx));
+
+        // 3. Split MEME balance amounts into 80/20
         let meme_supply = balance::value(&meme_balance);
         let meme_supply_80 = div_mul(meme_supply, BPS, LOCKED);
 
