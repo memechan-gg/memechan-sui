@@ -1,45 +1,45 @@
 module clamm::pool_events {
-  use sui::object::ID;
+  // === Imports ===
+
   use sui::event::emit;
 
   use clamm::curves::Volatile;
 
-  friend clamm::interest_clamm_stable;
-  friend clamm::interest_clamm_volatile;
-  
-  struct New2Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom LpCoin> has drop, copy {
-    pool_id: ID
+  // === Structs ===
+
+  public struct New2Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom LpCoin> has drop, copy {
+    pool_id: address
   }
 
-  struct New3Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom LpCoin> has copy, drop {
-    pool_id: ID
+  public struct New3Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom LpCoin> has copy, drop {
+    pool_id: address
   }
 
-  struct New4Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom LpCoin> has copy, drop {
-    pool_id: ID
+  public struct New4Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom LpCoin> has copy, drop {
+    pool_id: address
   }
 
-  struct New5Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom CoinE, phantom LpCoin> has copy, drop {
-    pool_id: ID
+  public struct New5Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom CoinE, phantom LpCoin> has copy, drop {
+    pool_id: address
   }
 
-  struct AddLiquidity2Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct AddLiquidity2Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount_a: u64,
     amount_b: u64,
     shares: u64
   }
 
-  struct AddLiquidity3Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct AddLiquidity3Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
     shares: u64
   }
 
-  struct AddLiquidity4Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct AddLiquidity4Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -47,8 +47,8 @@ module clamm::pool_events {
     shares: u64
   }
 
-  struct AddLiquidity5Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom CoinE, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct AddLiquidity5Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom CoinE, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -57,35 +57,35 @@ module clamm::pool_events {
     shares: u64
   }
 
-  struct Swap<phantom Curve, phantom CoinIn, phantom CoinOut, phantom LpCoin> has drop, copy {
-    pool_id: ID,
+  public struct Swap<phantom Curve, phantom CoinIn, phantom CoinOut, phantom LpCoin> has drop, copy {
+    pool_id: address,
     amount_in: u64,
     amount_out: u64
   }
 
-  struct RemoveLiquidity<phantom Curve, phantom CoinType, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct RemoveLiquidity<phantom Curve, phantom CoinType, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount: u64,
     shares: u64
   }
 
-  struct RemoveLiquidity2Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct RemoveLiquidity2Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount_a: u64,
     amount_b: u64,
     shares: u64
   }  
 
-  struct RemoveLiquidity3Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct RemoveLiquidity3Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
     shares: u64
   }
 
-  struct RemoveLiquidity4Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct RemoveLiquidity4Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -93,8 +93,8 @@ module clamm::pool_events {
     shares: u64
   }
 
-  struct RemoveLiquidity5Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom CoinE, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct RemoveLiquidity5Pool<phantom Curve, phantom CoinA, phantom CoinB, phantom CoinC, phantom CoinD, phantom CoinE, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -103,35 +103,34 @@ module clamm::pool_events {
     shares: u64
   }
 
-
-  struct UpdateFee<phantom Curve, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct UpdateFee<phantom Curve, phantom LpCoin> has copy, drop {
+    pool_id: address,
     fee_in_percent: u256,
     fee_out_percent: u256, 
     admin_fee_percent: u256,     
   }
 
-  struct TakeFee<phantom Curve, phantom CoinType, phantom LpCoin> has copy, drop {
-    pool_id: ID,
+  public struct TakeFee<phantom Curve, phantom CoinType, phantom LpCoin> has copy, drop {
+    pool_id: address,
     amount: u64
   }
 
-  struct RampA<phantom LpCoin> has drop, copy {
-    pool_id: ID,
+  public struct RampA<phantom LpCoin> has drop, copy {
+    pool_id: address,
     initial_a: u256,
     future_a: u256,
     future_a_time: u256,
     timestamp: u64,
   }
 
-  struct StopRampA<phantom LpCoin> has drop, copy {
-    pool_id: ID,
+  public struct StopRampA<phantom LpCoin> has drop, copy {
+    pool_id: address,
     a: u256,
     timestamp: u64
   }
 
-  struct RampAGamma<phantom LpCoin> has drop, copy {
-    pool_id: ID,
+  public struct RampAGamma<phantom LpCoin> has drop, copy {
+    pool_id: address,
     a: u256,
     gamma: u256,
     initial_time: u64,
@@ -140,15 +139,15 @@ module clamm::pool_events {
     future_time: u64
   }
 
-  struct StopRampAGamma<phantom LpCoin> has drop, copy {
-    pool_id: ID,
+  public struct StopRampAGamma<phantom LpCoin> has drop, copy {
+    pool_id: address,
     a: u256,
     gamma: u256,
     timestamp: u64,
   }
 
-  struct UpdateParameters<phantom LpCoin> has drop, copy {
-    pool_id: ID,
+  public struct UpdateParameters<phantom LpCoin> has drop, copy {
+    pool_id: address,
     admin_fee: u256,
     out_fee: u256,
     mid_fee: u256,
@@ -158,32 +157,34 @@ module clamm::pool_events {
     ma_half_time: u256
   }
 
-  struct ClaimAdminFees<phantom Curve, phantom LpCoin> has drop, copy {
+  public struct ClaimAdminFees<phantom Curve, phantom LpCoin> has drop, copy {
     amount: u64
   }  
 
-  public(friend) fun emit_new_2_pool<Curve, CoinA, CoinB, LpCoin>(id: ID) {
+  // === Public-Package Functions ===
+
+  public(package) fun emit_new_2_pool<Curve, CoinA, CoinB, LpCoin>(id: address) {
     emit(New2Pool<Curve, CoinA, CoinB, LpCoin> { pool_id: id });
   }
 
-  public(friend) fun emit_new_3_pool<Curve, CoinA, CoinB, CoinC, LpCoin>(id: ID) {
+  public(package) fun emit_new_3_pool<Curve, CoinA, CoinB, CoinC, LpCoin>(id: address) {
     emit(New3Pool<Curve, CoinA, CoinB, CoinC, LpCoin> { pool_id: id });
   }
 
-  public(friend) fun emit_new_4_pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin>(id: ID) {
+  public(package) fun emit_new_4_pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin>(id: address) {
     emit(New4Pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin> { pool_id: id });
   }
 
-  public(friend) fun emit_new_5_pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(id: ID) {
+  public(package) fun emit_new_5_pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(id: address) {
     emit(New5Pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin> { pool_id: id });
   }
 
-  public(friend) fun emit_swap<Curve, CoinIn, CoinOut, LpCoin>(pool_id: ID, amount_in: u64, amount_out: u64) {
+  public(package) fun emit_swap<Curve, CoinIn, CoinOut, LpCoin>(pool_id: address, amount_in: u64, amount_out: u64) {
     emit(Swap<Curve, CoinIn, CoinOut, LpCoin>{ pool_id, amount_in, amount_out });
   }
 
-  public(friend) fun emit_add_liquidity_2_pool<Curve, CoinA, CoinB, LpCoin>(
-    id: ID, 
+  public(package) fun emit_add_liquidity_2_pool<Curve, CoinA, CoinB, LpCoin>(
+    id: address, 
     amount_a: u64,
     amount_b: u64,
     shares: u64
@@ -191,8 +192,8 @@ module clamm::pool_events {
     emit(AddLiquidity2Pool<Curve, CoinA, CoinB, LpCoin> { pool_id: id, amount_a, amount_b, shares });
   }  
 
-  public(friend) fun emit_add_liquidity_3_pool<Curve, CoinA, CoinB, CoinC, LpCoin>(
-    id: ID, 
+  public(package) fun emit_add_liquidity_3_pool<Curve, CoinA, CoinB, CoinC, LpCoin>(
+    id: address, 
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -201,8 +202,8 @@ module clamm::pool_events {
     emit(AddLiquidity3Pool<Curve, CoinA, CoinB, CoinC, LpCoin> { pool_id: id, amount_a, amount_b, amount_c, shares });
   }
 
-  public(friend) fun emit_add_liquidity_4_pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin>(
-    id: ID, 
+  public(package) fun emit_add_liquidity_4_pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin>(
+    id: address, 
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -212,8 +213,8 @@ module clamm::pool_events {
     emit(AddLiquidity4Pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin> { pool_id: id, amount_a, amount_b, amount_c, amount_d, shares });
   }
 
-  public(friend) fun emit_add_liquidity_5_pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
-    id: ID, 
+  public(package) fun emit_add_liquidity_5_pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+    id: address, 
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -224,12 +225,12 @@ module clamm::pool_events {
     emit(AddLiquidity5Pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin> { pool_id: id, amount_a, amount_b, amount_c, amount_d, amount_e, shares });
   }
 
-  public(friend) fun emit_remove_liquidity<Curve, CoinType, LpCoin>(id: ID, amount: u64, shares: u64) {
+  public(package) fun emit_remove_liquidity<Curve, CoinType, LpCoin>(id: address, amount: u64, shares: u64) {
     emit(RemoveLiquidity<Curve, CoinType, LpCoin> { pool_id: id, amount, shares });
   }
 
-  public(friend) fun emit_remove_liquidity_2_pool<Curve, CoinA, CoinB,  LpCoin>(
-    id: ID, 
+  public(package) fun emit_remove_liquidity_2_pool<Curve, CoinA, CoinB,  LpCoin>(
+    id: address, 
     amount_a: u64,
     amount_b: u64,
     shares: u64
@@ -237,8 +238,8 @@ module clamm::pool_events {
     emit(RemoveLiquidity2Pool<Curve, CoinA, CoinB, LpCoin> { pool_id: id, amount_a, amount_b, shares });
   }  
 
-  public(friend) fun emit_remove_liquidity_3_pool<Curve, CoinA, CoinB, CoinC, LpCoin>(
-    id: ID, 
+  public(package) fun emit_remove_liquidity_3_pool<Curve, CoinA, CoinB, CoinC, LpCoin>(
+    id: address, 
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -247,8 +248,8 @@ module clamm::pool_events {
     emit(RemoveLiquidity3Pool<Curve, CoinA, CoinB, CoinC, LpCoin> { pool_id: id, amount_a, amount_b, amount_c, shares });
   }
 
-  public(friend) fun emit_remove_liquidity_4_pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin>(
-    id: ID, 
+  public(package) fun emit_remove_liquidity_4_pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin>(
+    id: address, 
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -258,8 +259,8 @@ module clamm::pool_events {
     emit(RemoveLiquidity4Pool<Curve, CoinA, CoinB, CoinC, CoinD, LpCoin> { pool_id: id, amount_a, amount_b, amount_c, amount_d, shares });
   }
 
-  public(friend) fun emit_remove_liquidity_5_pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
-    id: ID, 
+  public(package) fun emit_remove_liquidity_5_pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+    id: address, 
     amount_a: u64,
     amount_b: u64,
     amount_c: u64,
@@ -270,8 +271,8 @@ module clamm::pool_events {
     emit(RemoveLiquidity5Pool<Curve, CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin> { pool_id: id, amount_a, amount_b, amount_c, amount_d, amount_e, shares });
   }
 
-  public(friend) fun emit_update_stable_fee<Curve, LpCoin>(
-    pool_id: ID, 
+  public(package) fun emit_update_stable_fee<Curve, LpCoin>(
+    pool_id: address, 
     fee_in_percent: u256,
     fee_out_percent: u256, 
     admin_fee_percent: u256,     
@@ -279,16 +280,16 @@ module clamm::pool_events {
     emit(UpdateFee<Curve, LpCoin> { pool_id, fee_in_percent, fee_out_percent, admin_fee_percent });
   }
 
-  public(friend) fun emit_take_fees<Curve, CoinType, LpCoin>(pool_id: ID, amount: u64) {
+  public(package) fun emit_take_fees<Curve, CoinType, LpCoin>(pool_id: address, amount: u64) {
     emit(TakeFee<Curve, CoinType, LpCoin> { pool_id, amount });
   }
 
-  public(friend) fun emit_claim_admin_fees<LpCoin>(amount: u64) {
+  public(package) fun emit_claim_admin_fees<LpCoin>(amount: u64) {
     emit(ClaimAdminFees<Volatile, LpCoin> {  amount });
   }
 
-  public(friend) fun emit_ramp_a<LpCoin>(
-    pool_id: ID,
+  public(package) fun emit_ramp_a<LpCoin>(
+    pool_id: address,
     initial_a: u256,
     future_a: u256,
     future_a_time: u256,
@@ -297,12 +298,12 @@ module clamm::pool_events {
     emit(RampA<LpCoin> {  pool_id, initial_a, future_a, future_a_time, timestamp });
   }
 
-  public(friend) fun emit_stop_ramp_a<LpCoin>(pool_id: ID, a: u256, timestamp: u64) {
+  public(package) fun emit_stop_ramp_a<LpCoin>(pool_id: address, a: u256, timestamp: u64) {
     emit(StopRampA<LpCoin> {  pool_id, a, timestamp });
   }
 
-  public(friend) fun emit_ramp_a_gamma<LpCoin>(
-    pool_id: ID,
+  public(package) fun emit_ramp_a_gamma<LpCoin>(
+    pool_id: address,
     a: u256,
     gamma: u256,
     initial_time: u64,
@@ -313,8 +314,8 @@ module clamm::pool_events {
     emit(RampAGamma<LpCoin> { pool_id, a, gamma, initial_time, future_a, future_gamma, future_time });
   }
 
-  public(friend) fun emit_stop_ramp_a_gamma<LpCoin>(
-    pool_id: ID,
+  public(package) fun emit_stop_ramp_a_gamma<LpCoin>(
+    pool_id: address,
     a: u256,
     gamma: u256,
     timestamp: u64
@@ -322,8 +323,8 @@ module clamm::pool_events {
     emit(StopRampAGamma<LpCoin> { pool_id, a, gamma, timestamp });
   }
 
-  public(friend) fun emit_update_parameters<LpCoin>(
-    pool_id: ID,
+  public(package) fun emit_update_parameters<LpCoin>(
+    pool_id: address,
     admin_fee: u256,
     out_fee: u256,
     mid_fee: u256,

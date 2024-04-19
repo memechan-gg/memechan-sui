@@ -1,20 +1,26 @@
 #[allow(lint(share_owned))]
 module amm::initialize {
+    use std::string;
     use sui::transfer;
     use sui::balance;
+    use sui::object;
     use sui::sui::SUI;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{TxContext, sender};
     use sui::clock::Clock;
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
 
     use amm::vesting;
+    use amm::admin::Admin;
     use amm::math::div_mul;
-    use clamm::interest_clamm_volatile as volatile;
+    use clamm::interest_clamm_volatile_hooks as volatile_hooks;
+    use clamm::interest_pool;
     use amm::interest_protocol_amm::{Self as seed_pool, InterestPool as SeedPool};
     use amm::staking_pool;
     use suitears::coin_decimals;
 
-    const ADMIN_ADDR: address = @0xfff; // TODO
+    struct AddLiquidityHook has drop {}
+
+    const SCALE: u256 = 1_000_000_000_000_000_000; // 1e18
 
     const SUI_THRESHOLD: u64 = 69_000;
     const BPS: u64 = 10_000;
@@ -37,7 +43,9 @@ module amm::initialize {
 
     public fun sui(mist: u64): u64 { MIST_PER_SUI * mist }
 
+    // Admin endpoint
     public fun init_secondary_market<CoinX: key, Meme: key, LP: key>(
+        _admin_cap: &Admin,
         seed_pool: SeedPool,
         sui_meta: &CoinMetadata<SUI>,
         meme_meta: &CoinMetadata<Meme>,
@@ -61,8 +69,8 @@ module amm::initialize {
         balance::destroy_zero(xmeme_balance);
         
         // 0. Transfer admin funds to admin
-        transfer::public_transfer(coin::from_balance(admin_xmeme_balance, ctx), ADMIN_ADDR);
-        transfer::public_transfer(coin::from_balance(admin_sui_balance, ctx), ADMIN_ADDR);
+        transfer::public_transfer(coin::from_balance(admin_xmeme_balance, ctx), sender(ctx));
+        transfer::public_transfer(coin::from_balance(admin_sui_balance, ctx), sender(ctx));
 
         // 1. Verify if we reached the threshold of SUI amount raised
         let sui_supply = balance::value(&meme_balance);
@@ -79,18 +87,34 @@ module amm::initialize {
         coin_decimals::add(&mut decimals, meme_meta);
 
         // 3. Create AMM Pool
-        let (lp_tokens, pool_id) = volatile::new_2_pool(
+        let hooks_builder = interest_pool::new_hooks_builder(ctx);
+
+        interest_pool::add_rule<AddLiquidityHook>(
+            &mut hooks_builder,
+            string::utf8(interest_pool::start_add_liquidity()),
+            AddLiquidityHook {},
+        );
+
+        let amount_sui = (balance::value(&sui_balance) as u256);
+        let amount_meme = (balance::value(&amm_meme_balance) as u256);
+
+        let price = (amount_sui * SCALE) / amount_meme;
+
+        let (amm_pool, admin, lp_tokens) = volatile_hooks::new_2_pool(
             clock,
+            hooks_builder,
             coin::from_balance(sui_balance, ctx), // coin_a
             coin::from_balance(amm_meme_balance, ctx), // coin_b
             &decimals,
             coin::treasury_into_supply(treasury_cap),
             vector[A, GAMMA],
             vector[ALLOWED_EXTRA_PROFIT, ADJUSTMENT_STEP, MA_TIME],
-            100, // price todo
+            price,
             vector[MID_FEE, OUT_FEE, GAMMA_FEE],
             ctx
         );
+
+        let pool_id = object::id(&amm_pool);
 
         // 4. Create staking pool
         let staking_pool = staking_pool::new<CoinX, Meme, LP>(
@@ -98,10 +122,12 @@ module amm::initialize {
             meme_balance,
             coin::into_balance(lp_tokens),
             vesting::default_config(clock),
+            admin,
             fields,
             ctx,
         );
 
+        interest_pool::share(amm_pool);
         transfer::public_share_object(staking_pool);
 
         // Cleanup

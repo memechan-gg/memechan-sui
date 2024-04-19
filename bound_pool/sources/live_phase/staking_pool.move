@@ -12,6 +12,8 @@ module amm::staking_pool {
     use amm::token_ir;
     use amm::fee_distribution::{Self, FeeState};
 
+    use clamm::pool_admin::PoolAdmin;
+
     friend amm::initialize;
 
     struct StakingPool<phantom CoinX, phantom Meme: key, phantom LP: key> has key, store {
@@ -23,6 +25,7 @@ module amm::staking_pool {
         vesting_data: Table<address, VestingData>,
         vesting_config: VestingConfig,
         fee_state: FeeState<Meme, LP>,
+        pool_admin: PoolAdmin,
         fields: UID,
     }
 
@@ -31,6 +34,7 @@ module amm::staking_pool {
         balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
         vesting_config: VestingConfig,
+        pool_admin: PoolAdmin,
         fields: UID,
         ctx: &mut TxContext,
     ): StakingPool<CoinX, Meme, LP> {
@@ -46,6 +50,7 @@ module amm::staking_pool {
             vesting_data: table::new(ctx),
             vesting_config,
             fee_state: fee_distribution::new(stake_total, ctx),
+            pool_admin,
             fields
         }
     }

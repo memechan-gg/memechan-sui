@@ -14,7 +14,7 @@ module amm::interest_protocol_amm {
   use sui::clock::Clock;
   use sui::math;
   use sui::token::{Self, Token, TokenPolicy};
- 
+
   use amm::utils;
   use amm::errors;
   use amm::events;
@@ -435,8 +435,7 @@ module amm::interest_protocol_amm {
   public fun fields(pool: &InterestPool): &UID { &pool.fields }
   fun fields_mut(pool: &mut InterestPool): &mut UID { &mut pool.fields }
 
-  // TODO: This is only here temporarily but will be replaced with a safe solution
-  // once the contracts are properly integrated.
+  // Not safe to expose!
   public(friend) fun destroy_pool<CoinX, CoinY, MemeCoin>(pool: InterestPool): (
     Balance<CoinX>,
     Balance<CoinY>,
