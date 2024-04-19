@@ -1,8 +1,5 @@
 module memechan::bound_curve_amm {
-    // === Imports ===
-
-    use std::option::{Self, Option};
-    use std::type_name::{Self, TypeName};
+    use std::type_name;
 
     use sui::object::{Self, UID};
     use sui::dynamic_field as df;
@@ -15,6 +12,7 @@ module memechan::bound_curve_amm {
     use sui::math;
     use sui::token::{Self, Token, TokenPolicy};
 
+    use memechan::index::{Self, Registry, policies_mut};
     use memechan::utils;
     use memechan::errors;
     use memechan::staked_lp;
@@ -42,19 +40,11 @@ module memechan::bound_curve_amm {
     const DECIMALS_Y: u256 = 1_000_000_000;
 
     // === Structs ===
-
-    struct Registry has key {
-        id: UID,
-        pools: Table<TypeName, address>,
-        policies: Table<TypeName, address>
-    }
     
-    struct InterestPool has key {
+    struct SeedPool has key {
         id: UID,
         fields: UID,
     }
-
-    struct RegistryKey<phantom Curve, phantom CoinX, phantom CoinY> has drop {}
 
     struct PoolStateKey has drop, copy, store {}
     struct AccountingDfKey has drop, copy, store {}
@@ -75,19 +65,6 @@ module memechan::bound_curve_amm {
         admin_fee_in: u64,
         admin_fee_out: u64,
     }
-
-    // === Public-Mutative Functions ===
-
-    #[allow(unused_function)]
-    fun init(ctx: &mut TxContext) {
-        share_object(
-            Registry {
-                id: object::new(ctx),
-                pools: table::new(ctx),
-                policies: table::new(ctx),
-            }
-        );
-    }    
 
     // === DEX ===
 
@@ -115,7 +92,7 @@ module memechan::bound_curve_amm {
         let pool_address = object::uid_to_address(&pool.id);
 
         let (policy, policy_address) = token_ir::init_token<CoinX>(&mut pool.id, &ticket_coin_cap, ctx);
-        table::add(&mut registry.policies, type_name::get<CoinX>(), policy_address);
+        table::add(policies_mut(registry), type_name::get<CoinX>(), policy_address);
 
         events::new_pool<Bound, CoinX, CoinY>(pool_address, coin_x_value, 0, policy_address);
 
@@ -127,74 +104,52 @@ module memechan::bound_curve_amm {
 
     // === Public-View Functions ===
 
-    public fun pools(registry: &Registry): &Table<TypeName, address> {
-        &registry.pools
-    }
-
-    public fun pool_address<Curve, CoinX, CoinY>(registry: &Registry): Option<address> {
-        let registry_key = type_name::get<RegistryKey<Curve, CoinX, CoinY>>();
-
-        if (table::contains(&registry.pools, registry_key))
-            option::some(*table::borrow(&registry.pools, registry_key))
-        else
-            option::none()
-    }
-
-    public fun get_policy_id<T>(registry: &Registry): address {
-            let type_name = type_name::get<T>();
-            *table::borrow(&registry.policies, type_name)
-    }
-
-    public fun exists_<Curve, CoinX, CoinY>(registry: &Registry): bool {
-        table::contains(&registry.pools, type_name::get<RegistryKey<Curve, CoinX, CoinY>>())
-    }
-
-    public fun ticket_coin_supply<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun ticket_coin_supply<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         balance::value(&pool_state.balance_x)
     }
 
-    public fun meme_coin_supply<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun meme_coin_supply<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         balance::value(&pool_state.launch_balance)
     }
 
-    public fun balance_x<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun balance_x<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         balance::value(&pool_state.balance_x)
     }
 
-    public fun balance_y<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun balance_y<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         balance::value(&pool_state.balance_y)
     }
 
-    public fun decimals_x<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun decimals_x<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let _ = pool_state<CoinX, CoinY, MemeCoin>(pool);
         1_000_000
     }
 
-    public fun decimals_y<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun decimals_y<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let _ = pool_state<CoinX, CoinY, MemeCoin>(pool);
         1_000_000_000
     }
 
-    public fun fees<CoinX, CoinY, MemeCoin>(pool: &InterestPool): Fees {
+    public fun fees<CoinX, CoinY, MemeCoin>(pool: &SeedPool): Fees {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         pool_state.fees
     }
 
-    public fun is_ready_to_launch<CoinX, CoinY, MemeCoin>(pool: &InterestPool): bool {
+    public fun is_ready_to_launch<CoinX, CoinY, MemeCoin>(pool: &SeedPool): bool {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         pool_state.locked
     }
 
-    public fun admin_balance_x<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun admin_balance_x<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         balance::value(&pool_state.admin_balance_x)
     }
 
-    public fun admin_balance_y<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun admin_balance_y<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         balance::value(&pool_state.admin_balance_y)
     }
@@ -203,7 +158,7 @@ module memechan::bound_curve_amm {
 
     public fun take_fees<CoinX, CoinY, MemeCoin>(
         _: &Admin,
-        pool: &mut InterestPool,
+        pool: &mut SeedPool,
         policy: &TokenPolicy<CoinX>,
         ctx: &mut TxContext
     ): (Token<CoinX>, Coin<CoinY>) {
@@ -230,7 +185,7 @@ module memechan::bound_curve_amm {
         coin_y: Coin<CoinY>,
         launch_coin: Coin<MemeCoin>,
         ctx: &mut TxContext
-    ): InterestPool {
+    ): SeedPool {
         let coin_x_value = balance::value(&coin_x);
         let coin_y_value = coin::value(&coin_y);
         let launch_coin_value = coin::value(&launch_coin);
@@ -239,9 +194,7 @@ module memechan::bound_curve_amm {
         assert!(coin_y_value == 0, errors::provide_both_coins());
         assert!(launch_coin_value == BASE_TOKEN_CURVED + BASE_TOKEN_LAUNCHED, errors::provide_both_coins());
         
-        let registry_key = type_name::get<RegistryKey<Curve, CoinX, CoinY>>();
-
-        assert!(!table::contains(&registry.pools, registry_key), errors::pool_already_deployed());
+        index::assert_new_pool<Curve, CoinX, CoinY>(registry);
 
         let pool_state = PoolState {
             balance_x: coin_x,
@@ -253,7 +206,7 @@ module memechan::bound_curve_amm {
             admin_balance_y: balance::zero()
         };
 
-        let pool = InterestPool {
+        let pool = SeedPool {
             id: object::new(ctx),
             fields: object::new(ctx),
         };
@@ -261,18 +214,16 @@ module memechan::bound_curve_amm {
         let pool_address = object::uid_to_address(&pool.id);
 
         df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
-        
         df::add(fields_mut(&mut pool), AccountingDfKey {}, table::new<address, u64>(ctx));
         
-
-        table::add(&mut registry.pools, registry_key, pool_address);
+        index::add_seed_pool<Curve, CoinX, CoinY>(registry, pool_address);
         //table::add(&mut registry.lp_coins, type_name::get<LpCoin>(), pool_address);
 
         pool
     }
 
     public fun swap_coin_x<CoinX, CoinY, MemeCoin>(
-        pool: &mut InterestPool,
+        pool: &mut SeedPool,
         coin_x: Token<CoinX>,
         coin_y_min_value: u64,
         policy: &TokenPolicy<CoinX>,
@@ -313,7 +264,7 @@ module memechan::bound_curve_amm {
     }
 
     public fun swap_coin_y<CoinX, CoinY, MemeCoin>(
-        pool: &mut InterestPool,
+        pool: &mut SeedPool,
         coin_y: &mut Coin<CoinY>,
         coin_x_min_value: u64,
         clock: &Clock,
@@ -435,16 +386,16 @@ module memechan::bound_curve_amm {
         }
     }
 
-    fun pool_state<CoinX, CoinY, MemeCoin>(pool: &InterestPool): &PoolState<CoinX, CoinY, MemeCoin> {
+    fun pool_state<CoinX, CoinY, MemeCoin>(pool: &SeedPool): &PoolState<CoinX, CoinY, MemeCoin> {
         df::borrow(fields(pool), PoolStateKey {})
     }
 
-    fun pool_state_mut<CoinX, CoinY, MemeCoin>(pool: &mut InterestPool): &mut PoolState<CoinX, CoinY, MemeCoin> {
+    fun pool_state_mut<CoinX, CoinY, MemeCoin>(pool: &mut SeedPool): &mut PoolState<CoinX, CoinY, MemeCoin> {
         df::borrow_mut(fields_mut(pool), PoolStateKey {})
     }
 
     fun subtract_from_token_acc(
-        pool: &mut InterestPool,
+        pool: &mut SeedPool,
         amount: u64,
         beneficiary: address,
     ) {
@@ -455,7 +406,7 @@ module memechan::bound_curve_amm {
     }
     
     fun add_from_token_acc(
-        pool: &mut InterestPool,
+        pool: &mut SeedPool,
         amount: u64,
         beneficiary: address,
     ) {
@@ -469,11 +420,11 @@ module memechan::bound_curve_amm {
         *position = *position + amount;
     }
 
-    public fun fields(pool: &InterestPool): &UID { &pool.fields }
-    fun fields_mut(pool: &mut InterestPool): &mut UID { &mut pool.fields }
+    public fun fields(pool: &SeedPool): &UID { &pool.fields }
+    fun fields_mut(pool: &mut SeedPool): &mut UID { &mut pool.fields }
 
     // Not safe to expose!
-    public(friend) fun destroy_pool<CoinX, CoinY, MemeCoin>(pool: InterestPool): (
+    public(friend) fun destroy_pool<CoinX, CoinY, MemeCoin>(pool: SeedPool): (
         Balance<CoinX>,
         Balance<CoinY>,
         Balance<CoinX>,
@@ -486,7 +437,7 @@ module memechan::bound_curve_amm {
         let state = df::remove(fields_mut(&mut pool), PoolStateKey {});
         
 
-        let InterestPool { id, fields } = pool;
+        let SeedPool { id, fields } = pool;
         object::delete(id);
 
         let PoolState {
@@ -512,20 +463,15 @@ module memechan::bound_curve_amm {
     }
 
     // === Test Functions ===
-    
-    #[test_only]
-    public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx);
-    }
 
     #[test_only]
-    public fun seed_liquidity<CoinX, CoinY, MemeCoin>(pool: &InterestPool): u64 {
+    public fun seed_liquidity<CoinX, CoinY, MemeCoin>(pool: &SeedPool): u64 {
         let pool_state = pool_state<CoinX, CoinY, MemeCoin>(pool);
         balance::value(&pool_state.launch_balance)
     }
 
     #[test_only]
-    public fun set_liquidity<CoinX, CoinY, MemeCoin>(pool: &mut InterestPool, coin_x: Token<CoinX>, coin_y: Coin<CoinY>) {
+    public fun set_liquidity<CoinX, CoinY, MemeCoin>(pool: &mut SeedPool, coin_x: Token<CoinX>, coin_y: Coin<CoinY>) {
         let pool_state = pool_state_mut<CoinX, CoinY, MemeCoin>(pool);
         let balance_x = balance::withdraw_all(&mut pool_state.balance_x);
         let balance_y = balance::withdraw_all(&mut pool_state.balance_y);

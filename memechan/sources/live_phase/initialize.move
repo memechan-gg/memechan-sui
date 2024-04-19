@@ -12,7 +12,7 @@ module memechan::initialize {
     use memechan::vesting;
     use memechan::admin::Admin;
     use memechan::math::div_mul;
-    use memechan::bound_curve_amm::{Self as seed_pool, InterestPool as SeedPool};
+    use memechan::bound_curve_amm::{Self as seed_pool, SeedPool};
     use memechan::staking_pool;
     use clamm::interest_pool;
     use clamm::interest_clamm_volatile_hooks as volatile_hooks;

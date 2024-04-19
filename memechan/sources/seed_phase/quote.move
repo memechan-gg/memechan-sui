@@ -1,11 +1,10 @@
 module memechan::quote {
     use memechan::bound;
     use memechan::fees::{Self, Fees};
-    use memechan::bound_curve_amm::{Self, InterestPool};
+    use memechan::bound_curve_amm::{Self, SeedPool};
     use memechan::utils::is_coin_x;
 
-    public fun amount_out<CoinIn, CoinOut, LpCoin>(pool: &InterestPool, amount_in: u64): u64 { 
-
+    public fun amount_out<CoinIn, CoinOut, LpCoin>(pool: &SeedPool, amount_in: u64): u64 { 
         if (is_coin_x<CoinIn, CoinOut>()) {
             let (balance_x, balance_y, fees) = get_pool_data<CoinIn, CoinOut, LpCoin>(pool);
             let amount_in = amount_in - fees::get_fee_in_amount(&fees, amount_in);
@@ -19,7 +18,7 @@ module memechan::quote {
         }
     }
 
-    public fun amount_in<CoinIn, CoinOut, LpCoin>(pool: &InterestPool, amount_out: u64): u64 {
+    public fun amount_in<CoinIn, CoinOut, LpCoin>(pool: &SeedPool, amount_out: u64): u64 {
         if (is_coin_x<CoinIn, CoinOut>()) {
             let (balance_x, balance_y, fees) = get_pool_data<CoinIn, CoinOut, LpCoin>(pool);
             let amount_out = fees::get_fee_out_initial_amount(&fees, amount_out);
@@ -38,7 +37,7 @@ module memechan::quote {
         amount_out - fee_amount
     }
 
-    fun get_pool_data<CoinX, CoinY, LpCoin>(pool: &InterestPool): (u64, u64, Fees) {
+    fun get_pool_data<CoinX, CoinY, LpCoin>(pool: &SeedPool): (u64, u64, Fees) {
         let fees = bound_curve_amm::fees<CoinX, CoinY, LpCoin>(pool);
         let balance_x = bound_curve_amm::balance_x<CoinX, CoinY, LpCoin>(pool);
         let balance_y = bound_curve_amm::balance_y<CoinX, CoinY, LpCoin>(pool);
