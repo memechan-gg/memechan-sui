@@ -1,16 +1,16 @@
 #[test_only]
 module memechan::eth {
-  use std::option;
+    use std::option;
 
-  use sui::transfer;
-  use sui::coin;
-  use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::coin;
+    use sui::tx_context::{Self, TxContext};
 
-  struct ETH has drop {}
+    struct ETH has drop {}
 
-  #[lint_allow(share_owned)]
-  fun init(witness: ETH, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<ETH>(
+    #[lint_allow(share_owned)]
+    fun init(witness: ETH, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<ETH>(
             witness, 
             9, 
             b"ETH",
@@ -20,30 +20,30 @@ module memechan::eth {
             ctx
         );
 
-      transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
-      transfer::public_share_object(metadata);
-  }
+        transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+        transfer::public_share_object(metadata);
+    }
 
-  #[test_only]
-  public fun init_for_testing(ctx: &mut TxContext) {
-    init(ETH {}, ctx);
-  }
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ETH {}, ctx);
+    }
 }
 
 
 #[test_only]
 module amm::btc {
-  use std::option;
+    use std::option;
 
-  use sui::transfer;
-  use sui::coin;
-  use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::coin;
+    use sui::tx_context::{Self, TxContext};
 
-  struct BTC has drop {}
+    struct BTC has drop {}
 
-  #[lint_allow(share_owned)]
-  fun init(witness: BTC, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<BTC>(
+    #[lint_allow(share_owned)]
+    fun init(witness: BTC, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<BTC>(
             witness, 
             9, 
             b"BTC",
@@ -53,29 +53,29 @@ module amm::btc {
             ctx
         );
 
-      transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
-      transfer::public_share_object(metadata);
-  }
+        transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+        transfer::public_share_object(metadata);
+    }
 
-  #[test_only]
-  public fun init_for_testing(ctx: &mut TxContext) {
-    init(BTC {}, ctx);
-  }
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(BTC {}, ctx);
+    }
 }
 
 #[test_only]
 module amm::usdc {
-  use std::option;
+    use std::option;
 
-  use sui::transfer;
-  use sui::coin;
-  use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::coin;
+    use sui::tx_context::{Self, TxContext};
 
-  struct USDC has drop {}
+    struct USDC has drop {}
 
-  #[lint_allow(share_owned)]
-  fun init(witness: USDC, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<USDC>(
+    #[lint_allow(share_owned)]
+    fun init(witness: USDC, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<USDC>(
             witness, 
             6, 
             b"USDC",
@@ -85,29 +85,29 @@ module amm::usdc {
             ctx
         );
 
-      transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
-      transfer::public_share_object(metadata);
-  }
+        transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+        transfer::public_share_object(metadata);
+    }
 
-  #[test_only]
-  public fun init_for_testing(ctx: &mut TxContext) {
-    init(USDC {}, ctx);
-  }
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(USDC {}, ctx);
+    }
 }
 
 #[test_only]
 module amm::usdt {
-  use std::option;
+    use std::option;
 
-  use sui::transfer;
-  use sui::coin;
-  use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::coin;
+    use sui::tx_context::{Self, TxContext};
 
-  struct USDT has drop {}
+    struct USDT has drop {}
 
-  #[lint_allow(share_owned)]
-  fun init(witness: USDT, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<USDT>(
+    #[lint_allow(share_owned)]
+    fun init(witness: USDT, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<USDT>(
             witness, 
             6, 
             b"USDT",
@@ -117,29 +117,29 @@ module amm::usdt {
             ctx
         );
 
-      transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
-      transfer::public_share_object(metadata);
-  }
+        transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+        transfer::public_share_object(metadata);
+    }
 
-  #[test_only]
-  public fun init_for_testing(ctx: &mut TxContext) {
-    init(USDT {}, ctx);
-  }
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(USDT {}, ctx);
+    }
 }
 
 #[test_only]
 module amm::ac_b_btc {
-  use std::option;
+    use std::option;
 
-  use sui::transfer;
-  use sui::coin;
-  use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::coin;
+    use sui::tx_context::{Self, TxContext};
 
-  struct AC_B_BTC has drop {}
+    struct AC_B_BTC has drop {}
 
-  #[lint_allow(share_owned)]
-  fun init(witness: AC_B_BTC, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<AC_B_BTC>(
+    #[lint_allow(share_owned)]
+    fun init(witness: AC_B_BTC, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<AC_B_BTC>(
             witness, 
             6, 
             b"",
@@ -149,29 +149,29 @@ module amm::ac_b_btc {
             ctx
         );
 
-      transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
-      transfer::public_share_object(metadata);
-  }
+        transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+        transfer::public_share_object(metadata);
+    }
 
-  #[test_only]
-  public fun init_for_testing(ctx: &mut TxContext) {
-    init(AC_B_BTC {}, ctx);
-  }  
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(AC_B_BTC {}, ctx);
+    }
 }
 
 #[test_only]
 module amm::ac_b_usdc {
-  use std::option;
+    use std::option;
 
-  use sui::transfer;
-  use sui::coin;
-  use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::coin;
+    use sui::tx_context::{Self, TxContext};
 
-  struct AC_B_USDC has drop {}
-    
-  #[lint_allow(share_owned)]
-  fun init(witness: AC_B_USDC, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<AC_B_USDC>(
+    struct AC_B_USDC has drop {}
+        
+    #[lint_allow(share_owned)]
+    fun init(witness: AC_B_USDC, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<AC_B_USDC>(
             witness, 
             6, 
             b"",
@@ -181,31 +181,31 @@ module amm::ac_b_usdc {
             ctx
         );
 
-      transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
-      transfer::public_share_object(metadata);
-  }
+        transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+        transfer::public_share_object(metadata);
+    }
 
-  #[test_only]
-  public fun init_for_testing(ctx: &mut TxContext) {
-    init(AC_B_USDC {}, ctx);
-  }  
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(AC_B_USDC {}, ctx);
+    }
 }
 
 // * Invalid Coin
 
 #[test_only]
 module amm::ac_btce {
-  use std::option;
+    use std::option;
 
-  use sui::transfer;
-  use sui::coin;
-  use sui::tx_context::{Self, TxContext};
+    use sui::transfer;
+    use sui::coin;
+    use sui::tx_context::{Self, TxContext};
 
-  struct AC_BTCE has drop {}
+    struct AC_BTCE has drop {}
 
-  #[lint_allow(share_owned)]
-  fun init(witness: AC_BTCE, ctx: &mut TxContext) {
-      let (treasury_cap, metadata) = coin::create_currency<AC_BTCE>(
+    #[lint_allow(share_owned)]
+    fun init(witness: AC_BTCE, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<AC_BTCE>(
             witness, 
             8, 
             b"",
@@ -215,12 +215,12 @@ module amm::ac_btce {
             ctx
         );
 
-      transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
-      transfer::public_share_object(metadata);
-  }
+        transfer::public_transfer(treasury_cap, tx_context::sender(ctx));
+        transfer::public_share_object(metadata);
+    }
 
-  #[test_only]
-  public fun init_for_testing(ctx: &mut TxContext) {
-    init(AC_BTCE {}, ctx);
-  }  
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(AC_BTCE {}, ctx);
+    }
 }
