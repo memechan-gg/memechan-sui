@@ -2,7 +2,7 @@ module amm::quote {
 
   use amm::bound;
   use amm::fees::{Self, Fees};
-  use amm::interest_protocol_amm::{Self, InterestPool};
+  use amm::bound_curve_amm::{Self, InterestPool};
   use amm::utils::is_coin_x;
 
   public fun amount_out<CoinIn, CoinOut, LpCoin>(pool: &InterestPool, amount_in: u64): u64 { 
@@ -40,9 +40,9 @@ module amm::quote {
   }
 
   fun get_pool_data<CoinX, CoinY, LpCoin>(pool: &InterestPool): (u64, u64, Fees) {
-    let fees = interest_protocol_amm::fees<CoinX, CoinY, LpCoin>(pool);
-    let balance_x = interest_protocol_amm::balance_x<CoinX, CoinY, LpCoin>(pool);
-    let balance_y = interest_protocol_amm::balance_y<CoinX, CoinY, LpCoin>(pool);
+    let fees = bound_curve_amm::fees<CoinX, CoinY, LpCoin>(pool);
+    let balance_x = bound_curve_amm::balance_x<CoinX, CoinY, LpCoin>(pool);
+    let balance_y = bound_curve_amm::balance_y<CoinX, CoinY, LpCoin>(pool);
 
     (balance_x, balance_y, fees)
   }

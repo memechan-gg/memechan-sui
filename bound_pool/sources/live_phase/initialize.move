@@ -10,7 +10,7 @@ module amm::initialize {
     use amm::vesting;
     use amm::math::div_mul;
     use clamm::interest_clamm_volatile as volatile;
-    use amm::interest_protocol_amm::{Self as seed_pool, InterestPool as SeedPool};
+    use amm::bound_curve_amm::{Self as seed_pool, InterestPool as SeedPool};
     use amm::staking_pool;
     use suitears::coin_decimals;
     use suitears::math256::mul_div_up;

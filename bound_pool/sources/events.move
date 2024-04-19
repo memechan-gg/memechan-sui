@@ -2,7 +2,7 @@ module amm::events {
 
   use sui::event::emit;
 
-  friend amm::interest_protocol_amm;
+  friend amm::bound_curve_amm;
   friend amm::token_ir;
 
   struct NewPool<phantom Curve, phantom CoinX, phantom CoinY> has copy, drop {

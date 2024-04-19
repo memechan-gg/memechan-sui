@@ -99,5 +99,5 @@ module amm::errors {
 
   public fun no_funds_to_withdraw(): u64 {
     ENoFundsToWithdraw
-  }
+  }  
 }
