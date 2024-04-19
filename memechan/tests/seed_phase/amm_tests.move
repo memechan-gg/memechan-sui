@@ -1,5 +1,5 @@
 #[test_only]
-module memechan::staked_lp::bound_curve_amm_tests {
+module memechan::bound_curve_amm_tests {
     use std::option;
     use std::string::{utf8, to_ascii};
 
@@ -10,17 +10,19 @@ module memechan::staked_lp::bound_curve_amm_tests {
     use sui::test_scenario::{Self as test, Scenario, next_tx, ctx};
     use sui::sui::SUI;
     
-
-    use amm::btc::BTC;
-    use amm::usdc::USDC;
-    use amm::fees::{Self, Fees};
-    use amm::admin;
-    use amm::curves::Bound;
-    use amm::ac_b_btc::{Self, AC_B_BTC};
-    use amm::ac_btce::{Self, AC_BTCE};
-    use amm::ac_b_usdc::{Self, AC_B_USDC};
-    use amm::bound_curve_amm::{Self, Registry, InterestPool};
-    use amm::deploy_utils::{people, scenario, deploy_coins};
+    use memechan::errors;
+    use memechan::utils;
+    use memechan::btc::BTC;
+    use memechan::usdc::USDC;
+    use memechan::fees::{Self, Fees};
+    use memechan::admin;
+    use memechan::curves::Bound;
+    use memechan::ac_b_btc::{Self, AC_B_BTC};
+    use memechan::ac_btce::{Self, AC_BTCE};
+    use memechan::ac_b_usdc::{Self, AC_B_USDC};
+    use memechan::bound_curve_amm::{Self, SeedPool};
+    use memechan::index::{Self, Registry};
+    use memechan::deploy_utils::{people, scenario, deploy_coins};
 
     const USDC_DECIMAL_SCALAR: u64 = 1_000_000;
     const SUI_DECIMAL_SCALAR: u64 = 1_000_000_000;
@@ -46,7 +48,7 @@ module memechan::staked_lp::bound_curve_amm_tests {
             let usdc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
             let ticket_coin_metadata = test::take_shared<CoinMetadata<AC_B_USDC>>(scenario_mut);
             
-            assert_eq(table::is_empty(bound_curve_amm::pools(&registry)), true);
+            assert_eq(table::is_empty(index::seed_pools(&registry)), true);
             
             bound_curve_amm::new<AC_B_USDC, SUI, USDC>(
                 &mut registry,
@@ -60,7 +62,7 @@ module memechan::staked_lp::bound_curve_amm_tests {
 
             assert_eq(coin::get_symbol(&ticket_coin_metadata), to_ascii(utf8(b"ac-b-USDC")));
             assert_eq(coin::get_name(&ticket_coin_metadata), utf8(b"ac bound USD Coin Ticket Coin"));
-            assert_eq(bound_curve_amm::exists_<Bound, AC_B_USDC, SUI>(&registry), true);
+            assert_eq(index::exists_<Bound, AC_B_USDC, SUI>(&registry), true);
 
             test::return_shared(usdc_metadata);
             test::return_shared(ticket_coin_metadata);
@@ -94,7 +96,7 @@ module memechan::staked_lp::bound_curve_amm_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = amm::errors::EMemeAndTicketCoinsMustHave6Decimals, location = amm::utils)]
+    #[expected_failure(abort_code = errors::EMemeAndTicketCoinsMustHave6Decimals, location = utils)]
     fun test_new_pool_wrong_lp_coin_decimals() {
         let (scenario, alice, _) = start_test();
 
@@ -130,7 +132,7 @@ module memechan::staked_lp::bound_curve_amm_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = amm::errors::EWrongModuleName, location = amm::utils)]
+    #[expected_failure(abort_code = errors::EWrongModuleName, location = utils)]
     fun test_new_pool_wrong_lp_coin_metadata() {
         let (scenario, alice, _) = start_test();
 
@@ -166,7 +168,7 @@ module memechan::staked_lp::bound_curve_amm_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = amm::errors::EMemeAndTicketCoinsShouldHaveZeroTotalSupply, location = amm::utils)]
+    #[expected_failure(abort_code = errors::EMemeAndTicketCoinsShouldHaveZeroTotalSupply, location = utils)]
     fun test_new_pool_wrong_lp_coin_supply() {
         let (scenario, alice, _) = start_test();
 
@@ -205,14 +207,14 @@ module memechan::staked_lp::bound_curve_amm_tests {
 
     struct Request {
         registry: Registry,
-        pool: InterestPool,
+        pool: SeedPool,
         fees: Fees
     } 
 
     fun request<Curve, CoinX, CoinY, LpCoin>(scenario_mut: &Scenario): Request {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let pool_address = bound_curve_amm::pool_address<Curve, CoinX, CoinY>(&registry);
-            let pool = test::take_shared_by_id<InterestPool>(scenario_mut, object::id_from_address(option::destroy_some(pool_address)));
+            let pool_address = index::seed_pool_address<Curve, CoinX, CoinY>(&registry);
+            let pool = test::take_shared_by_id<SeedPool>(scenario_mut, object::id_from_address(option::destroy_some(pool_address)));
             let fees = bound_curve_amm::fees<CoinX, CoinY, LpCoin>(&pool);
 
         Request {
@@ -240,7 +242,7 @@ module memechan::staked_lp::bound_curve_amm_tests {
         next_tx(scenario_mut, alice);
         {
             admin::init_for_testing(ctx(scenario_mut));
-            bound_curve_amm::init_for_testing(ctx(scenario_mut));
+            index::init_for_testing(ctx(scenario_mut));
         };
 
         (scenario, alice, bob)

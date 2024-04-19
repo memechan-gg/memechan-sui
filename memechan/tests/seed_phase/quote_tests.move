@@ -7,14 +7,15 @@ module memechan::quote_tests {
     use sui::test_scenario::{Self as test, Scenario, next_tx, ctx};
     use sui::sui::SUI;
 
-    use amm::quote;
-    use amm::bound;
-    use amm::usdc::USDC;
-    use amm::fees::{Self, Fees};
-    use amm::curves::Bound;
-    use amm::ac_b_usdc::AC_B_USDC;
-    use amm::bound_curve_amm::{Self, Registry, InterestPool};
-    use amm::deploy_utils::{people, scenario, deploy_usdc_sui_pool};
+    use memechan::quote;
+    use memechan::bound;
+    use memechan::usdc::USDC;
+    use memechan::fees::{Self, Fees};
+    use memechan::curves::Bound;
+    use memechan::ac_b_usdc::AC_B_USDC;
+    use memechan::bound_curve_amm::{Self, SeedPool};
+    use memechan::index::{Self, Registry};
+    use memechan::deploy_utils::{people, scenario, deploy_usdc_sui_pool};
 
     const USDC_DECIMAL_SCALAR: u64 = 1_000_000;
     const SUI_DECIMAL_SCALAR: u64 = 1_000_000_000;
@@ -112,7 +113,7 @@ module memechan::quote_tests {
 
     struct Request {
         registry: Registry,
-        pool: InterestPool,
+        pool: SeedPool,
         pool_fees: Fees
     }
 
@@ -121,14 +122,14 @@ module memechan::quote_tests {
 
         next_tx(scenario_mut, alice);
         {
-            bound_curve_amm::init_for_testing(ctx(scenario_mut));
+            index::init_for_testing(ctx(scenario_mut));
         };
     }
 
     fun request<Curve, CoinX, CoinY, LPCoinType>(scenario_mut: &Scenario): Request {
         let registry = test::take_shared<Registry>(scenario_mut);
-        let pool_address = bound_curve_amm::pool_address<Curve, CoinX, CoinY>(&registry);
-        let pool = test::take_shared_by_id<InterestPool>(
+        let pool_address = index::seed_pool_address<Curve, CoinX, CoinY>(&registry);
+        let pool = test::take_shared_by_id<SeedPool>(
             scenario_mut, object::id_from_address(option::destroy_some(pool_address))
         );
         let pool_fees = bound_curve_amm::fees<CoinX, CoinY, LPCoinType>(&pool);

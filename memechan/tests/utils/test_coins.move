@@ -32,7 +32,7 @@ module memechan::eth {
 
 
 #[test_only]
-module amm::btc {
+module memechan::btc {
     use std::option;
 
     use sui::transfer;
@@ -64,7 +64,7 @@ module amm::btc {
 }
 
 #[test_only]
-module amm::usdc {
+module memechan::usdc {
     use std::option;
 
     use sui::transfer;
@@ -96,7 +96,7 @@ module amm::usdc {
 }
 
 #[test_only]
-module amm::usdt {
+module memechan::usdt {
     use std::option;
 
     use sui::transfer;
@@ -128,7 +128,7 @@ module amm::usdt {
 }
 
 #[test_only]
-module amm::ac_b_btc {
+module memechan::ac_b_btc {
     use std::option;
 
     use sui::transfer;
@@ -160,7 +160,7 @@ module amm::ac_b_btc {
 }
 
 #[test_only]
-module amm::ac_b_usdc {
+module memechan::ac_b_usdc {
     use std::option;
 
     use sui::transfer;
@@ -194,7 +194,7 @@ module amm::ac_b_usdc {
 // * Invalid Coin
 
 #[test_only]
-module amm::ac_btce {
+module memechan::ac_btce {
     use std::option;
 
     use sui::transfer;

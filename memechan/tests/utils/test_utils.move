@@ -7,12 +7,13 @@ module memechan::deploy_utils {
     use sui::token;
     use sui::sui::SUI;
 
-    use amm::btc;
-    use amm::usdt;
-    use amm::usdc::{Self, USDC};
-    use amm::curves::Bound;
-    use amm::ac_b_usdc::{Self, AC_B_USDC};
-    use amm::bound_curve_amm::{Self, InterestPool, Registry};
+    use memechan::btc;
+    use memechan::usdt;
+    use memechan::usdc::{Self, USDC};
+    use memechan::curves::Bound;
+    use memechan::ac_b_usdc::{Self, AC_B_USDC};
+    use memechan::bound_curve_amm::{Self, SeedPool};
+    use memechan::index::{Self, Registry};
 
     public fun deploy_coins(test: &mut Scenario) {
         let (alice, _) = people();
@@ -33,8 +34,8 @@ module memechan::deploy_utils {
         next_tx(test, alice);
         {
             let registry = test::take_shared<Registry>(test);
-            let pool_address = bound_curve_amm::pool_address<Bound, AC_B_USDC, SUI>(&registry);
-            let pool = test::take_shared_by_id<InterestPool>(test, object::id_from_address(option::destroy_some(pool_address)) );
+            let pool_address = index::seed_pool_address<Bound, AC_B_USDC, SUI>(&registry);
+            let pool = test::take_shared_by_id<SeedPool>(test, object::id_from_address(option::destroy_some(pool_address)) );
             bound_curve_amm::set_liquidity<AC_B_USDC, SUI, USDC>(&mut pool, token::mint_for_testing<AC_B_USDC>(usdc_amount, ctx(test)), mint_for_testing<SUI>(sui_amount, ctx(test)));
             test::return_shared(pool);
             test::return_shared(registry);

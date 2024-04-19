@@ -10,11 +10,14 @@ module memechan::bound_curve_tests {
     use sui::sui::SUI;
     use sui::token::TokenPolicy;
 
+    use memechan::admin;
+    use memechan::bound;
     use memechan::usdc::USDC;
     use memechan::fees::{Fees};
     use memechan::curves::Bound;
     use memechan::ac_b_usdc::AC_B_USDC;
-    use memechan::bound_curve_amm::{Self, Registry, InterestPool};
+    use memechan::bound_curve_amm::{Self, SeedPool};
+    use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people5, people, scenario, deploy_usdc_sui_pool_default_liquidity};
     use memechan::staked_lp;
 
@@ -365,7 +368,7 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, erin); 
         {
-            amm::admin::init_for_testing(ctx(scenario_mut));
+            admin::init_for_testing(ctx(scenario_mut));
         };
 
         let adm_token_x;
@@ -375,7 +378,7 @@ module memechan::bound_curve_tests {
             let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
             let policy = &request.policy;
 
-            let admin = test::take_from_sender<amm::admin::Admin>(scenario_mut);
+            let admin = test::take_from_sender<admin::Admin>(scenario_mut);
             
             let adm_coin_y;
             (adm_token_x, adm_coin_y) = bound_curve_amm::take_fees<AC_B_USDC, SUI, USDC>(&admin, &mut request.pool, policy, ctx(scenario_mut));
@@ -383,7 +386,7 @@ module memechan::bound_curve_tests {
             //let res = bound_curve_amm::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, adm_token_x, 1, policy, ctx(scenario_mut));
 
             coin::burn_for_testing(adm_coin_y);
-            test::return_to_sender<amm::admin::Admin>(scenario_mut, admin);
+            test::return_to_sender<admin::Admin>(scenario_mut, admin);
 
             destroy_request(request);
         };
@@ -397,7 +400,7 @@ module memechan::bound_curve_tests {
 
             assert_eq(MAX_X * (USDC_DECIMAL_SCALAR as u256), (balance_x + (sui::token::value(&adm_token_x) as u256)));
 
-            let adm_swap_res = amm::bound::get_amount_out(sui::token::value(&adm_token_x), (balance_x as u64), (balance_y as u64), true);
+            let adm_swap_res = bound::get_amount_out(sui::token::value(&adm_token_x), (balance_x as u64), (balance_y as u64), true);
             assert_eq(balance_y, (adm_swap_res as u256));
 
             sui::token::burn_for_testing(adm_token_x);
@@ -412,7 +415,7 @@ module memechan::bound_curve_tests {
 
     struct Request<phantom CoinX> {
         registry: Registry,
-        pool: InterestPool,
+        pool: SeedPool,
         pool_fees: Fees,
         policy: TokenPolicy<CoinX>
     }
@@ -422,14 +425,14 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, alice);
         {
-            bound_curve_amm::init_for_testing(ctx(scenario_mut));
+            index::init_for_testing(ctx(scenario_mut));
         };
     }
 
     fun request<Curve, CoinX, CoinY, LPCoinType>(scenario_mut: &Scenario): Request<CoinX> {
         let registry = test::take_shared<Registry>(scenario_mut);
-        let pool_address = bound_curve_amm::pool_address<Curve, CoinX, CoinY>(&registry);
-        let pool = test::take_shared_by_id<InterestPool>(
+        let pool_address = index::seed_pool_address<Curve, CoinX, CoinY>(&registry);
+        let pool = test::take_shared_by_id<SeedPool>(
             scenario_mut, object::id_from_address(option::destroy_some(pool_address))
         );
         let pool_fees = bound_curve_amm::fees<CoinX, CoinY, LPCoinType>(&pool);

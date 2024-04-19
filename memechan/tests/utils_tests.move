@@ -7,6 +7,8 @@ module memechan::utils_tests {
     use sui::test_scenario::{Self as test, next_tx, ctx};
     use sui::sui::SUI;
     
+    use memechan::errors;
+    use memechan::utils;
     use memechan::btc::BTC;
     use memechan::eth::ETH;
     use memechan::ac_b_btc::{Self, AC_B_BTC};
@@ -160,7 +162,7 @@ module memechan::utils_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = amm::errors::EMemeAndTicketCoinsMustHave6Decimals, location = amm::utils)]
+    #[expected_failure(abort_code = errors::EMemeAndTicketCoinsMustHave6Decimals, location = utils)]
     fun test_assert_ticket_coin_integrity_wrong_decimal() {
      let scenario = scenario();
         let (alice, _) = people();
@@ -187,7 +189,7 @@ module memechan::utils_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = amm::errors::EWrongModuleName, location = amm::utils)]
+    #[expected_failure(abort_code = errors::EWrongModuleName, location = utils)]
     fun test_assert_ticket_coin_integrity_wrong_lp_module_name() {
         let scenario = scenario();
         let (alice, _) = people();
@@ -221,7 +223,7 @@ module memechan::utils_tests {
 }
 
 #[test_only]
-module amm::ac_btc_wrong_decimals {
+module memechan::ac_btc_wrong_decimals {
     use std::option;
 
     use sui::transfer;
@@ -253,7 +255,7 @@ module amm::ac_btc_wrong_decimals {
 }
 
 #[test_only]
-module amm::ac_btc_wrong_name {
+module memechan::ac_btc_wrong_name {
     use std::option;
 
     use sui::transfer;
