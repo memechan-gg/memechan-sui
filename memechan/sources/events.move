@@ -1,9 +1,9 @@
-module amm::events {
+module memechan::events {
 
   use sui::event::emit;
 
-  friend amm::bound_curve_amm;
-  friend amm::token_ir;
+  friend memechan::bound_curve_amm;
+  friend memechan::token_ir;
 
   struct NewPool<phantom Curve, phantom CoinX, phantom CoinY> has copy, drop {
     pool_address: address,

@@ -1,5 +1,5 @@
 #[test_only]
-module amm::quote_tests {
+module memechan::quote_tests {
   use std::option;
 
   use sui::object;

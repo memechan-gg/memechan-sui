@@ -1,5 +1,4 @@
-module amm::admin {
-
+module memechan::admin {
   use sui::transfer::transfer;
   use sui::object::{Self, UID};
   use sui::tx_context::{Self, TxContext};

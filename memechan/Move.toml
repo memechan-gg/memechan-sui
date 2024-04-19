@@ -1,5 +1,5 @@
 [package]
-name = "AMM"
+name = "Memechan"
 version = "0.0.1"
 
 [dependencies]
@@ -8,4 +8,4 @@ CLAMM = { local = "../interest/clamm" }
 SuiTears = { local = "../interest/suitears" }
 
 [addresses]
-amm = "0x999"
+memechan = "0x999"

@@ -1,9 +1,9 @@
-module amm::quote {
+module memechan::quote {
 
-  use amm::bound;
-  use amm::fees::{Self, Fees};
-  use amm::bound_curve_amm::{Self, InterestPool};
-  use amm::utils::is_coin_x;
+  use memechan::bound;
+  use memechan::fees::{Self, Fees};
+  use memechan::bound_curve_amm::{Self, InterestPool};
+  use memechan::utils::is_coin_x;
 
   public fun amount_out<CoinIn, CoinOut, LpCoin>(pool: &InterestPool, amount_in: u64): u64 { 
 

@@ -1,5 +1,5 @@
-#[allow(lint(share_owned))]
-module amm::initialize {
+#[allow(lint(share_owned, self_transfer))]
+module memechan::initialize {
     use std::string;
     use sui::transfer;
     use sui::balance;
@@ -9,13 +9,13 @@ module amm::initialize {
     use sui::clock::Clock;
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
 
-    use amm::vesting;
-    use amm::admin::Admin;
-    use amm::math::div_mul;
-    use clamm::interest_clamm_volatile_hooks as volatile_hooks;
+    use memechan::vesting;
+    use memechan::admin::Admin;
+    use memechan::math::div_mul;
+    use memechan::bound_curve_amm::{Self as seed_pool, InterestPool as SeedPool};
+    use memechan::staking_pool;
     use clamm::interest_pool;
-    use amm::bound_curve_amm::{Self as seed_pool, InterestPool as SeedPool};
-    use amm::staking_pool;
+    use clamm::interest_clamm_volatile_hooks as volatile_hooks;
     use suitears::coin_decimals;
     use suitears::math256::mul_div_up;
 

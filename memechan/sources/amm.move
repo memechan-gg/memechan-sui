@@ -1,4 +1,4 @@
-module amm::bound_curve_amm {
+module memechan::bound_curve_amm {
   // === Imports ===
 
   use std::option::{Self, Option};
@@ -15,17 +15,18 @@ module amm::bound_curve_amm {
   use sui::math;
   use sui::token::{Self, Token, TokenPolicy};
 
-  use amm::utils;
-  use amm::errors;
-  use amm::events;
-  use amm::bound; 
-  use amm::admin::Admin;
-  use amm::fees::{Self, Fees};
-  use amm::curves::Bound;
-  use amm::staked_lp::StakedLP;
-  use amm::token_ir;
+  use memechan::utils;
+  use memechan::errors;
+  use memechan::staked_lp;
+  use memechan::events;
+  use memechan::bound; 
+  use memechan::admin::Admin;
+  use memechan::fees::{Self, Fees};
+  use memechan::curves::Bound;
+  use memechan::staked_lp::StakedLP;
+  use memechan::token_ir;
 
-  friend amm::initialize;
+  friend memechan::initialize;
 
   // === Constants ===
 
@@ -351,7 +352,7 @@ module amm::bound_curve_amm {
 
     //coin::take(&mut pool_state.balance_x, swap_amount.amount_out, ctx)
     let swap_amount = swap_amount.amount_out;
-    let staked_lp = amm::staked_lp::new(balance::split(&mut pool_state.balance_x, swap_amount), clock, ctx);
+    let staked_lp = staked_lp::new(balance::split(&mut pool_state.balance_x, swap_amount), clock, ctx);
 
     // We keep track of how much each address ownes of coin_x
     add_from_token_acc(pool, swap_amount, sender(ctx));

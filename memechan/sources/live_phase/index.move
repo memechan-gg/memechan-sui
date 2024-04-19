@@ -1,4 +1,4 @@
-module amm::index {
+module memechan::index {
     use std::type_name::{Self, TypeName};
     use sui::object::{Self, UID, ID};
     use sui::table::{Self, Table};

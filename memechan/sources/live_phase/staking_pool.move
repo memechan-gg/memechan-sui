@@ -1,4 +1,4 @@
-module amm::staking_pool {
+module memechan::staking_pool {
     use sui::object::{Self, ID, UID};
     use sui::table::{Self, Table};
     use sui::balance::Balance;
@@ -8,13 +8,13 @@ module amm::staking_pool {
     use sui::coin::{Self, Coin};
     use sui::tx_context::{sender, TxContext};
 
-    use amm::vesting::{Self, VestingData, VestingConfig};
-    use amm::token_ir;
-    use amm::fee_distribution::{Self, FeeState};
+    use memechan::vesting::{Self, VestingData, VestingConfig};
+    use memechan::token_ir;
+    use memechan::fee_distribution::{Self, FeeState};
 
     use clamm::pool_admin::PoolAdmin;
 
-    friend amm::initialize;
+    friend memechan::initialize;
 
     struct StakingPool<phantom CoinX, phantom Meme: key, phantom LP: key> has key, store {
         id: UID,

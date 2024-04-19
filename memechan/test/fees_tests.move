@@ -1,11 +1,10 @@
 #[test_only]
-module amm::fees_tests {
+module memechan::fees_tests {
   use sui::test_utils::assert_eq;
   use sui::test_scenario::{Self as test, next_tx};
 
-  use amm::fees;
-  
-  use amm::deploy_utils::{people, scenario};
+  use memechan::fees;
+  use memechan::deploy_utils::{people, scenario};
 
   const INITIAL_FEE_PERCENT: u256 = 250000000000000; // 0.025%
 

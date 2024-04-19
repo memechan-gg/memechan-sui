@@ -1,13 +1,13 @@
-module amm::fee_distribution {
+module memechan::fee_distribution {
 
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};
     use sui::tx_context::{Self, TxContext};
 
-    use amm::errors;
+    use memechan::errors;
 
-    friend amm::staking_pool;
+    friend memechan::staking_pool;
 
     const PRECISION : u256 = 1_000_000_000_000_000;
 

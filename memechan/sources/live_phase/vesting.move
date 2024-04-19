@@ -1,7 +1,7 @@
-module amm::vesting {
+module memechan::vesting {
     use sui::clock::{Self, Clock};
     
-    friend amm::staking_pool;
+    friend memechan::staking_pool;
 
     const DEFAULT_CLIFF: u64 = 172800000; // 48 hours; TODO: test
     const DEFAULT_LINEAR: u64 = 1209600000; // 14 days; TODO: test

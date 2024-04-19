@@ -1,4 +1,4 @@
-module amm::math {
+module memechan::math {
     public fun div(x: u64, y: u64): u64 {
         (x / y)
     }

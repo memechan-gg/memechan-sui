@@ -1,5 +1,5 @@
 #[test_only]
-module amm::deploy_utils {
+module memechan::deploy_utils {
 
   use std::option;
   use sui::coin::{mint_for_testing, TreasuryCap, CoinMetadata, create_treasury_cap_for_testing};

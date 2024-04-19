@@ -1,5 +1,5 @@
 #[test_only]
-module amm::bound_curve_amm_tests {
+module memechan::staked_lp::bound_curve_amm_tests {
   use std::option;
   use std::string::{utf8, to_ascii};
 

@@ -1,5 +1,5 @@
 #[test_only]
-module amm::utils_tests {
+module memechan::utils_tests {
   use std::string::{utf8, to_ascii};
 
   use sui::coin::CoinMetadata;
@@ -7,13 +7,13 @@ module amm::utils_tests {
   use sui::test_scenario::{Self as test, next_tx, ctx};
   use sui::sui::SUI;
   
-  use amm::btc::BTC;
-  use amm::eth::ETH;
-  use amm::ac_b_btc::{Self, AC_B_BTC};
-  use amm::ac_btc_wrong_decimals::{Self, AC_BTC_WRONG_DECIMALS};
-  use amm::ac_btc_wrong_name::{Self, AC_BTC_WRONG_NAME};
-  use amm::deploy_utils::{scenario, people, deploy_coins};
-  use amm::utils::{
+  use memechan::btc::BTC;
+  use memechan::eth::ETH;
+  use memechan::ac_b_btc::{Self, AC_B_BTC};
+  use memechan::ac_btc_wrong_decimals::{Self, AC_BTC_WRONG_DECIMALS};
+  use memechan::ac_btc_wrong_name::{Self, AC_BTC_WRONG_NAME};
+  use memechan::deploy_utils::{scenario, people, deploy_coins};
+  use memechan::utils::{
     is_coin_x, 
     quote_liquidity,
     get_ticket_coin_name,

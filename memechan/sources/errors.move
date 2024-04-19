@@ -1,4 +1,4 @@
-module amm::errors {
+module memechan::errors {
 
   const ENotEnoughFundsToLend: u64 = 0;
   const EFeeIsTooHigh: u64 = 1;

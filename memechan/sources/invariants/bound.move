@@ -1,9 +1,9 @@
 
-module amm::bound {
+module memechan::bound {
 
   use suitears::math256::sqrt_down;
 
-  use amm::errors;
+  use memechan::errors;
 
   const PRECISION: u256 = 1_000_000_000_000_000_000;
 

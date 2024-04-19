@@ -1,5 +1,5 @@
 #[test_only]
-module amm::eth {
+module memechan::eth {
   use std::option;
 
   use sui::transfer;

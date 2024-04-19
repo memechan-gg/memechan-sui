@@ -1,5 +1,5 @@
 #[test_only]
-module amm::bound_curve_tests {
+module memechan::bound_curve_tests {
     use std::option;
 
     use sui::object;
@@ -10,13 +10,13 @@ module amm::bound_curve_tests {
     use sui::sui::SUI;
     use sui::token::TokenPolicy;
 
-    use amm::usdc::USDC;
-    use amm::fees::{Fees};
-    use amm::curves::Bound;
-    use amm::ac_b_usdc::AC_B_USDC;
-    use amm::bound_curve_amm::{Self, Registry, InterestPool};
-    use amm::deploy_utils::{people5, people, scenario, deploy_usdc_sui_pool_default_liquidity};
-    use amm::staked_lp;
+    use memechan::usdc::USDC;
+    use memechan::fees::{Fees};
+    use memechan::curves::Bound;
+    use memechan::ac_b_usdc::AC_B_USDC;
+    use memechan::bound_curve_amm::{Self, Registry, InterestPool};
+    use memechan::deploy_utils::{people5, people, scenario, deploy_usdc_sui_pool_default_liquidity};
+    use memechan::staked_lp;
 
     const MAX_X: u256 = 900_000_000;
     const MAX_Y: u256 = 30_000;

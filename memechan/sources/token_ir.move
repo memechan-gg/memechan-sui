@@ -1,4 +1,4 @@
-module amm::token_ir {
+module memechan::token_ir {
     use sui::object::{Self, UID, id_to_address};
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::balance::Balance;
@@ -6,9 +6,9 @@ module amm::token_ir {
     use sui::dynamic_field as df;
     use sui::token::{Self, Token, ActionRequest, TokenPolicy};
 
-    friend amm::bound_curve_amm;
-    friend amm::staked_lp;
-    friend amm::staking_pool;
+    friend memechan::bound_curve_amm;
+    friend memechan::staked_lp;
+    friend memechan::staking_pool;
 
     struct Witness has drop {}
 

@@ -1,4 +1,4 @@
-module amm::fees {
+module memechan::fees {
 
   use suitears::math256::mul_div_up;
 

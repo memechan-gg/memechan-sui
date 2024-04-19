@@ -1,12 +1,12 @@
-module amm::staked_lp {
+module memechan::staked_lp {
     use sui::object::{Self, UID, delete};
     use sui::balance::{Self, Balance};
     use sui::tx_context::TxContext;
     use sui::clock::{Self, Clock};
     use sui::token::{Token, TokenPolicy};
-    use amm::token_ir;
+    use memechan::token_ir;
 
-    use amm::errors::lp_stake_time_not_passed;
+    use memechan::errors::lp_stake_time_not_passed;
 
     const SELL_DELAY_MS: u64 = 12 * 3600 * 1000;
 

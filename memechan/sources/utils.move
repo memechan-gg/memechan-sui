@@ -1,4 +1,4 @@
-module amm::utils {
+module memechan::utils {
   use std::ascii;
   use std::type_name;
   use std::string::{Self, String};
@@ -9,8 +9,7 @@ module amm::utils {
   use suitears::comparator;
   use suitears::math64::mul_div_up;
   
-
-  use amm::errors;
+  use memechan::errors;
   
   public fun are_coins_suitable<CoinA, CoinB>(): bool {
     let coin_a_type_name = type_name::get<CoinA>();
