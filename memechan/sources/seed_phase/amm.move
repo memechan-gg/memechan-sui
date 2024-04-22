@@ -39,6 +39,14 @@ module memechan::bound_curve_amm {
     const DECIMALS_X: u256 = 1_000_000;
     const DECIMALS_Y: u256 = 1_000_000_000;
 
+    public fun default_admin(): u256 { DEFAULT_ADMIN_FEE }
+    public fun default_meme_supply_staking_pool(): u64 { DEFAUL_MEME_SUPPLY_FOR_STAKING_POOL }
+    public fun default_meme_supply_lp_liquidity(): u64 { DEFAULT_MEME_SUPPLY_FOR_LP_LIQUIDITY }
+    public fun max_x(): u256 { MAX_X }
+    public fun max_y(): u256 { MAX_Y }
+    public fun decimals_x(): u256 { DECIMALS_X }
+    public fun decimals_y(): u256 { DECIMALS_Y }
+
     // === Structs ===
     
     struct SeedPool has key {
@@ -172,16 +180,6 @@ module memechan::bound_curve_amm {
         balance::value(&pool_state.balance_y)
     }
 
-    public fun decimals_x<X, Y, Meme>(pool: &SeedPool): u64 {
-        let _ = pool_state<X, Y, Meme>(pool);
-        1_000_000
-    }
-
-    public fun decimals_y<X, Y, Meme>(pool: &SeedPool): u64 {
-        let _ = pool_state<X, Y, Meme>(pool);
-        1_000_000_000
-    }
-
     public fun fees<X, Y, Meme>(pool: &SeedPool): Fees {
         let pool_state = pool_state<X, Y, Meme>(pool);
         pool_state.fees
@@ -281,7 +279,7 @@ module memechan::bound_curve_amm {
         pool
     }
 
-    public fun swap_coin_x<X, Y, Meme>(
+    public fun swap_coin_x<X, Y, Meme>( // todo: rename swap_x_for_y
         pool: &mut SeedPool,
         coin_x: Token<X>,
         coin_y_min_value: u64,
@@ -387,21 +385,21 @@ module memechan::bound_curve_amm {
         pool_state: &PoolState<X, Y, Meme>,
         coin_in_amount: u64,
         coin_out_min_value: u64,
-        is_x: bool
+        sell_x: bool
     ): SwapAmount {
-        let (balance_x, balance_y) = amounts(pool_state);
+        let (x_t0, y_t0) = amounts(pool_state);
 
-        let prev_k = bound::invariant_(balance_x, balance_y);
+        let prev_k = bound::invariant_(x_t0, y_t0);
 
         let max_coins_in = {
-            if (is_x)
-                (MAX_X * DECIMALS_X as u64) - balance_x
+            if (sell_x)
+                (MAX_X * DECIMALS_X as u64) - x_t0
             else 
-                (MAX_Y * DECIMALS_Y as u64) - balance_y
+                (MAX_Y * DECIMALS_Y as u64) - y_t0
         };
 
         let max_admin_fee_in = {
-            if (is_x)
+            if (sell_x)
                 fees::get_fee_in_amount(&pool_state.fees, (MAX_X * DECIMALS_X as u64)) - balance::value(&pool_state.admin_balance_x)
             else
                 fees::get_fee_in_amount(&pool_state.fees, (MAX_Y * DECIMALS_Y as u64)) - balance::value(&pool_state.admin_balance_y)
@@ -413,36 +411,33 @@ module memechan::bound_curve_amm {
 
         let coin_in_amount = math::min(coin_in_amount - admin_fee_in, max_coins_in);
 
-        let amount_out = bound::get_amount_out(coin_in_amount, balance_x, balance_y, is_x);
+        let delta_out = if (is_max) {
+            if (sell_x) {
+                (MAX_Y * DECIMALS_Y as u64) - y_t0 - bound::get_amount_out(coin_in_amount, x_t0, y_t0, sell_x)
+            } else {
+                x_t0
+            }
+        } else {
+            bound::get_amount_out(coin_in_amount, x_t0, y_t0, sell_x)
+        };
 
-        let admin_fee_out = fees::get_fee_out_amount(&pool_state.fees, amount_out);
+        let admin_fee_out = fees::get_fee_out_amount(&pool_state.fees, delta_out);
+        let amount_out_net = delta_out - admin_fee_out;
 
-        let lc_amt_out = 
-            if (is_max) {
-                if (is_x) {
-                    (MAX_Y * DECIMALS_Y as u64) - balance_y - amount_out
-                }
-                else {
-                    balance_x - amount_out
-                }
-            } else {0};
-
-        let amount_out = amount_out - admin_fee_out + lc_amt_out;
-
-        assert!(amount_out >= coin_out_min_value, errors::slippage());
+        assert!(amount_out_net >= coin_out_min_value, errors::slippage());
 
         let new_k = {
-            if (is_x)
-                bound::invariant_(balance_x + coin_in_amount, balance_y - amount_out)
+            if (sell_x)
+                bound::invariant_(x_t0 + coin_in_amount, y_t0 - amount_out_net)
             else
-                bound::invariant_(balance_x - amount_out, balance_y + coin_in_amount)
+                bound::invariant_(x_t0 - amount_out_net, y_t0 + coin_in_amount)
         };
 
         assert!(new_k >= prev_k, errors::invalid_invariant());
 
         SwapAmount {
             amount_in: coin_in_amount,
-            amount_out,
+            amount_out: amount_out_net,
             admin_fee_in,
             admin_fee_out,
         }

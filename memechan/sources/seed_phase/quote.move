@@ -18,20 +18,6 @@ module memechan::quote {
         }
     }
 
-    public fun amount_in<CoinIn, CoinOut, LpCoin>(pool: &SeedPool, amount_out: u64): u64 {
-        if (is_coin_x<CoinIn, CoinOut>()) {
-            let (balance_x, balance_y, fees) = get_pool_data<CoinIn, CoinOut, LpCoin>(pool);
-            let amount_out = fees::get_fee_out_initial_amount(&fees, amount_out);
-
-            fees::get_fee_in_initial_amount(&fees, bound::get_amount_in(amount_out, balance_x, balance_y, true))
-        } else {
-            let (balance_x, balance_y, fees) = get_pool_data<CoinOut, CoinIn, LpCoin>(pool);
-            let amount_out = fees::get_fee_out_initial_amount(&fees, amount_out);
-
-            fees::get_fee_in_initial_amount(&fees, bound::get_amount_in(amount_out, balance_x, balance_y, false))
-        }
-    }
-
     fun get_amount_out(fees: Fees, amount_out: u64): u64 {
         let fee_amount = fees::get_fee_out_amount(&fees, amount_out);
         amount_out - fee_amount

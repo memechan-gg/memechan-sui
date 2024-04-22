@@ -22,4 +22,8 @@ module memechan::math {
 
         result
     }
+
+    public fun pow_2(x: u256): u256 {
+        x * x
+    }
 }

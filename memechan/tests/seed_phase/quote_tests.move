@@ -62,53 +62,6 @@ module memechan::quote_tests {
         test::end(scenario);
     }
 
-    #[test]
-    fun test_bound_quote_amount_in() {
-        let scenario = scenario();
-        let (alice, _) = people();
-
-        let scenario_mut = &mut scenario;
-
-        set_up_test(scenario_mut);
-        deploy_usdc_sui_pool(scenario_mut, 10_000 * SUI_DECIMAL_SCALAR, 400_000_000 * USDC_DECIMAL_SCALAR);
-
-        next_tx(scenario_mut, alice);
-        {
-            let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
-
-            let amount_out = 5_000 * SUI_DECIMAL_SCALAR;
-            let amount_out_before_fee = fees::get_fee_out_initial_amount(&request.pool_fees, amount_out);
-
-            let expected_amount_in = fees::get_fee_in_initial_amount(
-                &request.pool_fees, 
-                bound::get_amount_in(amount_out_before_fee, 400_000_000 * USDC_DECIMAL_SCALAR, 10_000 * SUI_DECIMAL_SCALAR, false)
-            );
-
-            assert_eq(quote::amount_in<SUI, AC_B_USDC, USDC>(&request.pool, amount_out), expected_amount_in);
-
-            destroy_request(request);
-        };
-
-        next_tx(scenario_mut, alice);
-        {
-            let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
-
-            let amount_out = 175_000_000 * USDC_DECIMAL_SCALAR;
-            let amount_out_before_fee = fees::get_fee_out_initial_amount(&request.pool_fees, amount_out);
-
-            let expected_amount_in = fees::get_fee_in_initial_amount(
-                &request.pool_fees, 
-                bound::get_amount_in(amount_out_before_fee, 400_000_000 * USDC_DECIMAL_SCALAR, 10_000 * SUI_DECIMAL_SCALAR, true)
-            );
-
-            assert_eq(quote::amount_in<AC_B_USDC, SUI, USDC>(&request.pool, amount_out), expected_amount_in);
-
-            destroy_request(request);
-        };
-
-        test::end(scenario);
-    }
-
     // Set up
 
     struct Request {

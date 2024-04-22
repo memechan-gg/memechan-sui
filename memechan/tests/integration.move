@@ -25,7 +25,7 @@ module memechan::integration {
     use memechan::ac_b_btc::{Self, AC_B_BTC};
     use memechan::ac_btce::{Self, AC_BTCE};
     use memechan::ac_b_usdc::{Self, AC_B_USDC};
-    use memechan::bound_curve_amm::{Self, SeedPool};
+    use memechan::bound_curve_amm::{Self, SeedPool, default_meme_supply_staking_pool, default_meme_supply_lp_liquidity};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people, scenario, deploy_coins, sui};
 
@@ -75,10 +75,10 @@ module memechan::integration {
         let seed_pool = test::take_shared<SeedPool>(scenario_mut);
         let clock = clock::create_for_testing(ctx(scenario_mut));
 
-        let t = 10_000;
+        let t = 100_000;
         while (t > 0) {
             next_tx(scenario_mut, bob);
-            let sui_mony = coin::mint_for_testing<SUI>(sui(100), ctx(scenario_mut));
+            let sui_mony = coin::mint_for_testing<SUI>(sui(1_000), ctx(scenario_mut));
 
             let staked_sboden = bound_curve_amm::swap_coin_y<AC_B_BODEN, SUI, BODEN>(
                 &mut seed_pool,
@@ -88,6 +88,76 @@ module memechan::integration {
                 ctx(scenario_mut),
             );
             print(&staked_lp::balance(&staked_sboden));
+            // print(&coin::value(&sui_mony));
+            coin::burn_for_testing(sui_mony);
+            staked_lp::destroy_for_testing(staked_sboden);
+        };
+
+        clock::destroy_for_testing(clock);
+        test::return_shared(boden_metadata);
+        test::return_shared(seed_pool);
+        test::return_shared(ticket_coin_metadata);
+        test::return_shared(registry);
+        test::end(scenario);
+    }
+    
+    #[test]
+    fun integration_2() {
+        // print()types::is_one_time_witness<S_BODEN>();
+
+        let (scenario, alice, bob) = start_test();
+
+        let scenario_mut = &mut scenario;
+        
+        // Initiate S joe boden token
+        next_tx(scenario_mut, alice);
+        {
+            ac_b_boden::init_for_testing(ctx(scenario_mut));
+            boden::init_for_testing(ctx(scenario_mut));
+        };
+
+        next_tx(scenario_mut, alice);
+
+        let registry = test::take_shared<Registry>(scenario_mut);
+        let ticket_coin_cap = test::take_from_sender<TreasuryCap<AC_B_BODEN>>(scenario_mut);
+        let ticket_coin_metadata = test::take_shared<CoinMetadata<AC_B_BODEN>>(scenario_mut);
+        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
+        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
+            
+        assert_eq(table::is_empty(index::seed_pools(&registry)), true);
+            
+        bound_curve_amm::new<AC_B_BODEN, SUI, BODEN>(
+            &mut registry,
+            ticket_coin_cap, // AC_B_BODEN
+            boden_coin_cap, // BODEN
+            &mut ticket_coin_metadata,
+            &boden_metadata,
+            0,
+            0,
+            default_meme_supply_staking_pool(),
+            default_meme_supply_lp_liquidity(),
+            ctx(scenario_mut)
+        );
+
+        next_tx(scenario_mut, bob);
+
+        let seed_pool = test::take_shared<SeedPool>(scenario_mut);
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+
+        let t = 100_000;
+        while (t > 0) {
+            next_tx(scenario_mut, bob);
+            let sui_mony = coin::mint_for_testing<SUI>(sui(1), ctx(scenario_mut));
+
+            let staked_sboden = bound_curve_amm::swap_coin_y<AC_B_BODEN, SUI, BODEN>(
+                &mut seed_pool,
+                &mut sui_mony,
+                0,
+                &clock,
+                ctx(scenario_mut),
+            );
+            assert!(bound_curve_amm::balance_x(&seed_pool))
+            // print(&staked_lp::balance(&staked_sboden));
             // print(&coin::value(&sui_mony));
             coin::burn_for_testing(sui_mony);
             staked_lp::destroy_for_testing(staked_sboden);
