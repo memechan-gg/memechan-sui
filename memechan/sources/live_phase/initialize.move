@@ -17,6 +17,7 @@ module memechan::initialize {
     use clamm::interest_pool;
     use clamm::interest_clamm_volatile_hooks as volatile_hooks;
     use suitears::coin_decimals;
+    use memechan::coin_decimals as coin_decimals_;
     use suitears::math256::mul_div_up;
 
     struct AddLiquidityHook has drop {}
@@ -140,9 +141,9 @@ module memechan::initialize {
         transfer::public_share_object(staking_pool);
 
         // Cleanup
-        coin_decimals::destroy_decimals(coin_decimals::remove<SUI>(&mut decimals));
-        coin_decimals::destroy_decimals(coin_decimals::remove<Meme>(&mut decimals));
+        // coin_decimals::destroy_decimals(coin_decimals::remove<SUI>(&mut decimals));
+        // coin_decimals::destroy_decimals(coin_decimals::remove<Meme>(&mut decimals));
 
-        coin_decimals::destroy_coin_decimals(decimals);
+        coin_decimals_::destroy_coin_decimals(decimals, ctx);
     }
 }

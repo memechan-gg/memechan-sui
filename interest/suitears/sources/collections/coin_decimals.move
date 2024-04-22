@@ -96,18 +96,4 @@ module suitears::coin_decimals {
     let decimals = coin::get_decimals(coin_metadata);
     df::add(&mut self.id, type_name::get<CoinType>(), Decimals { decimals, scalar: pow(10, decimals) });
   }
-  
-  // TODO: We rely on these to compile
-  public fun remove<CoinType>(self: &mut CoinDecimals): Decimals {
-    df::remove(&mut self.id, type_name::get<CoinType>())
-  }
-
-  public fun destroy_decimals(decimals: Decimals) {
-    let Decimals { decimals:  _, scalar: _} = decimals;
-  }
-  
-  public fun destroy_coin_decimals(decimals: CoinDecimals) {
-    let CoinDecimals { id } = decimals;
-    object::delete(id);
-  }
 }

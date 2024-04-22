@@ -25,7 +25,9 @@ module memechan::integration {
     use memechan::ac_b_btc::{Self, AC_B_BTC};
     use memechan::ac_btce::{Self, AC_BTCE};
     use memechan::ac_b_usdc::{Self, AC_B_USDC};
-    use memechan::bound_curve_amm::{Self, SeedPool, default_meme_supply_staking_pool, default_meme_supply_lp_liquidity};
+    use memechan::bound_curve_amm::{
+        Self, SeedPool, default_meme_supply_staking_pool, default_meme_supply_lp_liquidity
+    };
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people, scenario, deploy_coins, sui};
 
@@ -145,9 +147,13 @@ module memechan::integration {
         let clock = clock::create_for_testing(ctx(scenario_mut));
 
         let t = 100_000;
+        let i = 0;
         while (t > 0) {
             next_tx(scenario_mut, bob);
-            let sui_mony = coin::mint_for_testing<SUI>(sui(1), ctx(scenario_mut));
+
+            let amt = sui(1);
+            let sui_mony = coin::mint_for_testing<SUI>(amt, ctx(scenario_mut));
+            i = i + amt;
 
             let staked_sboden = bound_curve_amm::swap_coin_y<AC_B_BODEN, SUI, BODEN>(
                 &mut seed_pool,
@@ -156,7 +162,9 @@ module memechan::integration {
                 &clock,
                 ctx(scenario_mut),
             );
-            // assert!(bound_curve_amm::balance_x(&seed_pool))
+            print(&bound_curve_amm::balance_x<AC_B_BODEN, SUI, BODEN>(&seed_pool));
+            print(&(default_meme_supply_staking_pool() - i));
+            assert!(bound_curve_amm::balance_x<AC_B_BODEN, SUI, BODEN>(&seed_pool) == default_meme_supply_staking_pool() - i, 0);
             // print(&staked_lp::balance(&staked_sboden));
             // print(&coin::value(&sui_mony));
             coin::burn_for_testing(sui_mony);
