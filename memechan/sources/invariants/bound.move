@@ -33,10 +33,10 @@ module memechan::bound {
         assert!(check_bounds, errors::insufficient_liquidity());
 
         let (coin_in_amount, balance_x, balance_y) = (
-                    ((coin_in_amount as u256) * PRECISION) / if (is_x) {DECIMALS_X} else {DECIMALS_Y},
-                    ((balance_x as u256) * PRECISION) / DECIMALS_X,
-                    ((balance_y as u256) * PRECISION) / DECIMALS_Y
-                );
+            ((coin_in_amount as u256) * PRECISION) / if (is_x) {DECIMALS_X} else {DECIMALS_Y},
+            ((balance_x as u256) * PRECISION) / DECIMALS_X,
+            ((balance_y as u256) * PRECISION) / DECIMALS_Y
+        );
 
         let res_y = MAX_Y - balance_y;
 

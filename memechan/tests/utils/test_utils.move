@@ -15,6 +15,10 @@ module memechan::deploy_utils {
     use memechan::bound_curve_amm::{Self, SeedPool};
     use memechan::index::{Self, Registry};
 
+    public fun sui(amt: u64): u64 {
+        amt * 1_000_000_000
+    }
+
     public fun deploy_coins(test: &mut Scenario) {
         let (alice, _) = people();
 
@@ -59,7 +63,7 @@ module memechan::deploy_utils {
             let usdc_metadata = test::take_shared<CoinMetadata<USDC>>(test);
             let lp_coin_metadata = test::take_shared<CoinMetadata<AC_B_USDC>>(test);
             
-            bound_curve_amm::new<AC_B_USDC, SUI, USDC>(
+            bound_curve_amm::new_default<AC_B_USDC, SUI, USDC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(test)),

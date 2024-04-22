@@ -90,7 +90,7 @@ module memechan::index {
             *table::borrow(&registry.policies, type_name)
     }
 
-    public fun exists_<Curve, CoinX, CoinY>(registry: &Registry): bool {
+    public fun exists_seed_pool<Curve, CoinX, CoinY>(registry: &Registry): bool {
         table::contains(&registry.seed_pools, type_name::get<RegistryKey<Curve, CoinX, CoinY>>())
     }
     

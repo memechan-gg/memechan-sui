@@ -50,7 +50,7 @@ module memechan::bound_curve_amm_tests {
             
             assert_eq(table::is_empty(index::seed_pools(&registry)), true);
             
-            bound_curve_amm::new<AC_B_USDC, SUI, USDC>(
+            bound_curve_amm::new_default<AC_B_USDC, SUI, USDC>(
                 &mut registry,
                 //mint_for_testing(usdc_amount, ctx(scenario_mut)),
                 ticket_coin_cap,
@@ -62,7 +62,7 @@ module memechan::bound_curve_amm_tests {
 
             assert_eq(coin::get_symbol(&ticket_coin_metadata), to_ascii(utf8(b"ac-b-USDC")));
             assert_eq(coin::get_name(&ticket_coin_metadata), utf8(b"ac bound USD Coin Ticket Coin"));
-            assert_eq(index::exists_<Bound, AC_B_USDC, SUI>(&registry), true);
+            assert_eq(index::exists_seed_pool<Bound, AC_B_USDC, SUI>(&registry), true);
 
             test::return_shared(usdc_metadata);
             test::return_shared(ticket_coin_metadata);
@@ -114,7 +114,7 @@ module memechan::bound_curve_amm_tests {
             let btc_metadata = test::take_shared<CoinMetadata<BTC>>(scenario_mut);
             let lp_coin_metadata = test::take_shared<CoinMetadata<AC_BTCE>>(scenario_mut);
             
-            bound_curve_amm::new<AC_BTCE, SUI, BTC>(
+            bound_curve_amm::new_default<AC_BTCE, SUI, BTC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),
@@ -150,7 +150,7 @@ module memechan::bound_curve_amm_tests {
             let btc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
             let lp_coin_metadata = test::take_shared<CoinMetadata<AC_B_BTC>>(scenario_mut);
             
-            bound_curve_amm::new<AC_B_BTC, SUI, USDC>(
+            bound_curve_amm::new_default<AC_B_BTC, SUI, USDC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),
@@ -188,7 +188,7 @@ module memechan::bound_curve_amm_tests {
 
             burn_for_testing(coin::mint(&mut lp_coin_cap, 100, ctx(scenario_mut)));
             
-            bound_curve_amm::new<AC_B_USDC, SUI, USDC>(
+            bound_curve_amm::new_default<AC_B_USDC, SUI, USDC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),

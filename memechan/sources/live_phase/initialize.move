@@ -64,6 +64,7 @@ module memechan::initialize {
             admin_sui_balance,
             meme_balance,
             _,
+            _,
             locked,
             fields,
         ) = seed_pool::destroy_pool<CoinX, SUI, Meme>(seed_pool);
