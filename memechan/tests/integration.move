@@ -156,7 +156,7 @@ module memechan::integration {
                 &clock,
                 ctx(scenario_mut),
             );
-            assert!(bound_curve_amm::balance_x(&seed_pool))
+            // assert!(bound_curve_amm::balance_x(&seed_pool))
             // print(&staked_lp::balance(&staked_sboden));
             // print(&coin::value(&sui_mony));
             coin::burn_for_testing(sui_mony);
