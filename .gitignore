@@ -9,3 +9,4 @@ contracts/protocols
 node_modules/
 # Generated code from sui-client-gen
 codegen/__generated__
+codegen/dist

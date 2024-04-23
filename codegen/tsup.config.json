@@ -1,0 +1,6 @@
+{
+  "entry": ["__generated__/**/*.{ts,tsx}"],
+  "sourcemap": false,
+  "dts": true,
+  "tsconfig": "./tsconfig.json",
+}
