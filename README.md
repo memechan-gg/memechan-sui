@@ -23,16 +23,15 @@ $$
 $$
 \int_{0}^{\Gamma_S} f(x) \, dx = \Gamma_M
 $$
+
 The primitive from $0$ to $\Gamma_S$ is:
+
 $$
-(\frac{a​\Gamma_S^2}{2}+b\Gamma_S+C)−(\frac{a×0^2}{2}+b×0+C)
-\Leftrightarrow \\
-\frac{a​\Gamma_S^2}{2}+b\Gamma_S+C−C
-\Leftrightarrow \\
-\frac{a​\Gamma_S^2}{2}+b\Gamma_S
+(\frac{a​\Gamma_S^2}{2}+b\Gamma_S+C)−(\frac{a×0^2}{2}+b×0+C) \Leftrightarrow \\ \frac{a​\Gamma_S^2}{2}+b\Gamma_S+C−C \Leftrightarrow \\ \frac{a​\Gamma_S^2}{2}+b\Gamma_S
 $$
 
 **Therefore the restriction follows:**
+
 $$
 \Gamma_M = \frac{a​\Gamma_S^2}{2}+b\Gamma_S
 $$
@@ -48,7 +47,7 @@ $$
 Therefore we conclude that when:
 
 $$
-S=\Gamma_S \Longrightarrow \frac{1}{\hat{M}}= \frac{\Gamma_S}{\Omega_M . PF}
+S=\Gamma_S \Longrightarrow \frac{1}{\hat{M}}= \frac{\Gamma_S}{\Omega_M.PF}
 $$
 
 Therefore it follows:
@@ -64,49 +63,13 @@ $$
 We are left to find out the values of $a$ and $b$ for $\hat{M} = aS+b$ that satisfy the above restrictions:
 
 $$
-\begin{align*}
-
-\begin{cases} \hat{M} = aS+b \\ S = \Gamma_S \\ \hat{M} = \frac{\Omega_M . PF}{\Gamma_S} \end{cases} \Longrightarrow
-\begin{cases} \frac{\Omega_M . PF}{\Gamma_S} = a\Gamma_S+b \\ ... \\ ... \end{cases}
-\\
-
-\begin{cases} b = \frac{\Omega_M . PF}{\Gamma_S} - a\Gamma_S \\ ... \\ ... \end{cases}
-
-\end{align*}
+\begin{align*} \begin{cases} \hat{M} = aS+b \\ S = \Gamma_S \\ \hat{M} = \frac{\Omega_M . PF}{\Gamma_S} \end{cases} \Longrightarrow \begin{cases} \frac{\Omega_M . PF}{\Gamma_S} = a\Gamma_S+b \\ ... \\ ... \end{cases} \\ \begin{cases} b = \frac{\Omega_M . PF}{\Gamma_S} - a\Gamma_S \\ ... \\ ... \end{cases} \end{align*}
 $$
 
 Now, we know that per the first restriction that $\Gamma_M = \frac{a​\Gamma_S^2}{2}+b\Gamma_S$:
 
 $$
-\begin{align*}
-
-\begin{cases} b = \frac{\Omega_M . PF}{\Gamma_S} - a\Gamma_S \\ \Gamma_M = \frac{a​\Gamma_S^2}{2}+b\Gamma_S \end{cases}
-
-\Longrightarrow
-
-\begin{cases} ... \\ \Gamma_M = \frac{a​\Gamma_S^2}{2}+\Gamma_S(\frac{\Omega_M . PF}{\Gamma_S} - a\Gamma_S) \end{cases} \\
-
-\begin{cases} ... \\ \Gamma_M = \frac{a​\Gamma_S^2}{2}+\Omega_M PF - a\Gamma_S^2 \end{cases}
-
-\Longrightarrow
-
-\begin{cases} ... \\ \Gamma_M = -\frac{a​\Gamma_S^2}{2}+ \Omega_M PF \end{cases} \\
-
-\begin{cases} b = \frac{\Omega_M . PF}{\Gamma_S} - a\Gamma_S \\ a = \frac{2(\Omega_M PF - \Gamma_M)}{\Gamma_S^2}\end{cases}
-
-\Longrightarrow
-
-\begin{cases} b = \frac{\Omega_M.PF}{\Gamma_S} - \frac{2(\Omega_M PF - \Gamma_M)}{\Gamma_S^2}.\Gamma_S \\ ... \end{cases}
-
-\\
-
-\begin{cases} b = \frac{\Omega_M PF - 2\Omega_M PF+2\Gamma_M}{\Gamma_S} \\ ... \end{cases}
-
-\Longrightarrow
-
-\begin{cases} b = \frac{2\Gamma_M - \Omega_M PF}{\Gamma_S} \\ a = \frac{2(\Omega_M PF - \Gamma_M)}{\Gamma_S^2} \end{cases}
-
-\end{align*}
+\begin{align*} \begin{cases} b = \frac{\Omega_M . PF}{\Gamma_S} - a\Gamma_S \\ \Gamma_M = \frac{a​\Gamma_S^2}{2}+b\Gamma_S \end{cases} \Longrightarrow \begin{cases} ... \\ \Gamma_M = \frac{a​\Gamma_S^2}{2}+\Gamma_S(\frac{\Omega_M . PF}{\Gamma_S} - a\Gamma_S) \end{cases} \\ \begin{cases} ... \\ \Gamma_M = \frac{a​\Gamma_S^2}{2}+\Omega_M PF - a\Gamma_S^2 \end{cases} \Longrightarrow \begin{cases} ... \\ \Gamma_M = -\frac{a​\Gamma_S^2}{2}+ \Omega_M PF \end{cases} \\ \begin{cases} b = \frac{\Omega_M . PF}{\Gamma_S} - a\Gamma_S \\ a = \frac{2(\Omega_M PF - \Gamma_M)}{\Gamma_S^2}\end{cases} \Longrightarrow \begin{cases} b = \frac{\Omega_M.PF}{\Gamma_S} - \frac{2(\Omega_M PF - \Gamma_M)}{\Gamma_S^2}.\Gamma_S \\ ... \end{cases} \\ \begin{cases} b = \frac{\Omega_M PF - 2\Omega_M PF+2\Gamma_M}{\Gamma_S} \\ ... \end{cases} \Longrightarrow \begin{cases} b = \frac{2\Gamma_M - \Omega_M PF}{\Gamma_S} \\ a = \frac{2(\Omega_M PF - \Gamma_M)}{\Gamma_S^2} \end{cases} \end{align*}
 $$
 
 ----
