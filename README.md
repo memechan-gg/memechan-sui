@@ -15,11 +15,7 @@ $$
 From which we compute the amount $\Delta M$ to swap, given an input $\Delta S$:
 
 $$
-\Delta M = \int_{\hat{S_t}}^{S_{t+1}} f(S) \, ds = \frac{a S_{t+1}^2}{2}+bS_{t+1}+C-(\frac{aS_t^2}{2}+bS_t + C)
-
-= \frac{a S_{t+1}^2}{2}+bS_{t+1}-\frac{aS_t^2}{2}-bS_t
-
-= \frac{a (S_{t+1}^2 -S_t^2)}{2}+b(S_{t+1}-S_t)
+\Delta M = \int_{\hat{S_t}}^{S_{t+1}} f(S) \, ds = \frac{a S_{t+1}^2}{2}+bS_{t+1}+C-(\frac{aS_t^2}{2}+bS_t + C) = \frac{a S_{t+1}^2}{2}+bS_{t+1}-\frac{aS_t^2}{2}-bS_t = \frac{a (S_{t+1}^2 -S_t^2)}{2}+b(S_{t+1}-S_t)
 $$
 
 **Restriction 1:** The area under the curve must be equal to the target amount of tokens to sell in the seed phase:
