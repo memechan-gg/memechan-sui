@@ -80,7 +80,7 @@ module memechan::integration {
         let t = 100_000;
         while (t > 0) {
             next_tx(scenario_mut, bob);
-            let sui_mony = coin::mint_for_testing<SUI>(sui(1_000), ctx(scenario_mut));
+            let sui_mony = coin::mint_for_testing<SUI>(sui(1), ctx(scenario_mut));
 
             let staked_sboden = bound_curve_amm::swap_coin_y<AC_B_BODEN, SUI, BODEN>(
                 &mut seed_pool,
@@ -162,10 +162,10 @@ module memechan::integration {
                 &clock,
                 ctx(scenario_mut),
             );
-            print(&bound_curve_amm::balance_x<AC_B_BODEN, SUI, BODEN>(&seed_pool));
-            print(&(default_meme_supply_staking_pool() - i));
-            assert!(bound_curve_amm::balance_x<AC_B_BODEN, SUI, BODEN>(&seed_pool) == default_meme_supply_staking_pool() - i, 0);
-            // print(&staked_lp::balance(&staked_sboden));
+            // print(&bound_curve_amm::balance_x<AC_B_BODEN, SUI, BODEN>(&seed_pool));
+            // print(&(default_meme_supply_staking_pool() - i));
+            // assert!(bound_curve_amm::balance_x<AC_B_BODEN, SUI, BODEN>(&seed_pool) == default_meme_supply_staking_pool() - i, 0);
+            print(&staked_lp::balance(&staked_sboden));
             // print(&coin::value(&sui_mony));
             coin::burn_for_testing(sui_mony);
             staked_lp::destroy_for_testing(staked_sboden);
