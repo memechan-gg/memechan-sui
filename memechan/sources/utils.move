@@ -9,7 +9,13 @@ module memechan::utils {
     use suitears::comparator;
     use suitears::math64::mul_div_up;
 
+    /// The amount of Mist per Sui token based on the fact that mist is
+    /// 10^-9 of a Sui token
+    const MIST_PER_SUI: u64 = 1_000_000_000;
+
     use memechan::errors;
+
+    public fun mist(sui: u64): u64 { MIST_PER_SUI * sui }
 
     public fun are_coins_suitable<CoinA, CoinB>(): bool {
         let coin_a_type_name = type_name::get<CoinA>();

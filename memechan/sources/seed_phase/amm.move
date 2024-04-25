@@ -1,5 +1,6 @@
 module memechan::bound_curve_amm {
     use std::type_name;
+    use std::debug::print;
 
     use sui::object::{Self, UID};
     use sui::dynamic_field as df;
@@ -13,6 +14,7 @@ module memechan::bound_curve_amm {
     use sui::token::{Self, Token, TokenPolicy};
 
     use memechan::math256::pow_2;
+    use memechan::utils::mist;
     use suitears::math256::sqrt_down;
 
     use memechan::index::{Self, Registry, policies_mut};
@@ -36,20 +38,21 @@ module memechan::bound_curve_amm {
     // const DEFAULT_MEME_SUPPLY_FOR_LP_LIQUIDITY: u64 = 200_000_000_000_000;
 
     const DEFAULT_PRICE_FACTOR: u64 = 2;
-    const DEFAULT_MAX_M_LP: u256 = 200_000_000;
-    const DEFAULT_MAX_M: u256 = 900_000_000;
+    const DEFAULT_MAX_M_LP: u256 = 200_000_000_000_000;
+    const DEFAULT_MAX_M: u256 = 900_000_000_000_000;
     const DEFAULT_MAX_S: u256 =      30_000;
 
-    const DECIMALS_M: u256 = 1_000_000;
-    const DECIMALS_S: u256 = 1_000_000_000;
+    const DECIMALS_ALPHA: u256 = 1_000_000; // consider increase
+    const DECIMALS_BETA: u256 = 1_000_000; // consider increase
+    // const DECIMALS_S: u256 = 1_000_000_000;
 
     public fun default_admin(): u256 { DEFAULT_ADMIN_FEE }
     public fun default_price_factor(): u64 { DEFAULT_PRICE_FACTOR }
-    public fun default_gamma_m(): u256 { DEFAULT_MAX_M * DECIMALS_M }
-    public fun default_omega_m(): u256 { DEFAULT_MAX_M_LP * DECIMALS_M }
-    public fun default_gamma_s(): u256 { DEFAULT_MAX_S * DECIMALS_S }
-    public fun decimals_m(): u256 { DECIMALS_M }
-    public fun decimals_y(): u256 { DECIMALS_S }
+    public fun default_gamma_m(): u256 { DEFAULT_MAX_M }
+    public fun default_omega_m(): u256 { DEFAULT_MAX_M_LP }
+    public fun default_gamma_s(): u256 { DEFAULT_MAX_S }
+    // public fun decimals_m(): u256 { DECIMALS_M }
+    // public fun decimals_y(): u256 { DECIMALS_S }
 
     // Errors
 
@@ -79,12 +82,21 @@ module memechan::bound_curve_amm {
         locked: bool,
     }
 
+    fun gamma_s_mist<M, S, Meme>(
+        self: &PoolState<M, S, Meme>,
+    ): u64 {
+        mist(self.config.gamma_s)
+    }
+
     struct Config has store, drop {
-        alpha: u256,
+        alpha_abs: u256, // |alpha|, because alpha is negative
         beta: u256,
         price_factor: u64,
-        gamma_s: u64, // DEFAULT_MAX_S * DECIMALS_S = 
+        // In sui denomination
+        gamma_s: u64,
+        // In raw denomination
         gamma_m: u64, // DEFAULT_MAX_M * DECIMALS_M = 900_000_000_000_000
+        // In raw denomination
         omega_m: u64, // DEFAULT_MAX_M_LP * DECIMALS_M = 200_000_000_000_000
     }
 
@@ -177,7 +189,7 @@ module memechan::bound_curve_amm {
         share_object(pool);
     }
 
-    public fun compute_alpha(
+    public fun compute_alpha_abs(
         gamma_s: u256,
         gamma_m: u256,
         omega_m: u256,
@@ -185,9 +197,9 @@ module memechan::bound_curve_amm {
     ): u256 {
         let left = omega_m * (price_factor as u256);
         assert!(left < gamma_m, EBondingCurveMustBeNegativelySloped);
-        
-      
-        2 * ( left - gamma_m ) / (pow_2((gamma_s as u256)))
+
+        // We compute |alpha|, hence the subtraction is switched
+        (2 * ( gamma_m - left ) * DECIMALS_ALPHA) / (pow_2((gamma_s as u256)))
     }
     
     public fun compute_beta(
@@ -199,9 +211,8 @@ module memechan::bound_curve_amm {
         let left = (2 * gamma_m);
         let right = omega_m * (price_factor as u256);
         assert!(left > right, EBondingCurveInterceptMustBePositive);
-        
       
-        ( left - right ) / gamma_s
+        (( left - right ) * DECIMALS_BETA) / gamma_s
     }
 
     // === Public-View Functions ===
@@ -306,8 +317,7 @@ module memechan::bound_curve_amm {
             admin_balance_m: balance::zero(),
             admin_balance_s: balance::zero(),
             config: Config {
-
-                alpha: compute_alpha(
+                alpha_abs: compute_alpha_abs(
                     (gamma_s as u256),
                     (gamma_m as u256),
                     (omega_m as u256),
@@ -361,7 +371,7 @@ module memechan::bound_curve_amm {
             pool_state, 
             coin_in_amount, 
             coin_s_min_value, 
-            true
+            false,
         );
 
         if (swap_amount.admin_fee_in != 0) {
@@ -391,13 +401,13 @@ module memechan::bound_curve_amm {
         let s_a = (s_a as u256);
         let s_b = (s_b as u256);
 
-        let alpha = &self.config.alpha;
+        let alpha_abs = &self.config.alpha_abs;
         let beta = &self.config.beta;
 
-        let left = ( *alpha * (pow_2(s_b) - pow_2(s_a)) ) / 2;
-        let right = *beta * (s_b - s_a);
+        let left = (*beta * (s_b - s_a) / DECIMALS_BETA);
+        let right = ( *alpha_abs * (pow_2(s_b) - pow_2(s_a)) ) / (2 * DECIMALS_ALPHA);
 
-        ((left + right) as u64)
+        ((left - right) as u64)
     }
     
     public fun compute_delta_s<M, S, Meme>(
@@ -408,19 +418,24 @@ module memechan::bound_curve_amm {
         let s_a = (s_a as u256);
         let delta_m = (delta_m as u256);
 
-        let alpha = &self.config.alpha;
+        let alpha_abs = &self.config.alpha_abs;
         let beta = &self.config.beta;
 
-        let a = *alpha;
-        let b = (2 * *alpha * s_a) + (2 * *beta);
-        let inv_c = 2 * delta_m;
+        // SQRT
+        let sqrt_i_term = pow_2(
+            2 * ((*beta * DECIMALS_ALPHA) - (*alpha_abs * s_a * DECIMALS_BETA)) / (DECIMALS_ALPHA * DECIMALS_BETA)
+        ) * DECIMALS_ALPHA;
 
-        // is `+` and not `-` because c is in inverted
-        let sqrt_term = sqrt_down(pow_2(b) + (4 * a * inv_c));
+        let sqrt_ii_term = (8 * *alpha_abs * delta_m);
 
-        let num = sqrt_term - b;
+        let sqrt_term = sqrt_down(
+            (sqrt_i_term - sqrt_ii_term) / DECIMALS_ALPHA
+        );
 
-        (num / (2 * a) as u64 )
+        let second_term = 2 * ((*beta * DECIMALS_ALPHA) - (*alpha_abs * s_a * DECIMALS_BETA)) / (DECIMALS_ALPHA * DECIMALS_BETA);
+        let num = sqrt_term - second_term;
+
+        ((num * DECIMALS_ALPHA) / (2 * *alpha_abs) as u64 )
     }
 
     public fun buy_meme<M, S, Meme>(
@@ -442,7 +457,7 @@ module memechan::bound_curve_amm {
             pool_state, 
             coin_in_amount, 
             coin_m_min_value,
-            false,
+            true,
         );
 
         if (swap_amount.admin_fee_in != 0) {
@@ -493,7 +508,7 @@ module memechan::bound_curve_amm {
 
         let p = &self.config;
 
-        let max_delta_s = (p.gamma_s as u64) - s_t0;
+        let max_delta_s = (gamma_s_mist(self)) - s_t0;
         
         let admin_fee_in = fees::get_fee_in_amount(&self.fees, delta_s);
         let is_max = delta_s - admin_fee_in > max_delta_s;
@@ -505,6 +520,11 @@ module memechan::bound_curve_amm {
         } else {
             compute_delta_m(self, s_t0, s_t0 + net_delta_s)
         };
+        print(&is_max);
+        print(&delta_s); 
+        print(&admin_fee_in);
+        print(&max_delta_s); // 30_000
+        abort(0);
 
         let admin_fee_out = fees::get_fee_out_amount(&self.fees, delta_m);
         let net_delta_m = delta_m - admin_fee_out;
@@ -668,5 +688,107 @@ module memechan::bound_curve_amm {
         
         balance::join(&mut pool_state.balance_m, balance::create_for_testing(coin_m_amount));
         balance::join(&mut pool_state.balance_s, coin::into_balance(coin_s));
+    }
+
+    #[test]
+    public fun test_alpha_abs() {
+        let alpha_abs = compute_alpha_abs(
+            default_gamma_s(),
+            default_gamma_m(),
+            default_omega_m(),
+            default_price_factor(),
+        );
+        assert!(alpha_abs == 1_111_111_111_111, 0);
+
+        let alpha_abs = compute_alpha_abs(
+            63_000,
+            1_400_000_000_000_000,
+            280_000_000_000_000,
+            2,
+        );
+        assert!(alpha_abs == 423_280_423_280, 0);
+        
+        let alpha_abs = compute_alpha_abs(
+            47_000,
+            1_800_000_000_000_000,
+            620_000_000_000_000,
+            2,
+        );
+        assert!(alpha_abs == 507_016_749_660, 0);
+        
+        let alpha_abs = compute_alpha_abs(
+            1000,
+            6_900_000_000_000_000,
+            1_830_000_000_000_000,
+            2,
+        );
+        assert!(alpha_abs == 6_480_000_000_000_000 , 0);
+        
+        let alpha_abs = compute_alpha_abs(
+            3_4000,
+            5_600_000_000_000_000,
+            1_800_000_000_000_000,
+            2,
+        );
+        assert!(alpha_abs == 3_460_207_612_456, 0);
+        
+        let alpha_abs = compute_alpha_abs(
+            9_1000,
+            3_300_000_000_000_000,
+            660_000_000_000_000,
+            2,
+        );
+        assert!(alpha_abs == 478_203_115_565, 0);
+    }
+
+    #[test]
+    public fun test_beta() {
+        let beta = compute_beta(
+            default_gamma_s(),
+            default_gamma_m(),
+            default_omega_m(),
+            default_price_factor(),
+        );
+        assert!(beta == 46_666_666_666_666_666, 0);
+
+        let beta = compute_beta(
+            63_000,
+            1_400_000_000_000_000,
+            280_000_000_000_000,
+            2,
+        );
+        assert!(beta ==  35_555_555_555_555_555, 0);
+        
+        let beta = compute_beta(
+            47_000,
+            1_800_000_000_000_000,
+            620_000_000_000_000,
+            2,
+        );
+        assert!(beta == 50_212_765_957_446_808, 0);
+        
+        let beta = compute_beta(
+            1000,
+            6_900_000_000_000_000,
+            1_830_000_000_000_000,
+            2,
+        );
+        assert!(beta == 10_140_000_000_000_000_000, 0);
+        
+        let beta = compute_beta(
+            3_4000,
+            5_600_000_000_000_000,
+            1_800_000_000_000_000,
+            2,
+        );
+        assert!(beta == 223_529_411_764_705_882, 0);
+        
+        let beta = compute_beta(
+            9_1000,
+            3_300_000_000_000_000,
+            660_000_000_000_000,
+            2,
+        );
+        assert!(beta == 58_021_978_021_978_021, 0);
     }
 }
