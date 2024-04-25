@@ -34,9 +34,6 @@ module memechan::bound_curve_amm {
 
     const DEFAULT_ADMIN_FEE: u256 = 5_000_000_000_000_000; // 0.5%
 
-    // const DEFAUL_MEME_SUPPLY_FOR_STAKING_POOL: u64 = 900_000_000_000_000;
-    // const DEFAULT_MEME_SUPPLY_FOR_LP_LIQUIDITY: u64 = 200_000_000_000_000;
-
     const DEFAULT_PRICE_FACTOR: u64 = 2;
     const DEFAULT_MAX_M_LP: u256 = 200_000_000_000_000;
     const DEFAULT_MAX_M: u256 = 900_000_000_000_000;
@@ -44,6 +41,10 @@ module memechan::bound_curve_amm {
 
     const DECIMALS_ALPHA: u256 = 1_000_000; // consider increase
     const DECIMALS_BETA: u256 = 1_000_000; // consider increase
+    // const DECIMALS_ALPHA: u256 = 1_000_000_000_000; // consider increase
+    // const DECIMALS_BETA: u256 = 1_000_000_000_000; // consider increase
+
+
     /// The amount of Mist per Sui token based on the fact that mist is
     /// 10^-9 of a Sui token
     const DECIMALS_S: u256 = 1_000_000_000;
@@ -354,7 +355,7 @@ module memechan::bound_curve_amm {
         pool
     }
 
-    public fun sell_meme<M, S, Meme>( // todo: rename swap_x_for_y
+    public fun sell_meme<M, S, Meme>(
         pool: &mut SeedPool,
         coin_m: Token<M>,
         coin_s_min_value: u64,
@@ -414,30 +415,52 @@ module memechan::bound_curve_amm {
     
     public fun compute_delta_s<M, S, Meme>(
         self: &PoolState<M, S, Meme>,
-        s_a: u64,
+        // s_a: u64,
+        s_b: u64,
         delta_m: u64,
     ): u64 {
-        let s_a = (s_a as u256);
+        let s_b = (s_b as u256);
+        print(&s_b);
         let delta_m = (delta_m as u256);
 
-        let alpha_abs = &self.config.alpha_abs;
-        let beta = &self.config.beta;
+        let alpha_abs = self.config.alpha_abs;
+        let beta = self.config.beta;
 
+        let b_hat_abs = (
+            (2 * beta * DECIMALS_ALPHA * DECIMALS_S) - (2 * alpha_abs * s_b * DECIMALS_BETA)
+            ) / (DECIMALS_ALPHA * DECIMALS_BETA * DECIMALS_S);
+        
         // SQRT
-        let sqrt_i_term = pow_2(
-            2 * ((*beta * DECIMALS_ALPHA) - (*alpha_abs * s_a * DECIMALS_BETA)) / (DECIMALS_ALPHA * DECIMALS_BETA)
-        ) * DECIMALS_ALPHA;
+        let sqrt_term = sqrt_down((
+            (pow_2(b_hat_abs) * DECIMALS_ALPHA) + (8 * delta_m * alpha_abs)
+        ) / DECIMALS_ALPHA);
 
-        let sqrt_ii_term = (8 * *alpha_abs * delta_m);
 
-        let sqrt_term = sqrt_down(
-            (sqrt_i_term - sqrt_ii_term) / DECIMALS_ALPHA
-        );
+        // let sqrt_i_term = pow_2(
+        //     2 * (
+        //         (*beta * DECIMALS_ALPHA * DECIMALS_S) - (*alpha_abs * s_a * DECIMALS_BETA)
+                
+        //         ) / (DECIMALS_ALPHA * DECIMALS_BETA * DECIMALS_S)
+        // ) * DECIMALS_ALPHA;
 
-        let second_term = 2 * ((*beta * DECIMALS_ALPHA) - (*alpha_abs * s_a * DECIMALS_BETA)) / (DECIMALS_ALPHA * DECIMALS_BETA);
-        let num = sqrt_term - second_term;
+        // let sqrt_ii_term = (8 * *alpha_abs * delta_m);
 
-        ((num * DECIMALS_ALPHA) / (2 * *alpha_abs) as u64 )
+        // let sqrt_term = sqrt_down(
+        //     (sqrt_i_term - sqrt_ii_term) / DECIMALS_ALPHA
+        // );
+
+        
+        print(&sqrt_term);
+        print(&b_hat_abs);
+        let num = sqrt_term - b_hat_abs;
+
+        let delta_s = ((num * DECIMALS_ALPHA * DECIMALS_S) / (2 * alpha_abs) as u64);
+
+        print(&delta_s);
+
+        abort(0);
+
+        ((num * DECIMALS_ALPHA * DECIMALS_S) / (2 * alpha_abs) as u64)
     }
 
     public fun buy_meme<M, S, Meme>(
@@ -540,11 +563,11 @@ module memechan::bound_curve_amm {
         delta_m: u64,
         min_delta_s: u64,
     ): SwapAmount {
-        let (m_t0, s_t0) = balances(self);
+        let (m_b, s_b) = balances(self);
 
         let p = &self.config;
 
-        let max_delta_m = (p.gamma_m as u64) - m_t0;
+        let max_delta_m = (p.gamma_m as u64) - m_b; // TODO: confirm
         
         let admin_fee_in = fees::get_fee_in_amount(&self.fees, delta_m);
         let is_max = delta_m - admin_fee_in > max_delta_m; // TODO: shouldn't it be >=?
@@ -552,9 +575,9 @@ module memechan::bound_curve_amm {
         let net_delta_m = math::min(delta_m - admin_fee_in, max_delta_m);
 
         let delta_s = if (is_max) {
-            s_t0
+            s_b // TODO: confirm
         } else {
-            compute_delta_s(self, s_t0, net_delta_m)
+            compute_delta_s(self, s_b, net_delta_m)
         };
 
         let admin_fee_out = fees::get_fee_out_amount(&self.fees, delta_s);
@@ -664,6 +687,12 @@ module memechan::bound_curve_amm {
 
     // === Test Functions ===
 
+    #[test_only]
+    public fun unlock_for_testing<M, S, Meme>(pool: &mut SeedPool) {
+        let pool_state = pool_state_mut<M, S, Meme>(pool);
+        pool_state.locked = false;
+    }
+    
     #[test_only]
     public fun seed_liquidity<M, S, Meme>(pool: &SeedPool): u64 {
         let pool_state = pool_state<M, S, Meme>(pool);
