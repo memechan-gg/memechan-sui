@@ -44,7 +44,9 @@ module memechan::bound_curve_amm {
 
     const DECIMALS_ALPHA: u256 = 1_000_000; // consider increase
     const DECIMALS_BETA: u256 = 1_000_000; // consider increase
-    // const DECIMALS_S: u256 = 1_000_000_000;
+    /// The amount of Mist per Sui token based on the fact that mist is
+    /// 10^-9 of a Sui token
+    const DECIMALS_S: u256 = 1_000_000_000;
 
     public fun default_admin(): u256 { DEFAULT_ADMIN_FEE }
     public fun default_price_factor(): u64 { DEFAULT_PRICE_FACTOR }
@@ -404,8 +406,8 @@ module memechan::bound_curve_amm {
         let alpha_abs = &self.config.alpha_abs;
         let beta = &self.config.beta;
 
-        let left = (*beta * (s_b - s_a) / DECIMALS_BETA);
-        let right = ( *alpha_abs * (pow_2(s_b) - pow_2(s_a)) ) / (2 * DECIMALS_ALPHA);
+        let left = (*beta * (s_b - s_a) / (DECIMALS_BETA * DECIMALS_S));
+        let right = ( *alpha_abs * ((pow_2(s_b) / pow_2(DECIMALS_S)) - (pow_2(s_a) / pow_2(DECIMALS_S))) ) / (2 * DECIMALS_ALPHA);
 
         ((left - right) as u64)
     }
@@ -472,13 +474,12 @@ module memechan::bound_curve_amm {
 
         events::swap<S, M, SwapAmount>(pool_address, coin_in_amount,swap_amount);
 
+        let swap_amount = swap_amount.amount_out;
+        let staked_lp = staked_lp::new(balance::split(&mut pool_state.balance_m, swap_amount), clock, ctx);
+
         if (balance::value(&pool_state.balance_m) == 0) {
             pool_state.locked = true;
         };
-
-        //coin::take(&mut pool_state.balance_m, swap_amount.amount_out, ctx)
-        let swap_amount = swap_amount.amount_out;
-        let staked_lp = staked_lp::new(balance::split(&mut pool_state.balance_m, swap_amount), clock, ctx);
 
         // We keep track of how much each address ownes of coin_m
         add_from_token_acc(pool, swap_amount, sender(ctx));
@@ -511,7 +512,7 @@ module memechan::bound_curve_amm {
         let max_delta_s = (gamma_s_mist(self)) - s_t0;
         
         let admin_fee_in = fees::get_fee_in_amount(&self.fees, delta_s);
-        let is_max = delta_s - admin_fee_in > max_delta_s;
+        let is_max = delta_s - admin_fee_in >= max_delta_s;
         
         let net_delta_s = math::min(delta_s - admin_fee_in, max_delta_s);
 
@@ -520,11 +521,6 @@ module memechan::bound_curve_amm {
         } else {
             compute_delta_m(self, s_t0, s_t0 + net_delta_s)
         };
-        print(&is_max);
-        print(&delta_s); 
-        print(&admin_fee_in);
-        print(&max_delta_s); // 30_000
-        abort(0);
 
         let admin_fee_out = fees::get_fee_out_amount(&self.fees, delta_m);
         let net_delta_m = delta_m - admin_fee_out;
@@ -551,7 +547,7 @@ module memechan::bound_curve_amm {
         let max_delta_m = (p.gamma_m as u64) - m_t0;
         
         let admin_fee_in = fees::get_fee_in_amount(&self.fees, delta_m);
-        let is_max = delta_m - admin_fee_in > max_delta_m;
+        let is_max = delta_m - admin_fee_in > max_delta_m; // TODO: shouldn't it be >=?
         
         let net_delta_m = math::min(delta_m - admin_fee_in, max_delta_m);
 

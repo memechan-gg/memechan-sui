@@ -12,81 +12,14 @@ module memechan::integration {
     use memechan::admin;
     use memechan::staked_lp;
     use memechan::bound_curve_amm::{
-        Self, SeedPool, default_price_factor, default_gamma_s, default_gamma_m, default_omega_m
+        Self, SeedPool, default_price_factor, default_gamma_s, default_gamma_m, default_omega_m,
+        is_ready_to_launch
     };
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people, scenario, deploy_coins, sui};
 
-
     #[test]
-    fun integration() {
-        // print()types::is_one_time_witness<S_BODEN>();
-
-        let (scenario, alice, bob) = start_test();
-
-        let scenario_mut = &mut scenario;
-        
-        // Initiate S joe boden token
-        next_tx(scenario_mut, alice);
-        {
-            ac_b_boden::init_for_testing(ctx(scenario_mut));
-            boden::init_for_testing(ctx(scenario_mut));
-        };
-
-        next_tx(scenario_mut, alice);
-
-        let registry = test::take_shared<Registry>(scenario_mut);
-        let ticket_coin_cap = test::take_from_sender<TreasuryCap<AC_B_BODEN>>(scenario_mut);
-        let ticket_coin_metadata = test::take_shared<CoinMetadata<AC_B_BODEN>>(scenario_mut);
-        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
-        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
-            
-        assert_eq(table::is_empty(index::seed_pools(&registry)), true);
-            
-        bound_curve_amm::new_default<AC_B_BODEN, SUI, BODEN>(
-            &mut registry,
-            ticket_coin_cap, // AC_B_BODEN
-            boden_coin_cap, // BODEN
-            &mut ticket_coin_metadata,
-            &boden_metadata,
-            ctx(scenario_mut)
-        );
-
-        next_tx(scenario_mut, bob);
-
-        let seed_pool = test::take_shared<SeedPool>(scenario_mut);
-        let clock = clock::create_for_testing(ctx(scenario_mut));
-
-        let t = 100_000;
-        while (t > 0) {
-            next_tx(scenario_mut, bob);
-            let sui_mony = coin::mint_for_testing<SUI>(sui(1), ctx(scenario_mut));
-
-            let staked_sboden = bound_curve_amm::buy_meme<AC_B_BODEN, SUI, BODEN>(
-                &mut seed_pool,
-                &mut sui_mony,
-                0,
-                &clock,
-                ctx(scenario_mut),
-            );
-            print(&staked_lp::balance(&staked_sboden));
-            // print(&coin::value(&sui_mony));
-            coin::burn_for_testing(sui_mony);
-            staked_lp::destroy_for_testing(staked_sboden);
-        };
-
-        clock::destroy_for_testing(clock);
-        test::return_shared(boden_metadata);
-        test::return_shared(seed_pool);
-        test::return_shared(ticket_coin_metadata);
-        test::return_shared(registry);
-        test::end(scenario);
-    }
-    
-    #[test]
-    fun integration_2() {
-        // print()types::is_one_time_witness<S_BODEN>();
-
+    fun test_price_curve_buy_meme() {
         let (scenario, alice, bob) = start_test();
 
         let scenario_mut = &mut scenario;
@@ -128,14 +61,14 @@ module memechan::integration {
         let seed_pool = test::take_shared<SeedPool>(scenario_mut);
         let clock = clock::create_for_testing(ctx(scenario_mut));
 
-        let t = 100_000;
-        let i = 0;
-        while (t > 0) {
+        let amt_raised = 0;
+        let meme_tokens_in_pool = (default_gamma_m() as u64);
+
+        loop {
             next_tx(scenario_mut, bob);
 
-            let amt = sui(1);
+            let amt = sui(1000);
             let sui_mony = coin::mint_for_testing<SUI>(amt, ctx(scenario_mut));
-            i = i + amt;
 
             let staked_sboden = bound_curve_amm::buy_meme<AC_B_BODEN, SUI, BODEN>(
                 &mut seed_pool,
@@ -144,13 +77,19 @@ module memechan::integration {
                 &clock,
                 ctx(scenario_mut),
             );
-            // print(&bound_curve_amm::balance_x<AC_B_BODEN, SUI, BODEN>(&seed_pool));
-            // print(&(default_meme_supply_staking_pool() - i));
-            // assert!(bound_curve_amm::balance_x<AC_B_BODEN, SUI, BODEN>(&seed_pool) == default_meme_supply_staking_pool() - i, 0);
+            amt_raised = amt_raised + amt;
+            meme_tokens_in_pool = meme_tokens_in_pool - staked_lp::balance(&staked_sboden);
+            
             print(&staked_lp::balance(&staked_sboden));
-            // print(&coin::value(&sui_mony));
+            assert!(bound_curve_amm::balance_s<AC_B_BODEN, SUI, BODEN>(&seed_pool) == amt_raised, 0);
+            assert!(bound_curve_amm::balance_m<AC_B_BODEN, SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
+
             coin::burn_for_testing(sui_mony);
             staked_lp::destroy_for_testing(staked_sboden);
+
+            if (is_ready_to_launch<AC_B_BODEN, SUI, BODEN>(&mut seed_pool)) {
+                break;
+            }
         };
 
         clock::destroy_for_testing(clock);
