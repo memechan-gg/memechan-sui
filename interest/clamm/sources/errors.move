@@ -1,4 +1,5 @@
 module clamm::errors {
+  // === Constants ===
 
   const INVALID_CURVE: u64 = 0;
   const SAME_COIN_INDEX: u64 = 1;
@@ -49,7 +50,21 @@ module clamm::errors {
   const MISSING_COIN_BALANCE: u64 = 46;
   const VERSION_WAS_UPDATED: u64 = 47;
   const WRONG_POOL_ID: u64 = 48;
-  
+  const INVALID_VERSION: u64 = 49;
+  const INVALID_POOL_ADMIN: u64 = 50;
+  const INVALID_RULE_NAME: u64 = 51;
+  const RULE_NOT_ADDED: u64 = 52;
+  const WRONG_REQUEST_POOL_ADDRESS: u64 = 53;
+  const RULE_NOT_APPROVED: u64 = 54;
+  const THIS_POOL_HAS_HOOKS: u64 = 55;
+  const THIS_POOL_HAS_NO_HOOKS: u64 = 56;
+  const MUST_BE_START_SWAP_REQUEST: u64 = 57;
+  const MUST_BE_START_ADD_LIQUIDITY_REQUEST: u64 = 58;
+  const MUST_BE_START_REMOVE_LIQUIDITY_REQUEST: u64 = 59;
+  const MUST_BE_FINISH_REQUEST: u64 = 60;
+
+  // === Public-View Functions ===
+
   public fun invalid_curve(): u64 {
     INVALID_CURVE
   }
@@ -245,4 +260,52 @@ module clamm::errors {
   public fun wrong_pool_id(): u64 {
     WRONG_POOL_ID
   }
+
+  public fun invalid_version(): u64 {
+    INVALID_VERSION
+  }
+
+  public fun invalid_pool_admin(): u64 {
+    INVALID_POOL_ADMIN
+  } 
+
+  public fun invalid_rule_name(): u64 {
+    INVALID_RULE_NAME
+  }    
+
+  public fun rule_not_added(): u64 {
+    RULE_NOT_ADDED
+  }
+
+  public fun wrong_request_pool_address(): u64 {
+    WRONG_REQUEST_POOL_ADDRESS
+  }
+
+  public fun rule_not_approved(): u64 {
+    RULE_NOT_APPROVED
+  }
+
+  public fun this_pool_has_hooks(): u64 {
+    THIS_POOL_HAS_HOOKS
+  }
+
+  public fun this_pool_has_no_hooks(): u64 {
+    THIS_POOL_HAS_NO_HOOKS
+  }
+
+  public fun must_be_start_swap_request(): u64 {
+    MUST_BE_START_SWAP_REQUEST
+  }  
+
+  public fun must_be_start_add_liquidity_request(): u64 {
+    MUST_BE_START_ADD_LIQUIDITY_REQUEST
+  }       
+
+  public fun must_be_start_remove_liquidity_request(): u64 {
+    MUST_BE_START_REMOVE_LIQUIDITY_REQUEST
+  }
+
+  public fun must_be_finish_request(): u64 {
+    MUST_BE_FINISH_REQUEST
+  }  
 }

@@ -1,6 +1,9 @@
 [package]
 name = "CLAMM"
-version = "0.0.1"
+edition = "2024.beta"
+license = "MIT"
+authors = ["Jose Cerqueira (jose@interestprotocol.com)"]
+published-at = "0x93b6b0212ce86cc7759bd8e8b152bf604d6fa4c6cdeada1f276145bdc61ae1e3"
 
 [dependencies]
 # MoveStdlib = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "framework/testnet" }
@@ -8,4 +11,4 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 SuiTears = { local = "../suitears" }
 
 [addresses]
-clamm = "0x100"
+clamm = "0x93b6b0212ce86cc7759bd8e8b152bf604d6fa4c6cdeada1f276145bdc61ae1e3"
