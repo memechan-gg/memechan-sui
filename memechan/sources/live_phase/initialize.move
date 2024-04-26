@@ -44,7 +44,7 @@ module memechan::initialize {
     const PRECISION: u256 = 1_000_000_000_000_000_000;
 
     // Admin endpoint
-    public fun init_secondary_market<CoinX: key, Meme: key, LP: key>(
+    public fun init_secondary_market<CoinX, Meme, LP>(
         _admin_cap: &Admin,
         seed_pool: SeedPool,
         sui_meta: &CoinMetadata<SUI>,

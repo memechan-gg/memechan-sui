@@ -420,7 +420,7 @@ module memechan::bound_curve_amm {
         delta_m: u64,
     ): u64 {
         let s_b = (s_b as u256);
-        print(&s_b);
+        // print(&s_b);
         let delta_m = (delta_m as u256);
 
         let alpha_abs = self.config.alpha_abs;
@@ -449,10 +449,11 @@ module memechan::bound_curve_amm {
         //     (sqrt_i_term - sqrt_ii_term) / DECIMALS_ALPHA
         // );
 
-        
-        // print(&sqrt_term);
-        // print(&b_hat_abs);
+        print(&sqrt_term);
+        print(&b_hat_abs);
+        // print(&(8 * delta_m * alpha_abs));
         let num = sqrt_term - b_hat_abs;
+        abort(0);
 
         // let delta_s = ((num * DECIMALS_ALPHA * DECIMALS_S) / (2 * alpha_abs) as u64);
 

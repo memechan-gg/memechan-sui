@@ -16,7 +16,7 @@ module memechan::staking_pool {
 
     friend memechan::initialize;
 
-    struct StakingPool<phantom CoinX, phantom Meme: key, phantom LP: key> has key, store {
+    struct StakingPool<phantom CoinX, phantom Meme, phantom LP> has key, store {
         id: UID,
         amm_pool: ID,
         balance_meme: Balance<Meme>,
@@ -29,7 +29,7 @@ module memechan::staking_pool {
         fields: UID,
     }
 
-    public(friend) fun new<CoinX: key, Meme: key, LP: key>(
+    public(friend) fun new<CoinX, Meme, LP>(
         amm_pool: ID,
         balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
@@ -55,7 +55,7 @@ module memechan::staking_pool {
         }
     }
 
-    public fun unstake<CoinX: key, Meme: key, LP: key>(
+    public fun unstake<CoinX, Meme, LP>(
         staking_pool: &mut StakingPool<CoinX, Meme, LP>,
         coin_x: Token<CoinX>,
         policy: &TokenPolicy<CoinX>,
@@ -90,7 +90,7 @@ module memechan::staking_pool {
         )
     }
 
-    public fun withdraw_fees<CoinX: key, Meme: key, LP: key>(staking_pool: &mut StakingPool<CoinX, Meme, LP>, ctx: &mut TxContext): (Coin<Meme>, Coin<LP>) {
+    public fun withdraw_fees<CoinX, Meme, LP>(staking_pool: &mut StakingPool<CoinX, Meme, LP>, ctx: &mut TxContext): (Coin<Meme>, Coin<LP>) {
         
         let vesting_data = table::borrow(&staking_pool.vesting_data, sender(ctx));
 
@@ -102,7 +102,7 @@ module memechan::staking_pool {
         )
     }
 
-    public fun add_fees<CoinX: key, Meme: key, LP: key>(staking_pool: &mut StakingPool<CoinX, Meme, LP>, coin_meme: Coin<Meme>, coin_sui: Coin<LP>) {
+    public fun add_fees<CoinX, Meme, LP>(staking_pool: &mut StakingPool<CoinX, Meme, LP>, coin_meme: Coin<Meme>, coin_sui: Coin<LP>) {
         fee_distribution::add_fees(&mut staking_pool.fee_state, coin_meme, coin_sui);
     }
 }

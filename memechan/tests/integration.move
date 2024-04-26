@@ -71,7 +71,7 @@ module memechan::integration {
         loop {
             next_tx(scenario_mut, bob);
 
-            let amt = sui(30_000);
+            let amt = sui(10_000);
             let sui_mony = coin::mint_for_testing<SUI>(amt, ctx(scenario_mut));
 
             let staked_sboden = bound_curve_amm::buy_meme<TICKET_BODEN, SUI, BODEN>(
@@ -88,6 +88,8 @@ module memechan::integration {
             assert!(bound_curve_amm::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == amt_raised, 0);
             assert!(bound_curve_amm::balance_m<TICKET_BODEN, SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
 
+            // print(&staked_lp::balance(&staked_sboden));
+
             vector::push_back(&mut meme_monies, staked_lp::balance(&staked_sboden));
 
             coin::burn_for_testing(sui_mony);
@@ -101,11 +103,23 @@ module memechan::integration {
 
         bound_curve_amm::unlock_for_testing<TICKET_BODEN, SUI, BODEN>(&mut seed_pool);
 
+
+        print(&@0x00000000000000000000000000000000);
+
+        let i = 0;
+
         loop {
             next_tx(scenario_mut, bob);
 
             let meme_amt = vector::pop_back(&mut meme_monies);
-            let meme_mony = token::mint_for_testing<TICKET_BODEN>(13_333_888_889, ctx(scenario_mut));
+
+            if (i == 0) {
+                meme_amt =13_333_888_889;
+            };
+            i = i + 1;
+
+
+            let meme_mony = token::mint_for_testing<TICKET_BODEN>(meme_amt, ctx(scenario_mut));
 
             let sui_mony = bound_curve_amm::sell_meme<TICKET_BODEN, SUI, BODEN>(
                 &mut seed_pool,
@@ -121,6 +135,8 @@ module memechan::integration {
 
             coin::burn_for_testing(sui_mony);
             // staked_lp::destroy_for_testing(staked_sboden);
+
+            abort(0);
 
             if (bound_curve_amm::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == 0) {
                 break
