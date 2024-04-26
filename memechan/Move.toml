@@ -11,4 +11,4 @@ SuiTears = { local = "../interest/suitears" }
 
 [addresses]
 # memechan = "0x8f9a0538e30a67e900fe0db14ed6845b72e1f89378f204c2f3ba5b25eadc7fd1"
-memechan = "0x87c048496a8cbeea7317e4b614ce4e3e442b9c74608d1bfc7807ca31aa28a914"
+memechan = "0x0"
