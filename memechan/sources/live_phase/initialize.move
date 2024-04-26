@@ -18,6 +18,7 @@ module memechan::initialize {
     use clamm::interest_clamm_volatile_hooks as volatile_hooks;
     use suitears::coin_decimals;
     use memechan::coin_decimals as coin_decimals_;
+    use memechan::utils::mist;
     use suitears::math256::mul_div_up;
 
     struct AddLiquidityHook has drop {}
@@ -39,14 +40,8 @@ module memechan::initialize {
     const OUT_FEE: u256 = 450_000_000_000_000_000; // (0.45%) swap fee when the pool is out balance
     const GAMMA_FEE: u256 = 200_000_000_000_000; //  (0.0002%) speed rate that fee increases mid_fee => out_fee
 
-    /// The amount of Mist per Sui token based on the fact that mist is
-    /// 10^-9 of a Sui token
-    const MIST_PER_SUI: u64 = 1_000_000_000;
-
     const LAUNCH_FEE: u256 =   50_000_000_000_000_000; // 5%
     const PRECISION: u256 = 1_000_000_000_000_000_000;
-
-    public fun sui(mist: u64): u64 { MIST_PER_SUI * mist }
 
     // Admin endpoint
     public fun init_secondary_market<CoinX: key, Meme: key, LP: key>(
@@ -80,7 +75,7 @@ module memechan::initialize {
 
         // 1. Verify if we reached the threshold of SUI amount raised
         let sui_supply = balance::value(&sui_balance);
-        assert!(sui_supply == sui(SUI_THRESHOLD), 0);
+        assert!(sui_supply == mist(SUI_THRESHOLD), 0);
 
         // 2. Collect live fees
         let live_fee_amt = (mul_div_up((sui_supply as u256), LAUNCH_FEE, PRECISION) as u64);

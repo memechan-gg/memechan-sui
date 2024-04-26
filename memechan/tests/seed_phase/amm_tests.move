@@ -75,14 +75,14 @@ module memechan::bound_curve_amm_tests {
 
             assert_eq(bound_curve_amm::meme_coin_supply<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
             assert_eq(bound_curve_amm::ticket_coin_supply<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
-            assert_eq(bound_curve_amm::balance_x<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
-            assert_eq(bound_curve_amm::balance_y<AC_B_USDC, SUI, USDC>(&request.pool), 0);
+            assert_eq(bound_curve_amm::balance_m<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
+            assert_eq(bound_curve_amm::balance_s<AC_B_USDC, SUI, USDC>(&request.pool), 0);
             // assert_eq(bound_curve_amm::decimals_x<AC_B_USDC, SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
             // assert_eq(bound_curve_amm::decimals_y<AC_B_USDC, SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
             assert_eq(bound_curve_amm::seed_liquidity<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
             assert_eq(bound_curve_amm::is_ready_to_launch<AC_B_USDC, SUI, USDC>(&request.pool), false);
-            assert_eq(bound_curve_amm::admin_balance_x<AC_B_USDC, SUI, USDC>(&request.pool), 0);
-            assert_eq(bound_curve_amm::admin_balance_y<AC_B_USDC, SUI, USDC>(&request.pool), 0);
+            assert_eq(bound_curve_amm::admin_balance_m<AC_B_USDC, SUI, USDC>(&request.pool), 0);
+            assert_eq(bound_curve_amm::admin_balance_s<AC_B_USDC, SUI, USDC>(&request.pool), 0);
 
             let fees = bound_curve_amm::fees<AC_B_USDC, SUI, USDC>(&request.pool);
 
