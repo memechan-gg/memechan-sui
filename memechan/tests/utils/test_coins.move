@@ -63,18 +63,18 @@ module memechan::boden {
 }
 
 #[test_only]
-module memechan::ac_b_boden {
+module memechan::ticket_boden {
     use std::option;
 
     use sui::transfer;
     use sui::coin;
     use sui::tx_context::{Self, TxContext};
 
-    struct AC_B_BODEN has drop {}
+    struct TICKET_BODEN has drop {}
 
     #[lint_allow(share_owned)]
-    fun init(witness: AC_B_BODEN, ctx: &mut TxContext) {
-        let (treasury_cap, metadata) = coin::create_currency<AC_B_BODEN>(
+    fun init(witness: TICKET_BODEN, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<TICKET_BODEN>(
             witness,
             6,
             b"sBODEN",
@@ -90,12 +90,12 @@ module memechan::ac_b_boden {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(AC_B_BODEN {}, ctx);
+        init(TICKET_BODEN {}, ctx);
     }
     
     #[test_only]
-    public fun otw_for_testing(): AC_B_BODEN {
-        AC_B_BODEN {}
+    public fun otw_for_testing(): TICKET_BODEN {
+        TICKET_BODEN {}
     }
 }
 
@@ -197,18 +197,18 @@ module memechan::usdt {
 }
 
 #[test_only]
-module memechan::ac_b_btc {
+module memechan::ticket_btc {
     use std::option;
 
     use sui::transfer;
     use sui::coin;
     use sui::tx_context::{Self, TxContext};
 
-    struct AC_B_BTC has drop {}
+    struct TICKET_BTC has drop {}
 
     #[lint_allow(share_owned)]
-    fun init(witness: AC_B_BTC, ctx: &mut TxContext) {
-        let (treasury_cap, metadata) = coin::create_currency<AC_B_BTC>(
+    fun init(witness: TICKET_BTC, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<TICKET_BTC>(
             witness,
             6,
             b"",
@@ -224,23 +224,23 @@ module memechan::ac_b_btc {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(AC_B_BTC {}, ctx);
+        init(TICKET_BTC {}, ctx);
     }
 }
 
 #[test_only]
-module memechan::ac_b_usdc {
+module memechan::ticket_usdc {
     use std::option;
 
     use sui::transfer;
     use sui::coin;
     use sui::tx_context::{Self, TxContext};
 
-    struct AC_B_USDC has drop {}
+    struct TICKET_USDC has drop {}
         
     #[lint_allow(share_owned)]
-    fun init(witness: AC_B_USDC, ctx: &mut TxContext) {
-        let (treasury_cap, metadata) = coin::create_currency<AC_B_USDC>(
+    fun init(witness: TICKET_USDC, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<TICKET_USDC>(
             witness,
             6,
             b"",
@@ -256,25 +256,25 @@ module memechan::ac_b_usdc {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(AC_B_USDC {}, ctx);
+        init(TICKET_USDC {}, ctx);
     }
 }
 
 // * Invalid Coin
 
 #[test_only]
-module memechan::ac_btce {
+module memechan::tickettce {
     use std::option;
 
     use sui::transfer;
     use sui::coin;
     use sui::tx_context::{Self, TxContext};
 
-    struct AC_BTCE has drop {}
+    struct TICKETTCE has drop {}
 
     #[lint_allow(share_owned)]
-    fun init(witness: AC_BTCE, ctx: &mut TxContext) {
-        let (treasury_cap, metadata) = coin::create_currency<AC_BTCE>(
+    fun init(witness: TICKETTCE, ctx: &mut TxContext) {
+        let (treasury_cap, metadata) = coin::create_currency<TICKETTCE>(
             witness,
             8,
             b"",
@@ -290,6 +290,6 @@ module memechan::ac_btce {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(AC_BTCE {}, ctx);
+        init(TICKETTCE {}, ctx);
     }
 }

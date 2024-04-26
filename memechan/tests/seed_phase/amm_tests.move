@@ -17,9 +17,9 @@ module memechan::bound_curve_amm_tests {
     use memechan::fees::{Self, Fees};
     use memechan::admin;
     use memechan::curves::Bound;
-    use memechan::ac_b_btc::{Self, AC_B_BTC};
-    use memechan::ac_btce::{Self, AC_BTCE};
-    use memechan::ac_b_usdc::{Self, AC_B_USDC};
+    use memechan::ticket_btc::{Self, TICKET_BTC};
+    use memechan::tickettce::{Self, TICKETTCE};
+    use memechan::ticket_usdc::{Self, TICKET_USDC};
     use memechan::bound_curve_amm::{Self, SeedPool};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people, scenario, deploy_coins};
@@ -38,19 +38,19 @@ module memechan::bound_curve_amm_tests {
         
         next_tx(scenario_mut, alice);
         {
-            ac_b_usdc::init_for_testing(ctx(scenario_mut));
+            ticket_usdc::init_for_testing(ctx(scenario_mut));
         };
 
         next_tx(scenario_mut, alice);
         {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let ticket_coin_cap = test::take_from_sender<TreasuryCap<AC_B_USDC>>(scenario_mut);
+            let ticket_coin_cap = test::take_from_sender<TreasuryCap<TICKET_USDC>>(scenario_mut);
             let usdc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
-            let ticket_coin_metadata = test::take_shared<CoinMetadata<AC_B_USDC>>(scenario_mut);
+            let ticket_coin_metadata = test::take_shared<CoinMetadata<TICKET_USDC>>(scenario_mut);
             
             assert_eq(table::is_empty(index::seed_pools(&registry)), true);
             
-            bound_curve_amm::new_default<AC_B_USDC, SUI, USDC>(
+            bound_curve_amm::new_default<TICKET_USDC, SUI, USDC>(
                 &mut registry,
                 //mint_for_testing(usdc_amount, ctx(scenario_mut)),
                 ticket_coin_cap,
@@ -60,9 +60,9 @@ module memechan::bound_curve_amm_tests {
                 ctx(scenario_mut)
             );
 
-            assert_eq(coin::get_symbol(&ticket_coin_metadata), to_ascii(utf8(b"ac-b-USDC")));
-            assert_eq(coin::get_name(&ticket_coin_metadata), utf8(b"ac bound USD Coin Ticket Coin"));
-            assert_eq(index::exists_seed_pool<Bound, AC_B_USDC, SUI>(&registry), true);
+            assert_eq(coin::get_symbol(&ticket_coin_metadata), to_ascii(utf8(b"ticket-USDC")));
+            assert_eq(coin::get_name(&ticket_coin_metadata), utf8(b"USD Coin Ticket Coin"));
+            assert_eq(index::exists_seed_pool<Bound, TICKET_USDC, SUI>(&registry), true);
 
             test::return_shared(usdc_metadata);
             test::return_shared(ticket_coin_metadata);
@@ -71,20 +71,20 @@ module memechan::bound_curve_amm_tests {
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<Bound,AC_B_USDC, SUI, USDC>(scenario_mut);
+            let request = request<Bound,TICKET_USDC, SUI, USDC>(scenario_mut);
 
-            assert_eq(bound_curve_amm::meme_coin_supply<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
-            assert_eq(bound_curve_amm::ticket_coin_supply<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
-            assert_eq(bound_curve_amm::balance_m<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
-            assert_eq(bound_curve_amm::balance_s<AC_B_USDC, SUI, USDC>(&request.pool), 0);
-            // assert_eq(bound_curve_amm::decimals_x<AC_B_USDC, SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
-            // assert_eq(bound_curve_amm::decimals_y<AC_B_USDC, SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
-            assert_eq(bound_curve_amm::seed_liquidity<AC_B_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
-            assert_eq(bound_curve_amm::is_ready_to_launch<AC_B_USDC, SUI, USDC>(&request.pool), false);
-            assert_eq(bound_curve_amm::admin_balance_m<AC_B_USDC, SUI, USDC>(&request.pool), 0);
-            assert_eq(bound_curve_amm::admin_balance_s<AC_B_USDC, SUI, USDC>(&request.pool), 0);
+            assert_eq(bound_curve_amm::meme_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
+            assert_eq(bound_curve_amm::ticket_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
+            assert_eq(bound_curve_amm::balance_m<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
+            assert_eq(bound_curve_amm::balance_s<TICKET_USDC, SUI, USDC>(&request.pool), 0);
+            // assert_eq(bound_curve_amm::decimals_x<TICKET_USDC, SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
+            // assert_eq(bound_curve_amm::decimals_y<TICKET_USDC, SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
+            assert_eq(bound_curve_amm::seed_liquidity<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
+            assert_eq(bound_curve_amm::is_ready_to_launch<TICKET_USDC, SUI, USDC>(&request.pool), false);
+            assert_eq(bound_curve_amm::admin_balance_m<TICKET_USDC, SUI, USDC>(&request.pool), 0);
+            assert_eq(bound_curve_amm::admin_balance_s<TICKET_USDC, SUI, USDC>(&request.pool), 0);
 
-            let fees = bound_curve_amm::fees<AC_B_USDC, SUI, USDC>(&request.pool);
+            let fees = bound_curve_amm::fees<TICKET_USDC, SUI, USDC>(&request.pool);
 
             assert_eq(fees::fee_in_percent(&fees), ADMIN_FEE);
             assert_eq(fees::fee_out_percent(&fees), ADMIN_FEE);
@@ -104,17 +104,17 @@ module memechan::bound_curve_amm_tests {
 
         next_tx(scenario_mut, alice);
         {
-            ac_btce::init_for_testing(ctx(scenario_mut));
+            tickettce::init_for_testing(ctx(scenario_mut));
         };
 
         next_tx(scenario_mut, alice);
         {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let lp_coin_cap = test::take_from_sender<TreasuryCap<AC_BTCE>>(scenario_mut);
+            let lp_coin_cap = test::take_from_sender<TreasuryCap<TICKETTCE>>(scenario_mut);
             let btc_metadata = test::take_shared<CoinMetadata<BTC>>(scenario_mut);
-            let lp_coin_metadata = test::take_shared<CoinMetadata<AC_BTCE>>(scenario_mut);
+            let lp_coin_metadata = test::take_shared<CoinMetadata<TICKETTCE>>(scenario_mut);
             
-            bound_curve_amm::new_default<AC_BTCE, SUI, BTC>(
+            bound_curve_amm::new_default<TICKETTCE, SUI, BTC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),
@@ -140,17 +140,17 @@ module memechan::bound_curve_amm_tests {
 
         next_tx(scenario_mut, alice);
         {
-            ac_b_btc::init_for_testing(ctx(scenario_mut));
+            ticket_btc::init_for_testing(ctx(scenario_mut));
         };
 
         next_tx(scenario_mut, alice);
         {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let lp_coin_cap = test::take_from_sender<TreasuryCap<AC_B_BTC>>(scenario_mut);
+            let lp_coin_cap = test::take_from_sender<TreasuryCap<TICKET_BTC>>(scenario_mut);
             let btc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
-            let lp_coin_metadata = test::take_shared<CoinMetadata<AC_B_BTC>>(scenario_mut);
+            let lp_coin_metadata = test::take_shared<CoinMetadata<TICKET_BTC>>(scenario_mut);
             
-            bound_curve_amm::new_default<AC_B_BTC, SUI, USDC>(
+            bound_curve_amm::new_default<TICKET_BTC, SUI, USDC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),
@@ -176,19 +176,19 @@ module memechan::bound_curve_amm_tests {
 
         next_tx(scenario_mut, alice);
         {
-            ac_b_usdc::init_for_testing(ctx(scenario_mut));
+            ticket_usdc::init_for_testing(ctx(scenario_mut));
         };
 
         next_tx(scenario_mut, alice);
         {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let lp_coin_cap = test::take_from_sender<TreasuryCap<AC_B_USDC>>(scenario_mut);
+            let lp_coin_cap = test::take_from_sender<TreasuryCap<TICKET_USDC>>(scenario_mut);
             let usdc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
-            let lp_coin_metadata = test::take_shared<CoinMetadata<AC_B_USDC>>(scenario_mut);
+            let lp_coin_metadata = test::take_shared<CoinMetadata<TICKET_USDC>>(scenario_mut);
 
             burn_for_testing(coin::mint(&mut lp_coin_cap, 100, ctx(scenario_mut)));
             
-            bound_curve_amm::new_default<AC_B_USDC, SUI, USDC>(
+            bound_curve_amm::new_default<TICKET_USDC, SUI, USDC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),

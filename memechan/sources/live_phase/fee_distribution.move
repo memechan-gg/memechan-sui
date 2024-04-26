@@ -21,7 +21,6 @@ module memechan::fee_distribution {
         fees_y_total: u64,
     }
 
-
     public(friend) fun new<CoinX, CoinY>(
         stakes_total: u64,
         ctx: &mut TxContext

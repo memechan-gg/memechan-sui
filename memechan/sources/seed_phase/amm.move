@@ -450,15 +450,13 @@ module memechan::bound_curve_amm {
         // );
 
         
-        print(&sqrt_term);
-        print(&b_hat_abs);
+        // print(&sqrt_term);
+        // print(&b_hat_abs);
         let num = sqrt_term - b_hat_abs;
 
-        let delta_s = ((num * DECIMALS_ALPHA * DECIMALS_S) / (2 * alpha_abs) as u64);
+        // let delta_s = ((num * DECIMALS_ALPHA * DECIMALS_S) / (2 * alpha_abs) as u64);
 
-        print(&delta_s);
-
-        abort(0);
+        // print(&delta_s);
 
         ((num * DECIMALS_ALPHA * DECIMALS_S) / (2 * alpha_abs) as u64)
     }

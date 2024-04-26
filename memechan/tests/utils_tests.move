@@ -11,7 +11,7 @@ module memechan::utils_tests {
     use memechan::utils;
     use memechan::btc::BTC;
     use memechan::eth::ETH;
-    use memechan::ac_b_btc::{Self, AC_B_BTC};
+    use memechan::ticket_btc::{Self, TICKET_BTC};
     use memechan::ac_btc_wrong_decimals::{Self, AC_BTC_WRONG_DECIMALS};
     use memechan::ac_btc_wrong_name::{Self, AC_BTC_WRONG_NAME};
     use memechan::deploy_utils::{scenario, people, deploy_coins};
@@ -101,7 +101,7 @@ module memechan::utils_tests {
             assert_eq(get_ticket_coin_name<BTC>(
                 &btc_metadata
             ),
-            utf8(b"ac bound Bitcoin Ticket Coin")
+            utf8(b"Bitcoin Ticket Coin")
             );
 
             test::return_shared(btc_metadata);
@@ -126,7 +126,7 @@ module memechan::utils_tests {
             assert_eq(get_ticket_coin_symbol<BTC>(
                 &btc_metadata
             ),
-            to_ascii(utf8(b"ac-b-BTC"))
+            to_ascii(utf8(b"ticket-BTC"))
             );
 
             test::return_shared(btc_metadata);
@@ -146,14 +146,14 @@ module memechan::utils_tests {
 
         next_tx(test, alice);
         {
-            ac_b_btc::init_for_testing(ctx(test));
+            ticket_btc::init_for_testing(ctx(test));
         };
 
         next_tx(test, alice); 
         {
-            let metadata = test::take_shared<CoinMetadata<AC_B_BTC>>(test);
+            let metadata = test::take_shared<CoinMetadata<TICKET_BTC>>(test);
 
-            assert_ticket_coin_integrity<AC_B_BTC, SUI, BTC>(&metadata);
+            assert_ticket_coin_integrity<TICKET_BTC, SUI, BTC>(&metadata);
 
             test::return_shared(metadata);
         };

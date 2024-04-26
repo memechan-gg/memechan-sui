@@ -57,8 +57,6 @@ module memechan::utils {
         let meme_coin_name = coin::get_name(meme_coin_metadata);
 
         let expected_ticket_coin_name = string::utf8(b"");
-        string::append_utf8(&mut expected_ticket_coin_name, b"ac ");
-        string::append_utf8(&mut expected_ticket_coin_name, b"bound ");
         string::append_utf8(&mut expected_ticket_coin_name, *string::bytes(&meme_coin_name));
         string::append_utf8(&mut expected_ticket_coin_name, b" Ticket Coin");
         expected_ticket_coin_name
@@ -70,8 +68,7 @@ module memechan::utils {
         let meme_coin_symbol = coin::get_symbol(meme_coin_metadata);
 
         let expected_ticket_coin_symbol = string::utf8(b"");
-        string::append_utf8(&mut expected_ticket_coin_symbol, b"ac-");
-        string::append_utf8(&mut expected_ticket_coin_symbol, b"b-" );
+        string::append_utf8(&mut expected_ticket_coin_symbol, b"ticket-");
         string::append_utf8(&mut expected_ticket_coin_symbol, ascii::into_bytes(meme_coin_symbol));
         string::to_ascii(expected_ticket_coin_symbol)
     }
@@ -104,8 +101,7 @@ module memechan::utils {
         let ticket_coin_module_name = type_name::get_module(&type_name::get<TicketCoin>());
 
         let expected_ticket_coin_module_name = string::utf8(b"");
-        string::append_utf8(&mut expected_ticket_coin_module_name, b"ac_");
-        string::append_utf8(&mut expected_ticket_coin_module_name, b"b_");
+        string::append_utf8(&mut expected_ticket_coin_module_name, b"ticket_");
         string::append_utf8(&mut expected_ticket_coin_module_name, ascii::into_bytes(meme_coin_module_name));
 
         assert!(
