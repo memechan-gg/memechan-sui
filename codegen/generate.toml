@@ -7,6 +7,4 @@ rpc = "https://fullnode.mainnet.sui.io:443"
 
 [packages]
 # based on source code (syntax same as in Move.toml):
-AMM = { local = "../bound_pool" }
-CLAMM = { local = "../interest/clamm" }
-SuiTears = { local = "../interest/suitears" }
+Memechan = { local = "../memechan" }
