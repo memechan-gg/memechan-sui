@@ -23,7 +23,6 @@ module memechan::bound_curve_amm {
     use memechan::events;
     use memechan::admin::Admin;
     use memechan::fees::{Self, Fees};
-    use memechan::curves::Bound;
     use memechan::staked_lp::StakedLP;
     use memechan::token_ir;
 
@@ -162,7 +161,7 @@ module memechan::bound_curve_amm {
         let balance_m: Balance<M> = balance::increase_supply(coin::supply_mut(&mut ticket_coin_cap), (gamma_m as u64));
         let coin_m_value = balance::value(&balance_m);
 
-        let pool = new_pool_internal<Bound, M, S, Meme>(
+        let pool = new_pool_internal<M, S, Meme>(
             registry,
             balance_m,
             coin::zero(ctx),
@@ -180,7 +179,7 @@ module memechan::bound_curve_amm {
         let (policy, policy_address) = token_ir::init_token<M>(&mut pool.id, &ticket_coin_cap, ctx);
         table::add(policies_mut(registry), type_name::get<M>(), policy_address);
 
-        events::new_pool<Bound, M, S>(pool_address, coin_m_value, 0, policy_address);
+        events::new_pool<M, S, Meme>(pool_address, coin_m_value, 0, policy_address);
 
         token::share_policy(policy);
         sui::transfer::public_transfer(ticket_coin_cap, @0x2);
@@ -281,7 +280,7 @@ module memechan::bound_curve_amm {
 
     // === Private Functions ===
 
-    fun new_pool_internal<Curve, M, S, Meme>(
+    fun new_pool_internal<M, S, Meme>(
         registry: &mut Registry,
         coin_m: Balance<M>,
         coin_s: Coin<S>,
@@ -302,7 +301,7 @@ module memechan::bound_curve_amm {
         assert!(coin_s_value == 0, errors::provide_both_coins());
         assert!(launch_coin_value == ((gamma_m + omega_m) as u64), errors::provide_both_coins());
         
-        index::assert_new_pool<Curve, M, S>(registry);
+        index::assert_new_pool<M, S, Meme>(registry);
 
         let pool_state = PoolState {
             balance_m: coin_m,
@@ -345,8 +344,7 @@ module memechan::bound_curve_amm {
         df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
         df::add(fields_mut(&mut pool), AccountingDfKey {}, table::new<address, u64>(ctx));
         
-        index::add_seed_pool<Curve, M, S>(registry, pool_address);
-        //table::add(&mut registry.lp_coins, type_name::get<LpCoin>(), pool_address);
+        index::add_seed_pool<M, S, Meme>(registry, pool_address);
 
         pool
     }

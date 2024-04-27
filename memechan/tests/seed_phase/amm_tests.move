@@ -16,7 +16,6 @@ module memechan::bound_curve_amm_tests {
     use memechan::usdc::USDC;
     use memechan::fees::{Self, Fees};
     use memechan::admin;
-    use memechan::curves::Bound;
     use memechan::ticket_btc::{Self, TICKET_BTC};
     use memechan::tickettce::{Self, TICKETTCE};
     use memechan::ticket_usdc::{Self, TICKET_USDC};
@@ -60,7 +59,7 @@ module memechan::bound_curve_amm_tests {
 
             assert_eq(coin::get_symbol(&ticket_coin_metadata), to_ascii(utf8(b"ticket-USDC")));
             assert_eq(coin::get_name(&ticket_coin_metadata), utf8(b"USD Coin Ticket Coin"));
-            assert_eq(index::exists_seed_pool<Bound, TICKET_USDC, SUI>(&registry), true);
+            assert_eq(index::exists_seed_pool<TICKET_USDC, SUI, USDC>(&registry), true);
 
             test::return_shared(usdc_metadata);
             test::return_shared(ticket_coin_metadata);
@@ -69,7 +68,7 @@ module memechan::bound_curve_amm_tests {
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<Bound,TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
 
             assert_eq(bound_curve_amm::meme_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
             assert_eq(bound_curve_amm::ticket_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
@@ -209,11 +208,11 @@ module memechan::bound_curve_amm_tests {
         fees: Fees
     } 
 
-    fun request<Curve, CoinX, CoinY, LpCoin>(scenario_mut: &Scenario): Request {
+    fun request<M, S, Meme>(scenario_mut: &Scenario): Request {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let pool_address = index::seed_pool_address<Curve, CoinX, CoinY>(&registry);
+            let pool_address = index::seed_pool_address<M, S, Meme>(&registry);
             let pool = test::take_shared_by_id<SeedPool>(scenario_mut, object::id_from_address(option::destroy_some(pool_address)));
-            let fees = bound_curve_amm::fees<CoinX, CoinY, LpCoin>(&pool);
+            let fees = bound_curve_amm::fees<M, S, Meme>(&pool);
 
         Request {
             registry,
