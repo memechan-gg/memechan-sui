@@ -16,7 +16,7 @@ $$F(S) = \begin{cases} 0 & \text{if } S < 0 \\ \alpha S+ \beta & \text{if } 0 \l
 
 From which we compute the amount $\Delta M$ to swap, given an input $\Delta S$:
 
-$$\begin{align*} \Delta M = \int_{a}^{b} f(S) \, ds = \frac{\alpha S_b^2}{2}+\beta S_b+C-(\frac{\alpha S_a^2}{2}+\beta S_a + C) \\ = \frac{\alpha S_b^2}{2}+\beta S_b-\frac{ \alpha S_a^2}{2}-\beta S_a = \frac{\alpha (S_b^2 -S_a^2)}{2}+\beta(S_b-S_a) \end{align*}$$
+$$\begin{align*} \Delta M = \int_{a}^{b} f(S)ds = \frac{\alpha S_b^2}{2}+\beta S_b+C-(\frac{\alpha S_a^2}{2}+\beta S_a + C) \\ = \frac{\alpha S_b^2}{2}+\beta S_b-\frac{ \alpha S_a^2}{2}-\beta S_a = \frac{\alpha (S_b^2 -S_a^2)}{2}+\beta(S_b-S_a) \end{align*}$$
 
 Note: For the purpose of using only unsigned integers we transform this to a canonical formula:
 
