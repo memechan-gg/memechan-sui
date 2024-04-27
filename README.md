@@ -11,7 +11,7 @@ Launchpad protocol for memecoins
 
 We have a piece-wise linear equation:
 
-$$F(S) = M = \begin{cases} 0 & \text{if } S < 0 \\ \alpha S+ \beta & \text{if } 0 \leq S \leq \Gamma_S \\ 0 & \text{if } S > \Gamma_S \end{cases}$$
+$$F(S) = \begin{cases} 0 & \text{if } S < 0 \\ \alpha S+ \beta & \text{if } 0 \leq S \leq \Gamma_S \\ 0 & \text{if } S > \Gamma_S \end{cases}$$
 
 
 From which we compute the amount $\Delta M$ to swap, given an input $\Delta S$:
