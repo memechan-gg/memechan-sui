@@ -47,7 +47,7 @@ module memechan::staking_pool {
             balance_meme,
             balance_lp,
             balance_x: balance::zero(),
-            vesting_data: table::new(ctx),
+            vesting_data: table::new(ctx), // TODO: vesting data should be populated
             vesting_config,
             fee_state: fee_distribution::new(stake_total, ctx),
             pool_admin,

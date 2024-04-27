@@ -11,9 +11,9 @@ module memechan::fee_distribution {
 
     const PRECISION : u256 = 1_000_000_000_000_000;
 
-    struct FeeState<phantom CoinX, phantom CoinY> has store {
-        fees_x: Balance<CoinX>,
-        fees_y: Balance<CoinY>,
+    struct FeeState<phantom M, phantom S> has store {
+        fees_x: Balance<M>,
+        fees_y: Balance<S>,
         user_withdrawals_x: Table<address, u64>,
         user_withdrawals_y: Table<address, u64>,
         stakes_total: u64,
@@ -21,31 +21,25 @@ module memechan::fee_distribution {
         fees_y_total: u64,
     }
 
-    public(friend) fun new<CoinX, CoinY>(
-        stakes_total: u64,
+    // ===== Public Functions =====
+
+    /// Withdraws fees from the `FeeState` and updates user's withdrawals records.
+    ///
+    /// # Arguments
+    ///
+    /// * `state` - A mutable reference to the FeeState.
+    /// * `user_stake` - The stake amount of the user.
+    /// * `ctx` - A mutable reference to the transaction context.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the withdrawn balances of type M and S.
+    ///
+    public fun withdraw<M, S>(
+        state: &mut FeeState<M, S>,
+        user_stake: u64,
         ctx: &mut TxContext
-    ): FeeState<CoinX, CoinY> {
-        return FeeState{
-            fees_x: balance::zero(),
-            fees_y: balance::zero(),
-            user_withdrawals_x: table::new(ctx),
-            user_withdrawals_y: table::new(ctx),
-            stakes_total,
-            fees_x_total: 0,
-            fees_y_total: 0,
-        }
-    }
-
-    public(friend) fun add_fees<CoinX, CoinY>(state: &mut FeeState<CoinX, CoinY>, coinX: Coin<CoinX>, coinY: Coin<CoinY>) {
-        
-        state.fees_x_total = state.fees_x_total + coin::value(&coinX);
-        state.fees_y_total = state.fees_y_total + coin::value(&coinY);
-
-        balance::join(&mut state.fees_x, coin::into_balance(coinX));
-        balance::join(&mut state.fees_y, coin::into_balance(coinY));
-    }
-
-    public fun withdraw<CoinX, CoinY>(state: &mut FeeState<CoinX, CoinY>, user_stake: u64, ctx: &mut TxContext): (Balance<CoinX>, Balance<CoinY>) {
+    ): (Balance<M>, Balance<S>) {
         let sender = tx_context::sender(ctx);
         
         let user_withdrawals_x = table::borrow_mut(&mut state.user_withdrawals_x, sender);
@@ -60,7 +54,66 @@ module memechan::fee_distribution {
         balance::split(&mut state.fees_y, max_withdrawal_y))
     }
 
-    public(friend) fun update_stake<CoinX, CoinY>(user_old_stake: u64, user_stake_diff: u64, state: &mut FeeState<CoinX, CoinY>, ctx: &mut TxContext) : (Balance<CoinX>, Balance<CoinY>) {
+    // ===== Friend Functions =====
+
+    /// Creates a new FeeState instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `stakes_total` - Total stakes accumulated.
+    /// * `ctx` - A mutable reference to the transaction context.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of FeeState.
+    public(friend) fun new<M, S>(
+        stakes_total: u64,
+        ctx: &mut TxContext
+    ): FeeState<M, S> {
+        return FeeState{
+            fees_x: balance::zero(),
+            fees_y: balance::zero(),
+            user_withdrawals_x: table::new(ctx),
+            user_withdrawals_y: table::new(ctx),
+            stakes_total,
+            fees_x_total: 0,
+            fees_y_total: 0,
+        }
+    }
+
+    /// Adds fees to the FeeState.
+    ///
+    /// # Arguments
+    ///
+    /// * `state` - A mutable reference to the FeeState.
+    /// * `coin_m` - The amount of fees in Coin<M>.
+    /// * `coin_s` - The amount of fees in Coin<S>.
+    public(friend) fun add_fees<M, S>(state: &mut FeeState<M, S>, coin_m: Coin<M>, coin_s: Coin<S>) {
+        state.fees_x_total = state.fees_x_total + coin::value(&coin_m);
+        state.fees_y_total = state.fees_y_total + coin::value(&coin_s);
+
+        balance::join(&mut state.fees_x, coin::into_balance(coin_m));
+        balance::join(&mut state.fees_y, coin::into_balance(coin_s));
+    }
+    
+    /// Updates the stake of a user and withdraws corresponding fees.
+    ///
+    /// # Arguments
+    ///
+    /// * `user_old_stake` - The old stake of the user.
+    /// * `user_stake_diff` - The difference in stake.
+    /// * `state` - A mutable reference to the FeeState.
+    /// * `ctx` - A mutable reference to the transaction context.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the withdrawn balances of type M and S.
+    public(friend) fun update_stake<M, S>(
+        user_old_stake: u64,
+        user_stake_diff: u64,
+        state: &mut FeeState<M, S>,
+        ctx: &mut TxContext
+    ) : (Balance<M>, Balance<S>) {
         let (coin_x, coin_y) = withdraw(state, user_old_stake, ctx);
 
         let sender = tx_context::sender(ctx);
@@ -81,8 +134,26 @@ module memechan::fee_distribution {
         (coin_x, coin_y)
     }
 
-    fun get_max_withdraw(user_withdrawals: u64, fees_total: u64, user_stake: u64, stakes_total: u64) : u64 {
-        
+    // ===== Private Functions =====
+
+    /// Calculates the maximum amount of fees a user can withdraw.
+    ///
+    /// # Arguments
+    ///
+    /// * `user_withdrawals` - The total amount the user has already withdrawn.
+    /// * `fees_total` - The total fees collected.
+    /// * `user_stake` - The stake of the user.
+    /// * `stakes_total` - The total stakes accumulated.
+    ///
+    /// # Returns
+    ///
+    /// The maximum amount of fees the user can withdraw.
+    fun get_max_withdraw(
+        user_withdrawals: u64,
+        fees_total: u64,
+        user_stake: u64,
+        stakes_total: u64
+    ) : u64 {
         let (user_withdrawals_total, fees_total, user_stake, stakes_total) = (
             (user_withdrawals as u256),
             (fees_total as u256),
@@ -99,6 +170,16 @@ module memechan::fee_distribution {
         ((allowed_withdrawal / PRECISION) as u64)
     }
 
+    /// Calculates the withdrawal difference based on stake difference.
+    ///
+    /// # Arguments
+    ///
+    /// * `user_withdrawals` - The total amount the user has already withdrawn.
+    /// * `stake_diff` - The difference in stake.
+    ///
+    /// # Returns
+    ///
+    /// The withdrawal difference.
     fun get_withdraw_diff(user_withdrawals: u64, stake_diff: u256) : u64 {
         let withdraw_diff_x = ((user_withdrawals as u256) * stake_diff) / PRECISION;
         (withdraw_diff_x as u64)
