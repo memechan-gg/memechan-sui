@@ -591,6 +591,26 @@ module memechan::bound_curve_amm {
         df::borrow_mut(fields_mut(pool), PoolStateKey {})
     }
 
+    public fun transfer<M, S, Meme>(
+        pool: &mut SeedPool,
+        policy: &TokenPolicy<M>,
+        token: Token<M>,
+        recipient: address,
+        ctx: &mut TxContext,
+    ) {
+        let _ = pool_state_mut<M, S, Meme>(pool);
+        let amount = token::value(&token);
+
+        subtract_from_token_acc(pool, amount, sender(ctx));
+        add_from_token_acc(pool, amount, recipient);
+        token_ir::transfer(
+            policy,
+            token,
+            recipient,
+            ctx,
+        );
+    }
+
     fun subtract_from_token_acc(
         pool: &mut SeedPool,
         amount: u64,
