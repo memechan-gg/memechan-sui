@@ -18,7 +18,7 @@ module memechan::go_live {
     use clamm::interest_pool;
     use clamm::interest_clamm_volatile_hooks as volatile_hooks;
     use suitears::coin_decimals;
-    use memechan::coin_decimals as coin_decimals_;
+    use suitears::owner;
     use memechan::utils::mist;
     use suitears::math256::mul_div_up;
 
@@ -144,7 +144,9 @@ module memechan::go_live {
         let meme_supply_80 = div_mul(meme_supply, BPS, LOCKED);
 
         let amm_meme_balance = balance::split(&mut meme_balance, meme_supply_80);
-        let decimals = coin_decimals::new(ctx);
+        
+        let decimals_cap = coin_decimals::new_cap(ctx);
+        let decimals = coin_decimals::new(&mut decimals_cap, ctx);
 
         coin_decimals::add(&mut decimals, sui_meta);
         coin_decimals::add(&mut decimals, meme_meta);
@@ -194,9 +196,10 @@ module memechan::go_live {
         transfer::public_share_object(staking_pool);
 
         // Cleanup
-        // coin_decimals::destroy_decimals(coin_decimals::remove<SUI>(&mut decimals));
-        // coin_decimals::destroy_decimals(coin_decimals::remove<Meme>(&mut decimals));
+        coin_decimals::remove_and_destroy<SUI>(&mut decimals, &decimals_cap);
+        coin_decimals::remove_and_destroy<Meme>(&mut decimals, &decimals_cap);
 
-        coin_decimals_::destroy_coin_decimals(decimals, ctx);
+        coin_decimals::destroy(decimals, &decimals_cap);
+        owner::destroy(decimals_cap);
     }
 }
