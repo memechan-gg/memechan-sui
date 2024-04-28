@@ -391,6 +391,25 @@ module memechan::seed_pool {
         subtract_from_token_acc(pool, coin_in_amount, sender(ctx));
         coin_s
     }
+    
+    public fun quote_sell_meme<M, S, Meme>(
+        pool: &mut SeedPool,
+        coin_m: u64,
+    ): u64 {
+        assert!(coin_m != 0, errors::no_zero_coin());
+
+        let pool_state = pool_state_mut<M, S, Meme>(pool);
+        assert!(!pool_state.locked, errors::pool_is_locked());
+        
+        let swap_amount = swap_amounts(
+            pool_state, 
+            coin_m, 
+            0, 
+            false,
+        );
+
+        swap_amount.amount_out
+    }
 
     public fun compute_delta_m<M, S, Meme>(
         self: &PoolState<M, S, Meme>,
@@ -486,6 +505,26 @@ module memechan::seed_pool {
         // We keep track of how much each address ownes of coin_m
         add_from_token_acc(pool, swap_amount, sender(ctx));
         staked_lp
+    }
+
+    public fun quote_buy_meme<M, S, Meme>(
+        pool: &mut SeedPool,
+        coin_s: u64,
+    ): u64 {
+        assert!(coin_s != 0, errors::no_zero_coin());
+
+        let pool_state = pool_state_mut<M, S, Meme>(pool);
+        assert!(!pool_state.locked, errors::pool_is_locked());
+
+
+        let swap_amount = swap_amounts(
+            pool_state, 
+            coin_s, 
+            0,
+            true,
+        );
+
+        swap_amount.amount_out
     }
 
     fun new_fees(

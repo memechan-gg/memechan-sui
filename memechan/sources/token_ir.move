@@ -1,4 +1,5 @@
 module memechan::token_ir {
+    use std::vector;
     use sui::object::{Self, UID, id_to_address};
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::balance::Balance;
@@ -13,6 +14,24 @@ module memechan::token_ir {
     struct Witness has drop {}
 
     struct PolicyCapDfKey<phantom T> has store, copy, drop {}
+
+    public fun merge<T>(tokens: vector<Token<T>>): Token<T> {
+        vector::reverse(&mut tokens);
+
+        let token = vector::pop_back(&mut tokens);
+        let len = vector::length(&tokens);
+
+        while (len > 0) {
+            let token_ = vector::pop_back(&mut tokens);
+            token::join(&mut token, token_);
+
+            len = len -1;
+        };
+
+        vector::destroy_empty(tokens);
+
+        token
+    }
 
     public(friend) fun init_token<T>(
         pool_uid: &mut UID,
