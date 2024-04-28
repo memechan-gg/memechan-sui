@@ -16,7 +16,7 @@
 //     use memechan::fees::{Fees};
 //     use memechan::curves::Bound;
 //     use memechan::ac_b_usdc::AC_B_USDC;
-//     use memechan::bound_curve_amm::{Self, SeedPool};
+//     use memechan::seed_pool::{Self, SeedPool};
 //     use memechan::index::{Self, Registry};
 //     use memechan::deploy_utils::{people5, people, scenario, deploy_usdc_sui_pool_default_liquidity};
 //     use memechan::staked_lp;
@@ -52,7 +52,7 @@
 //             let amount_in = 5_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
 
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -68,7 +68,7 @@
 //             let amount_in = 5_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -84,7 +84,7 @@
 //             let amount_in = 5_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -100,7 +100,7 @@
 //             let amount_in = 7_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -116,7 +116,7 @@
 //             let amount_in = 15_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -129,11 +129,11 @@
 //         {
 //             let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
 
-//             let adm_fee_x = (bound_curve_amm::admin_balance_x<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
-//             let adm_fee_y = (bound_curve_amm::admin_balance_y<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
+//             let adm_fee_x = (seed_pool::admin_balance_x<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
+//             let adm_fee_y = (seed_pool::admin_balance_y<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
 
-//             let balance_x = (bound_curve_amm::balance_x<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
-//             let balance_y = (bound_curve_amm::balance_y<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
+//             let balance_x = (seed_pool::balance_x<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
+//             let balance_y = (seed_pool::balance_y<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
 
 //             assert_eq(acc + adm_fee_x, MAX_X * (USDC_DECIMAL_SCALAR as u256));
 //             assert_eq(balance_x, 0);
@@ -171,7 +171,7 @@
 //             let amount_in = 5_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             chad_staked_lp = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             chad_staked_lp = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             coin::burn_for_testing(coin_in);
 //             destroy_request(request);
@@ -184,7 +184,7 @@
 //             let amount_in = 6_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
 
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             coin::burn_for_testing(coin_in);
 //             staked_lp::destroy_for_testing(res);
@@ -198,7 +198,7 @@
 //             let amount_in = 7_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             coin::burn_for_testing(coin_in);
 //             staked_lp::destroy_for_testing(res);
@@ -216,7 +216,7 @@
 
 //             let token_in =  staked_lp::into_token(chad_staked_lp, &clock, policy, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
 
 //             coin::burn_for_testing(res);
 //             destroy_request(request);
@@ -229,7 +229,7 @@
 //             let amount_in = 7_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             coin::burn_for_testing(coin_in);
 //             staked_lp::destroy_for_testing(res);
@@ -243,7 +243,7 @@
 //             let amount_in = 15_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             coin::burn_for_testing(coin_in);
 //             staked_lp::destroy_for_testing(res);
@@ -254,8 +254,8 @@
 //         {
 //             let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
 
-//             let balance_x = (bound_curve_amm::balance_x<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
-//             let balance_y = (bound_curve_amm::balance_y<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
+//             let balance_x = (seed_pool::balance_x<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
+//             let balance_y = (seed_pool::balance_y<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
 
 //             assert_eq(balance_x, 0);
 //             assert_eq(balance_y, MAX_Y * (SUI_DECIMAL_SCALAR as u256));
@@ -291,7 +291,7 @@
 //             let amount_in = 5_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             chad_staked_lp = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             chad_staked_lp = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             coin::burn_for_testing(coin_in);
 //             destroy_request(request);
@@ -304,7 +304,7 @@
 //             let amount_in = 5_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             alice_staked_lp = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             alice_staked_lp = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             coin::burn_for_testing(coin_in);
 //             destroy_request(request);
@@ -317,7 +317,7 @@
 //             let amount_in = 5_000 * SUI_DECIMAL_SCALAR;
 //             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-//             bob_staked_lp = bound_curve_amm::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+//             bob_staked_lp = seed_pool::swap_coin_y<AC_B_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
 //             coin::burn_for_testing(coin_in);
 //             destroy_request(request);
@@ -334,7 +334,7 @@
 
 //             let token_in =  staked_lp::into_token(chad_staked_lp, &clock, policy, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
 
 //             coin::burn_for_testing(res);
 //             destroy_request(request);
@@ -347,7 +347,7 @@
 
 //             let token_in =  staked_lp::into_token(alice_staked_lp, &clock, policy, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
 
 //             coin::burn_for_testing(res);
 //             destroy_request(request);
@@ -360,7 +360,7 @@
 
 //             let token_in =  staked_lp::into_token(bob_staked_lp, &clock, policy, ctx(scenario_mut));
             
-//             let res = bound_curve_amm::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
+//             let res = seed_pool::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
 
 //             coin::burn_for_testing(res);
 //             destroy_request(request);
@@ -381,9 +381,9 @@
 //             let admin = test::take_from_sender<admin::Admin>(scenario_mut);
             
 //             let adm_coin_y;
-//             (adm_token_x, adm_coin_y) = bound_curve_amm::take_fees<AC_B_USDC, SUI, USDC>(&admin, &mut request.pool, policy, ctx(scenario_mut));
+//             (adm_token_x, adm_coin_y) = seed_pool::take_fees<AC_B_USDC, SUI, USDC>(&admin, &mut request.pool, policy, ctx(scenario_mut));
             
-//             //let res = bound_curve_amm::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, adm_token_x, 1, policy, ctx(scenario_mut));
+//             //let res = seed_pool::swap_coin_x<AC_B_USDC, SUI, USDC>(&mut request.pool, adm_token_x, 1, policy, ctx(scenario_mut));
 
 //             coin::burn_for_testing(adm_coin_y);
 //             test::return_to_sender<admin::Admin>(scenario_mut, admin);
@@ -395,8 +395,8 @@
 //         {
 //             let request = request<Bound, AC_B_USDC, SUI, USDC>(scenario_mut);
 
-//             let balance_x = (bound_curve_amm::balance_x<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
-//             let balance_y = (bound_curve_amm::balance_y<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
+//             let balance_x = (seed_pool::balance_x<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
+//             let balance_y = (seed_pool::balance_y<AC_B_USDC, SUI, USDC>(&request.pool) as u256);
 
 //             assert_eq(MAX_X * (USDC_DECIMAL_SCALAR as u256), (balance_x + (sui::token::value(&adm_token_x) as u256)));
 
@@ -435,7 +435,7 @@
 //         let pool = test::take_shared_by_id<SeedPool>(
 //             scenario_mut, object::id_from_address(option::destroy_some(pool_address))
 //         );
-//         let pool_fees = bound_curve_amm::fees<CoinX, CoinY, LPCoinType>(&pool);
+//         let pool_fees = seed_pool::fees<CoinX, CoinY, LPCoinType>(&pool);
 //         let policy = test::take_shared<TokenPolicy<CoinX>>(scenario_mut);
 
 //         Request {

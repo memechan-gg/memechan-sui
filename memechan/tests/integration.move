@@ -12,7 +12,7 @@ module memechan::integration {
     use memechan::ticket_boden::{Self, TICKET_BODEN};
     use memechan::admin;
     use memechan::staked_lp;
-    use memechan::bound_curve_amm::{
+    use memechan::seed_pool::{
         Self, SeedPool, default_price_factor, default_gamma_s, default_gamma_m, default_omega_m,
         is_ready_to_launch
     };
@@ -42,7 +42,7 @@ module memechan::integration {
             
         assert_eq(table::is_empty(index::seed_pools(&registry)), true);
             
-        bound_curve_amm::new<TICKET_BODEN, SUI, BODEN>(
+        seed_pool::new<TICKET_BODEN, SUI, BODEN>(
             &mut registry,
             ticket_coin_cap, // TICKET_BODEN
             boden_coin_cap, // BODEN
@@ -75,7 +75,7 @@ module memechan::integration {
             let amt = sui(sui_amt);
             let sui_mony = coin::mint_for_testing<SUI>(amt, ctx(scenario_mut));
 
-            let staked_sboden = bound_curve_amm::buy_meme<TICKET_BODEN, SUI, BODEN>(
+            let staked_sboden = seed_pool::buy_meme<TICKET_BODEN, SUI, BODEN>(
                 &mut seed_pool,
                 &mut sui_mony,
                 0,
@@ -86,8 +86,8 @@ module memechan::integration {
             meme_tokens_in_pool = meme_tokens_in_pool - staked_lp::balance(&staked_sboden);
             
             // print(&staked_lp::balance(&staked_sboden));
-            assert!(bound_curve_amm::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == amt_raised, 0);
-            assert!(bound_curve_amm::balance_m<TICKET_BODEN, SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
+            assert!(seed_pool::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == amt_raised, 0);
+            assert!(seed_pool::balance_m<TICKET_BODEN, SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
 
             vector::push_back(&mut meme_monies, staked_lp::balance(&staked_sboden));
 
@@ -100,7 +100,7 @@ module memechan::integration {
             }
         };
 
-        bound_curve_amm::unlock_for_testing<TICKET_BODEN, SUI, BODEN>(&mut seed_pool);
+        seed_pool::unlock_for_testing<TICKET_BODEN, SUI, BODEN>(&mut seed_pool);
 
         let i = 0;
 
@@ -108,7 +108,7 @@ module memechan::integration {
             next_tx(scenario_mut, bob);
 
             if (vector::is_empty(&meme_monies)) {
-                let pool_balance = bound_curve_amm::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool);
+                let pool_balance = seed_pool::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool);
                 
                 // Check that the cumulative rounding error of all trades does not exceed 1_000 MIST
                 // The rounding error is in favor of the Pool nonetheless
@@ -126,7 +126,7 @@ module memechan::integration {
 
             let meme_mony = token::mint_for_testing<TICKET_BODEN>(meme_amt, ctx(scenario_mut));
 
-            let sui_mony = bound_curve_amm::sell_meme<TICKET_BODEN, SUI, BODEN>(
+            let sui_mony = seed_pool::sell_meme<TICKET_BODEN, SUI, BODEN>(
                 &mut seed_pool,
                 meme_mony,
                 0,
@@ -139,7 +139,7 @@ module memechan::integration {
 
             coin::burn_for_testing(sui_mony);
 
-            if (bound_curve_amm::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == 0) {
+            if (seed_pool::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == 0) {
                 break
             }
         };

@@ -9,8 +9,8 @@ module memechan::index {
 
     use memechan::errors;
 
-    friend memechan::initialize;
-    friend memechan::bound_curve_amm;
+    friend memechan::go_live;
+    friend memechan::seed_pool;
 
     // === Structs ===
 

@@ -6,7 +6,7 @@ module memechan::token_ir {
     use sui::dynamic_field as df;
     use sui::token::{Self, Token, ActionRequest, TokenPolicy};
 
-    friend memechan::bound_curve_amm;
+    friend memechan::seed_pool;
     friend memechan::staked_lp;
     friend memechan::staking_pool;
 

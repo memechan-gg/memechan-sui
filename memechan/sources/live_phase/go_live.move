@@ -1,18 +1,19 @@
 #[allow(lint(share_owned, self_transfer))]
-module memechan::initialize {
+module memechan::go_live {
     use std::string;
     use sui::transfer;
     use sui::balance;
+    use sui::clock;
     use sui::object;
     use sui::sui::SUI;
     use sui::tx_context::{TxContext, sender};
     use sui::clock::Clock;
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
 
-    use memechan::vesting;
+    use memechan::vesting::{Self, VestingConfig};
     use memechan::admin::Admin;
     use memechan::math::div_mul;
-    use memechan::bound_curve_amm::{Self as seed_pool, SeedPool};
+    use memechan::seed_pool::{Self as seed_pool, SeedPool};
     use memechan::staking_pool;
     use clamm::interest_pool;
     use clamm::interest_clamm_volatile_hooks as volatile_hooks;
@@ -44,12 +45,69 @@ module memechan::initialize {
     const PRECISION: u256 = 1_000_000_000_000_000_000;
 
     // Admin endpoint
-    public fun init_secondary_market<CoinX, Meme, LP>(
+    public fun go_live_default<M, Meme, LP>(
+        admin_cap: &Admin,
+        seed_pool: SeedPool,
+        sui_meta: &CoinMetadata<SUI>,
+        meme_meta: &CoinMetadata<Meme>,
+        treasury_cap: TreasuryCap<LP>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let vesting_config = vesting::default_config(clock);
+
+        go_live_<M, Meme, LP>(
+            admin_cap,
+            seed_pool,
+            sui_meta,
+            meme_meta,
+            treasury_cap,
+            vesting_config,
+            clock,
+            ctx,
+        );
+    }
+
+    // Admin endpoint
+    public fun go_live<M, Meme, LP>(
+        admin_cap: &Admin,
+        seed_pool: SeedPool,
+        sui_meta: &CoinMetadata<SUI>,
+        meme_meta: &CoinMetadata<Meme>,
+        treasury_cap: TreasuryCap<LP>,
+        cliff_delta: u64,
+        end_vesting_delta: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let current_ts = clock::timestamp_ms(clock);
+
+        let vesting_config = vesting::new_config(
+            current_ts,
+            current_ts + cliff_delta,
+            current_ts + end_vesting_delta,
+        );
+
+        go_live_<M, Meme, LP>(
+            admin_cap,
+            seed_pool,
+            sui_meta,
+            meme_meta,
+            treasury_cap,
+            vesting_config,
+            clock,
+            ctx,
+        );
+    }
+    
+    // Admin endpoint
+    public fun go_live_<M, Meme, LP>(
         _admin_cap: &Admin,
         seed_pool: SeedPool,
         sui_meta: &CoinMetadata<SUI>,
         meme_meta: &CoinMetadata<Meme>,
         treasury_cap: TreasuryCap<LP>,
+        vesting_config: VestingConfig,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -63,7 +121,7 @@ module memechan::initialize {
             _,
             locked,
             fields,
-        ) = seed_pool::destroy_pool<CoinX, SUI, Meme>(seed_pool);
+        ) = seed_pool::destroy_pool<M, SUI, Meme>(seed_pool);
 
         assert!(locked, 0);
         assert!(balance::value(&xmeme_balance) == 0, 0);
@@ -122,11 +180,11 @@ module memechan::initialize {
         let pool_id = object::id(&amm_pool);
 
         // 4. Create staking pool
-        let staking_pool = staking_pool::new<CoinX, Meme, LP>(
+        let staking_pool = staking_pool::new<M, Meme, LP>(
             pool_id,
             meme_balance,
             coin::into_balance(lp_tokens),
-            vesting::default_config(clock),
+            vesting_config,
             admin,
             fields,
             ctx,

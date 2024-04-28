@@ -7,7 +7,7 @@ module memechan::admin {
         id: UID
     }
 
- #[allow(unused_function)]
+    #[allow(unused_function)]
     fun init(ctx: &mut TxContext) {
         transfer(Admin { id: object::new(ctx) }, tx_context::sender(ctx));
     }

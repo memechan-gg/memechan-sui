@@ -2,6 +2,7 @@ module memechan::vesting {
     use sui::clock::{Self, Clock};
     
     friend memechan::staking_pool;
+    friend memechan::seed_pool;
 
     const DEFAULT_CLIFF: u64 = 172800000;
     const DEFAULT_LINEAR: u64 = 1209600000;
@@ -20,6 +21,8 @@ module memechan::vesting {
         released: u64,
         notional: u64,
     }
+
+    struct AccountingDfKey has drop, copy, store {}
 
     // ===== Public Functions =====
 
@@ -68,7 +71,7 @@ module memechan::vesting {
     }
 
     public fun to_release(self: &VestingData, config: &VestingConfig, current_ts: u64): u64 {
-        assert!(self.released >= total_vested(self, config, current_ts), EInconsistentVestingData);
+        assert!(self.released <= total_vested(self, config, current_ts), EInconsistentVestingData);
         let to_release = total_vested(self, config, current_ts) - self.released;
 
         to_release
@@ -98,6 +101,9 @@ module memechan::vesting {
         self.released = self.released + amount;
     }
 
+    public(friend) fun notional_mut(self: &mut VestingData) : &mut u64 { &mut self.notional }
+    public(friend) fun accounting_key(): AccountingDfKey { AccountingDfKey {} }
+
     // ===== Getters =====
 
     public fun start_ts(self: &VestingConfig): u64 { self.start_ts }
@@ -107,7 +113,6 @@ module memechan::vesting {
     public fun released(self: &VestingData) : u64 {self.released}
     public fun notional(self: &VestingData) : u64 {self.notional}
     public fun current_stake(self: &VestingData) : u64 {self.notional - self.released}
-
 
     // ===== Tests =====
 

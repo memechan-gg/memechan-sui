@@ -1,4 +1,4 @@
-module memechan::bound_curve_amm {
+module memechan::seed_pool {
     use std::type_name;
 
     use sui::object::{Self, UID};
@@ -25,8 +25,11 @@ module memechan::bound_curve_amm {
     use memechan::fees::{Self, Fees};
     use memechan::staked_lp::StakedLP;
     use memechan::token_ir;
+    use memechan::vesting::{
+        VestingData, notional_mut, accounting_key, new_vesting_data
+    };
 
-    friend memechan::initialize;
+    friend memechan::go_live;
 
     // === Constants ===
 
@@ -65,7 +68,6 @@ module memechan::bound_curve_amm {
     }
 
     struct PoolStateKey has drop, copy, store {}
-    struct AccountingDfKey has drop, copy, store {}
 
     struct PoolState<phantom M, phantom S, phantom Meme> has store {
         /// X --> sMeme token, representing ownership of Meme coin
@@ -342,7 +344,7 @@ module memechan::bound_curve_amm {
         let pool_address = object::uid_to_address(&pool.id);
 
         df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
-        df::add(fields_mut(&mut pool), AccountingDfKey {}, table::new<address, u64>(ctx));
+        df::add(fields_mut(&mut pool), accounting_key(), table::new<address, VestingData>(ctx));
         
         index::add_seed_pool<M, S, Meme>(registry, pool_address);
 
@@ -614,10 +616,11 @@ module memechan::bound_curve_amm {
         amount: u64,
         beneficiary: address,
     ) {
-        let accounting: &mut Table<address, u64> = df::borrow_mut(fields_mut(pool), AccountingDfKey {});
+        let accounting: &mut Table<address, VestingData> = df::borrow_mut(fields_mut(pool), accounting_key());
 
         let position = table::borrow_mut(accounting, beneficiary);
-        *position = *position - amount;
+        let notional = notional_mut(position);
+        *notional = *notional - amount;
     }
     
     fun add_from_token_acc(
@@ -625,14 +628,15 @@ module memechan::bound_curve_amm {
         amount: u64,
         beneficiary: address,
     ) {
-        let accounting: &mut Table<address, u64> = df::borrow_mut(fields_mut(pool), AccountingDfKey {});
+        let accounting: &mut Table<address, VestingData> = df::borrow_mut(fields_mut(pool), accounting_key());
 
         if (!table::contains(accounting, beneficiary)) {
-            table::add(accounting, beneficiary, 0);
+            table::add(accounting, beneficiary, new_vesting_data(amount));
         };
 
         let position = table::borrow_mut(accounting, beneficiary);
-        *position = *position + amount;
+        let notional = notional_mut(position);
+        *notional = *notional + amount;
     }
 
     public fun fields(pool: &SeedPool): &UID { &pool.fields }

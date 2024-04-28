@@ -1,7 +1,7 @@
 module memechan::events {
     use sui::event::emit;
 
-    friend memechan::bound_curve_amm;
+    friend memechan::seed_pool;
     friend memechan::token_ir;
 
     struct NewPool<phantom M, phantom S, phantom Meme> has copy, drop {
