@@ -34,6 +34,26 @@ module memechan::staked_lp {
         balance::value(&staked_lp.balance)
     }
 
+    // Note: inherits latest timestamp, use with care.
+    public entry fun join<T>(self: &mut StakedLP<T>, c: StakedLP<T>) {
+        let StakedLP { id, balance, until_timestamp } = c;
+        
+        let ts = if (until_timestamp > self.until_timestamp) {until_timestamp} else {self.until_timestamp};
+        self.until_timestamp = ts;
+        object::delete(id);
+        balance::join(&mut self.balance, balance);
+    }
+
+    public fun split<T>(
+        self: &mut StakedLP<T>, split_amount: u64, ctx: &mut TxContext
+    ): StakedLP<T> {
+        StakedLP {
+            id: object::new(ctx),
+            balance: balance::split(&mut self.balance, split_amount),
+            until_timestamp: self.until_timestamp,
+        }
+    }
+
     #[test_only]
     public fun destroy_for_testing<CoinX>(staked_lp: StakedLP<CoinX>) {
         let StakedLP { id, balance, until_timestamp: _ }  = staked_lp;

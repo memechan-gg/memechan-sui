@@ -16,7 +16,7 @@ module memechan::go_live {
     use memechan::seed_pool::{Self as seed_pool, SeedPool};
     use memechan::staking_pool;
     use clamm::interest_pool;
-    use clamm::interest_clamm_volatile_hooks as volatile_hooks;
+    use clamm::interest_clamm_volatile as volatile_hooks;
     use suitears::coin_decimals;
     use suitears::owner;
     use memechan::utils::mist;
@@ -156,7 +156,7 @@ module memechan::go_live {
 
         interest_pool::add_rule<AddLiquidityHook>(
             &mut hooks_builder,
-            string::utf8(interest_pool::start_add_liquidity()),
+            string::utf8(interest_pool::start_add_liquidity_name()),
             AddLiquidityHook {},
         );
 
@@ -165,12 +165,12 @@ module memechan::go_live {
 
         let price = (amount_sui * SCALE) / amount_meme;
 
-        let (amm_pool, admin, lp_tokens) = volatile_hooks::new_2_pool(
+        let (amm_pool, admin, lp_tokens) = volatile_hooks::new_2_pool_with_hooks(
             clock,
+            &decimals,
             hooks_builder,
             coin::from_balance(sui_balance, ctx), // coin_a
             coin::from_balance(amm_meme_balance, ctx), // coin_b
-            &decimals,
             coin::treasury_into_supply(treasury_cap),
             vector[A, GAMMA],
             vector[ALLOWED_EXTRA_PROFIT, ADJUSTMENT_STEP, MA_TIME],
