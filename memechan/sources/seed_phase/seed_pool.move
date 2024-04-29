@@ -52,8 +52,9 @@ module memechan::seed_pool {
     public fun default_gamma_m(): u256 { DEFAULT_MAX_M }
     public fun default_omega_m(): u256 { DEFAULT_MAX_M_LP }
     public fun default_gamma_s(): u256 { DEFAULT_MAX_S }
-    // public fun decimals_m(): u256 { DECIMALS_M }
-    // public fun decimals_y(): u256 { DECIMALS_S }
+    public fun decimals_alpha(): u64 { (DECIMALS_ALPHA as u64) }
+    public fun decimals_beta(): u64 { (DECIMALS_BETA as u64) }
+    public fun decimals_s(): u64 { (DECIMALS_S as u64) }
 
     // Errors
 
@@ -477,8 +478,8 @@ module memechan::seed_pool {
         let coin_in_amount = coin::value(coin_s);
 
         let swap_amount = swap_amounts(
-            pool_state, 
-            coin_in_amount, 
+            pool_state,
+            coin_in_amount,
             coin_m_min_value,
             true,
         );
@@ -548,12 +549,18 @@ module memechan::seed_pool {
     ): SwapAmount {
         let (m_t0, s_t0) = balances(self);
 
-        let max_delta_s = (gamma_s_mist(self)) - s_t0;
-        
+        let slack_s = (gamma_s_mist(self)) - s_t0;
+        let max_delta_s = fees::get_gross_amount(&self.fees, slack_s);
+
         let admin_fee_in = fees::get_fee_in_amount(&self.fees, delta_s);
         let is_max = delta_s - admin_fee_in >= max_delta_s;
         
-        let net_delta_s = math::min(delta_s - admin_fee_in, max_delta_s);
+        let net_delta_s = if (is_max) {
+            admin_fee_in = fees::get_fee_in_amount(&self.fees, max_delta_s);
+            slack_s
+        } else {
+            delta_s - admin_fee_in
+        };
 
         let delta_m = if (is_max) {
             m_t0
