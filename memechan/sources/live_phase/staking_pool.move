@@ -5,16 +5,19 @@ module memechan::staking_pool {
     use sui::token::{Self, Token, TokenPolicy};
     use sui::clock::{Self, Clock};
     use sui::balance;
+    use sui::dynamic_field as df;
     use sui::coin::{Self, Coin};
     use sui::tx_context::{sender, TxContext};
 
-    use memechan::vesting::{Self, VestingData, VestingConfig};
     use memechan::token_ir;
     use memechan::fee_distribution::{Self, FeeState};
+    use memechan::vesting::{
+        Self, VestingData, VestingConfig, accounting_key,
+    };
 
     use clamm::pool_admin::PoolAdmin;
 
-    friend memechan::initialize;
+    friend memechan::go_live;
 
     struct StakingPool<phantom CoinX, phantom Meme, phantom LP> has key, store {
         id: UID,
@@ -22,7 +25,6 @@ module memechan::staking_pool {
         balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
         balance_x: Balance<CoinX>,
-        vesting_data: Table<address, VestingData>,
         vesting_config: VestingConfig,
         fee_state: FeeState<Meme, LP>,
         pool_admin: PoolAdmin,
@@ -47,7 +49,6 @@ module memechan::staking_pool {
             balance_meme,
             balance_lp,
             balance_x: balance::zero(),
-            vesting_data: table::new(ctx),
             vesting_config,
             fee_state: fee_distribution::new(stake_total, ctx),
             pool_admin,
@@ -61,8 +62,9 @@ module memechan::staking_pool {
         policy: &TokenPolicy<CoinX>,
         clock: &Clock,
         ctx: &mut TxContext,
-    ): (Coin<Meme>, Coin<LP>) {        
-        let vesting_data = table::borrow(&staking_pool.vesting_data, sender(ctx));
+    ): (Coin<Meme>, Coin<LP>) {
+        let vesting_table: &mut Table<address, VestingData> = df::borrow_mut(&mut staking_pool.fields, accounting_key());
+        let vesting_data = table::borrow(vesting_table, sender(ctx));
         
         let amount_available_to_release = vesting::to_release(
             vesting_data,
@@ -72,7 +74,7 @@ module memechan::staking_pool {
 
         let release_amount = token::value(&coin_x);
         assert!(release_amount <= amount_available_to_release, 0);
-        let vesting_data = table::borrow_mut(&mut staking_pool.vesting_data, sender(ctx));
+        let vesting_data = table::borrow_mut(vesting_table, sender(ctx));
 
         let vesting_old = vesting::current_stake(vesting_data);
 
@@ -91,8 +93,8 @@ module memechan::staking_pool {
     }
 
     public fun withdraw_fees<CoinX, Meme, LP>(staking_pool: &mut StakingPool<CoinX, Meme, LP>, ctx: &mut TxContext): (Coin<Meme>, Coin<LP>) {
-        
-        let vesting_data = table::borrow(&staking_pool.vesting_data, sender(ctx));
+        let vesting_table: &Table<address, VestingData> = df::borrow(&staking_pool.fields, accounting_key());
+        let vesting_data = table::borrow(vesting_table, sender(ctx));
 
         let (balance_meme, balance_sui) = fee_distribution::withdraw(&mut staking_pool.fee_state, vesting::current_stake(vesting_data), ctx);
 

@@ -9,8 +9,8 @@ module memechan::index {
 
     use memechan::errors;
 
-    friend memechan::initialize;
-    friend memechan::bound_curve_amm;
+    friend memechan::go_live;
+    friend memechan::seed_pool;
 
     // === Structs ===
 
@@ -22,15 +22,19 @@ module memechan::index {
         policies: Table<TypeName, address>
     }
 
-    // // TODO make keys more compact like:
-    // struct RegistryEntry {
+    // struct RegistryV2 has key {
+    //     id: UID,
+    //     list: Table<TypeName, MemeData>,
+    // }
+
+    // struct MemeData has store, copy {
     //     seed_pool: address,
     //     staking_pool: Option<address>,
     //     interest_pools: Option<address>,
     //     policy: Option<address>,
     // }
 
-    struct RegistryKey<phantom Curve, phantom CoinX, phantom CoinY> has drop {}
+    struct RegistryKey<phantom M, phantom S, phantom Meme> has drop {}
 
     #[allow(unused_function)]
     fun init(ctx: &mut TxContext) {
@@ -49,8 +53,8 @@ module memechan::index {
         &registry.seed_pools
     }
 
-    public fun seed_pool_address<Curve, CoinX, CoinY>(registry: &Registry): Option<address> {
-        let registry_key = type_name::get<RegistryKey<Curve, CoinX, CoinY>>();
+    public fun seed_pool_address<M, S, Meme>(registry: &Registry): Option<address> {
+        let registry_key = type_name::get<RegistryKey<M, S, Meme>>();
 
         if (table::contains(&registry.seed_pools, registry_key))
             option::some(*table::borrow(&registry.seed_pools, registry_key))
@@ -58,8 +62,8 @@ module memechan::index {
             option::none()
     }
     
-    public fun staking_pool_address<Curve, CoinX, CoinY>(registry: &Registry): Option<address> {
-        let registry_key = type_name::get<RegistryKey<Curve, CoinX, CoinY>>();
+    public fun staking_pool_address<M, S, Meme>(registry: &Registry): Option<address> {
+        let registry_key = type_name::get<RegistryKey<M, S, Meme>>();
 
         if (table::contains(&registry.staking_pools, registry_key))
             option::some(*table::borrow(&registry.staking_pools, registry_key))
@@ -67,8 +71,8 @@ module memechan::index {
             option::none()
     }
     
-    public fun interest_pool_address<Curve, CoinX, CoinY>(registry: &Registry): Option<address> {
-        let registry_key = type_name::get<RegistryKey<Curve, CoinX, CoinY>>();
+    public fun interest_pool_address<M, S, Meme>(registry: &Registry): Option<address> {
+        let registry_key = type_name::get<RegistryKey<M, S, Meme>>();
 
         if (table::contains(&registry.interest_pools, registry_key))
             option::some(*table::borrow(&registry.interest_pools, registry_key))
@@ -76,8 +80,8 @@ module memechan::index {
             option::none()
     }
     
-    public fun policy_address<Curve, CoinX, CoinY>(registry: &Registry): Option<address> {
-        let registry_key = type_name::get<RegistryKey<Curve, CoinX, CoinY>>();
+    public fun policy_address<M, S, Meme>(registry: &Registry): Option<address> {
+        let registry_key = type_name::get<RegistryKey<M, S, Meme>>();
 
         if (table::contains(&registry.policies, registry_key))
             option::some(*table::borrow(&registry.policies, registry_key))
@@ -90,16 +94,16 @@ module memechan::index {
             *table::borrow(&registry.policies, type_name)
     }
 
-    public fun exists_seed_pool<Curve, CoinX, CoinY>(registry: &Registry): bool {
-        table::contains(&registry.seed_pools, type_name::get<RegistryKey<Curve, CoinX, CoinY>>())
+    public fun exists_seed_pool<M, S, Meme>(registry: &Registry): bool {
+        table::contains(&registry.seed_pools, type_name::get<RegistryKey<M, S, Meme>>())
     }
     
-    public fun add_seed_pool<Curve, CoinX, CoinY>(registry: &mut Registry, pool_address: address) {
-        table::add(seed_pools_mut(registry), type_name::get<RegistryKey<Curve, CoinX, CoinY>>(), pool_address);
+    public fun add_seed_pool<M, S, Meme>(registry: &mut Registry, pool_address: address) {
+        table::add(seed_pools_mut(registry), type_name::get<RegistryKey<M, S, Meme>>(), pool_address);
     }
     
-    public fun assert_new_pool<Curve, CoinX, CoinY>(registry: &Registry) {
-        let registry_key = type_name::get<RegistryKey<Curve, CoinX, CoinY>>();
+    public fun assert_new_pool<M, S, Meme>(registry: &Registry) {
+        let registry_key = type_name::get<RegistryKey<M, S, Meme>>();
         assert!(!table::contains(&registry.seed_pools, registry_key), errors::pool_already_deployed());
     }
 

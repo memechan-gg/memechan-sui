@@ -52,16 +52,21 @@ module clamm::errors {
   const WRONG_POOL_ID: u64 = 48;
   const INVALID_VERSION: u64 = 49;
   const INVALID_POOL_ADMIN: u64 = 50;
-  const INVALID_RULE_NAME: u64 = 51;
+  const INVALID_HOOK_NAME: u64 = 51;
   const RULE_NOT_ADDED: u64 = 52;
   const WRONG_REQUEST_POOL_ADDRESS: u64 = 53;
   const RULE_NOT_APPROVED: u64 = 54;
-  const THIS_POOL_HAS_HOOKS: u64 = 55;
-  const THIS_POOL_HAS_NO_HOOKS: u64 = 56;
-  const MUST_BE_START_SWAP_REQUEST: u64 = 57;
-  const MUST_BE_START_ADD_LIQUIDITY_REQUEST: u64 = 58;
-  const MUST_BE_START_REMOVE_LIQUIDITY_REQUEST: u64 = 59;
-  const MUST_BE_FINISH_REQUEST: u64 = 60;
+  const POOL_HAS_HOOKS: u64 = 55;
+  const POOL_HAS_NO_HOOKS: u64 = 56;
+  const POOL_HAS_NO_SWAP_HOOKS: u64 = 57;
+  const POOL_HAS_NO_ADD_LIQUIDITY_HOOKS: u64 = 58;
+  const POOL_HAS_NO_REMOVE_LIQUIDITY_HOOKS: u64 = 59;
+  const POOL_HAS_NO_DONATE_HOOKS: u64 = 60;
+  const MUST_BE_START_SWAP_REQUEST: u64 = 61;
+  const MUST_BE_START_ADD_LIQUIDITY_REQUEST: u64 = 62;
+  const MUST_BE_START_REMOVE_LIQUIDITY_REQUEST: u64 = 63;
+  const MUST_BE_START_DONATE_REQUEST: u64 = 64;
+  const MUST_BE_FINISH_REQUEST: u64 = 65;
 
   // === Public-View Functions ===
 
@@ -269,8 +274,8 @@ module clamm::errors {
     INVALID_POOL_ADMIN
   } 
 
-  public fun invalid_rule_name(): u64 {
-    INVALID_RULE_NAME
+  public fun invalid_hook_name(): u64 {
+    INVALID_HOOK_NAME
   }    
 
   public fun rule_not_added(): u64 {
@@ -285,12 +290,28 @@ module clamm::errors {
     RULE_NOT_APPROVED
   }
 
-  public fun this_pool_has_hooks(): u64 {
-    THIS_POOL_HAS_HOOKS
+  public fun pool_has_hooks(): u64 {
+    POOL_HAS_HOOKS
   }
 
-  public fun this_pool_has_no_hooks(): u64 {
-    THIS_POOL_HAS_NO_HOOKS
+  public fun pool_has_no_hooks(): u64 {
+    POOL_HAS_NO_HOOKS
+  }
+
+  public fun pool_has_no_swap_hooks(): u64 {
+    POOL_HAS_NO_SWAP_HOOKS
+  }
+
+  public fun pool_has_no_add_liquidity_hooks(): u64 {
+    POOL_HAS_NO_ADD_LIQUIDITY_HOOKS
+  }
+
+  public fun pool_has_no_remove_liquidity_hooks(): u64 {
+    POOL_HAS_NO_REMOVE_LIQUIDITY_HOOKS
+  }
+
+  public fun pool_has_no_donate_hooks(): u64 {
+    POOL_HAS_NO_DONATE_HOOKS
   }
 
   public fun must_be_start_swap_request(): u64 {
@@ -304,6 +325,10 @@ module clamm::errors {
   public fun must_be_start_remove_liquidity_request(): u64 {
     MUST_BE_START_REMOVE_LIQUIDITY_REQUEST
   }
+
+  public fun must_be_start_donate_request(): u64 {
+    MUST_BE_START_DONATE_REQUEST
+  }  
 
   public fun must_be_finish_request(): u64 {
     MUST_BE_FINISH_REQUEST

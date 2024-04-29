@@ -74,12 +74,8 @@ module memechan::utils {
     }
 
 
- public fun assert_coin_integrity<TicketCoin, CoinY, MemeCoin>(ticket_cap: &TreasuryCap<TicketCoin>, ticket_meta: &CoinMetadata<TicketCoin>, meme_cap: &TreasuryCap<MemeCoin>, meme_meta: &CoinMetadata<MemeCoin>) {
+    public fun assert_coin_integrity<TicketCoin, CoinY, MemeCoin>(ticket_cap: &TreasuryCap<TicketCoin>, ticket_meta: &CoinMetadata<TicketCoin>, meme_cap: &TreasuryCap<MemeCoin>, meme_meta: &CoinMetadata<MemeCoin>) {
         are_coins_suitable<TicketCoin, CoinY>();
-
-        let coin_b_type_name = type_name::get<CoinY>();
-
-        assert!(coin_b_type_name == type_name::get<SUI>(), errors::invalid_quote_token());
 
         assert_coin_integrity_tm(ticket_cap, ticket_meta);
         assert_coin_integrity_tm(meme_cap, meme_meta);
