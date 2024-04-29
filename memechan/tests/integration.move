@@ -11,7 +11,7 @@ module memechan::integration {
     use memechan::boden::{Self, BODEN};
     use memechan::ticket_boden::{Self, TICKET_BODEN};
     use memechan::admin;
-    use memechan::staked_lp;
+    use memechan::staked_lp::{Self, default_sell_delay_ms};
     use memechan::seed_pool::{
         Self, SeedPool, default_price_factor, default_gamma_s, default_gamma_m, default_omega_m,
         is_ready_to_launch
@@ -54,6 +54,7 @@ module memechan::integration {
             (default_gamma_s() as u64),
             (default_gamma_m() as u64),
             (default_omega_m() as u64),
+            default_sell_delay_ms(),
             ctx(scenario_mut)
         );
 

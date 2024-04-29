@@ -1,6 +1,7 @@
 #[test_only]
 module memechan::bound_curve_tests {
     use std::option;
+    use std::debug::print;
 
     use sui::object;
     use sui::test_utils::assert_eq;
@@ -14,7 +15,7 @@ module memechan::bound_curve_tests {
     use memechan::usdc::USDC;
     use memechan::fees::{Fees};
     use memechan::ticket_usdc::TICKET_USDC;
-    use memechan::seed_pool::{Self, SeedPool, decimals_s};
+    use memechan::seed_pool::{Self, SeedPool, decimals_s, default_gamma_s, default_gamma_m};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people5, people, scenario, deploy_usdc_sui_pool_default_liquidity};
     use memechan::staked_lp;
@@ -400,6 +401,112 @@ module memechan::bound_curve_tests {
             destroy_request(request);
         };
 
+        clock::destroy_for_testing(clock);
+        test::end(scenario);
+    }
+
+    #[test]
+    fun test_bound_full_amt_out_y_with_sell() {
+        let scenario = scenario();
+        let (alice, bob, chad, dan, erin) = people5();
+
+        let scenario_mut = &mut scenario;
+
+        set_up_test(scenario_mut);
+        deploy_usdc_sui_pool_default_liquidity(scenario_mut);
+
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+       
+        let acc: u256 = 0;
+        
+        next_tx(scenario_mut, alice);
+        let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+
+        let amount_in = 35_000 * decimals_s();
+
+        let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
+
+        let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            
+        acc = acc + (staked_lp::balance(&res) as u256);
+        assert_eq(staked_lp::balance(&res), 895_500_000_000_000); // i.e. gamma_m * (1 - fee rate)
+
+        coin::burn_for_testing(coin_in);
+        seed_pool::unlock_for_testing<TICKET_USDC, SUI, USDC>(&mut request.pool);
+        destroy_request(request);
+
+        next_tx(scenario_mut, alice);
+        {
+            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+
+            let amount_in =  298_500_000_000_000;
+            let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
+            // let meme_in = staked_lp::split<TICKET_USDC>(&mut res, amount_in, ctx(scenario_mut));
+            let meme_in = staked_lp::into_token_for_testing(
+                staked_lp::split<TICKET_USDC>(&mut res, amount_in, ctx(scenario_mut)),
+                &request.policy,
+                ctx(scenario_mut)
+            );
+
+            let Request {
+                registry,
+                pool,
+                pool_fees,
+                policy,
+            } = request;
+            
+            let sui_res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut pool, meme_in, 1, &policy, ctx(scenario_mut));
+
+            print(&sui_res);
+
+            coin::burn_for_testing(coin_in);
+            coin::burn_for_testing(sui_res);
+
+            let request = Request {
+                registry,
+                pool,
+                pool_fees,
+                policy,
+            };
+
+            destroy_request(request);
+        };
+
+        next_tx(scenario_mut, chad);
+        {
+
+        };
+
+        next_tx(scenario_mut, dan);
+        {
+
+        };
+
+        next_tx(scenario_mut, erin);
+        {
+            
+        };
+
+        next_tx(scenario_mut, alice);
+        {
+            // let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+
+            // let adm_fee_m = (seed_pool::admin_balance_m<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+            // let adm_fee_s = (seed_pool::admin_balance_s<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+
+            // let balance_m = (seed_pool::balance_m<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+            // let balance_s = (seed_pool::balance_s<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+
+            // assert_eq(acc + adm_fee_m, MAX_X * (USDC_DECIMAL_SCALAR as u256));
+            // assert_eq(balance_m, 0);
+            // assert_eq(balance_s, MAX_Y * (decimals_s() as u256));
+            // assert_eq(((adm_fee_s * PRECISION) / (MAX_Y * (decimals_s() as u256) + adm_fee_s)) / 1_000_000, ADMIN_FEE / 1_000_000);
+            // assert_eq(((adm_fee_m * PRECISION) / (MAX_X * (USDC_DECIMAL_SCALAR as u256))) / 1_000_000, ADMIN_FEE / 1_000_000);
+
+            // destroy_request(request);
+        };
+
+        staked_lp::destroy_for_testing(res);
         clock::destroy_for_testing(clock);
         test::end(scenario);
     }

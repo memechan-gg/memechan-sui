@@ -15,7 +15,6 @@ module memechan::staking_pool {
         Self, VestingData, VestingConfig, accounting_key,
     };
 
-
     use clamm::pool_admin::PoolAdmin;
 
     friend memechan::go_live;
