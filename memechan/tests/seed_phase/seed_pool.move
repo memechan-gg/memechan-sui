@@ -408,7 +408,7 @@ module memechan::bound_curve_tests {
     #[test]
     fun test_bound_full_amt_out_y_with_sell() {
         let scenario = scenario();
-        let (alice, bob, chad, dan, erin) = people5();
+        let (alice, _bob, chad, dan, erin) = people5();
 
         let scenario_mut = &mut scenario;
 
@@ -416,8 +416,7 @@ module memechan::bound_curve_tests {
         deploy_usdc_sui_pool_default_liquidity(scenario_mut);
 
         let clock = clock::create_for_testing(ctx(scenario_mut));
-       
-        let acc: u256 = 0;
+
         
         next_tx(scenario_mut, alice);
         let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
@@ -428,7 +427,6 @@ module memechan::bound_curve_tests {
 
         let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
             
-        acc = acc + (staked_lp::balance(&res) as u256);
         assert_eq(staked_lp::balance(&res), 895_500_000_000_000); // i.e. gamma_m * (1 - fee rate)
 
         coin::burn_for_testing(coin_in);
