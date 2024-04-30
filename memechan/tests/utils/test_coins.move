@@ -1,6 +1,5 @@
 #[test_only]
 module memechan::lp_coin {
-    use sui::transfer;
     use std::option;
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
     use sui::tx_context::TxContext;
