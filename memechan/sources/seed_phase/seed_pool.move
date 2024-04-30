@@ -13,11 +13,10 @@ module memechan::seed_pool {
     use sui::token::{Self, Token, TokenPolicy};
 
     use memechan::math256::pow_2;
-    use memechan::utils::mist;
     use suitears::math256::sqrt_down;
 
     use memechan::index::{Self, Registry, policies_mut};
-    use memechan::utils;
+    use memechan::utils::{Self, mist, meme_cap_key, ticket_cap_key};
     use memechan::errors;
     use memechan::staked_lp;
     use memechan::events;
@@ -233,8 +232,8 @@ module memechan::seed_pool {
         events::new_pool<M, S, Meme>(pool_address, coin_m_value, 0, policy_address);
 
         token::share_policy(policy);
-        sui::transfer::public_transfer(ticket_coin_cap, @0x2);
-        sui::transfer::public_transfer(meme_coin_cap, @0x2);
+        df::add(&mut pool.fields, meme_cap_key(), meme_coin_cap);
+        df::add(&mut pool.fields, ticket_cap_key(), ticket_coin_cap);
         pool
     }
 

@@ -192,7 +192,7 @@ module memechan::go_live {
         let pool_id = object::id(&amm_pool);
 
         // 4. Create staking pool
-        let staking_pool = staking_pool::new<M, Meme, LP>(
+        let staking_pool = staking_pool::new<M, SUI, Meme, LP>(
             pool_id,
             meme_balance,
             coin::into_balance(lp_tokens),
