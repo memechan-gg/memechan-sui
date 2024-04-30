@@ -1,5 +1,5 @@
 #[test_only]
-module memechan::bound_curve_amm_tests {
+module memechan::seed_pool_tests {
     use std::option;
     use std::string::{utf8, to_ascii};
 
@@ -16,11 +16,10 @@ module memechan::bound_curve_amm_tests {
     use memechan::usdc::USDC;
     use memechan::fees::{Self, Fees};
     use memechan::admin;
-    use memechan::curves::Bound;
     use memechan::ticket_btc::{Self, TICKET_BTC};
     use memechan::tickettce::{Self, TICKETTCE};
     use memechan::ticket_usdc::{Self, TICKET_USDC};
-    use memechan::bound_curve_amm::{Self, SeedPool};
+    use memechan::seed_pool::{Self, SeedPool};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people, scenario, deploy_coins};
 
@@ -48,7 +47,7 @@ module memechan::bound_curve_amm_tests {
             
             assert_eq(table::is_empty(index::seed_pools(&registry)), true);
             
-            bound_curve_amm::new_default<TICKET_USDC, SUI, USDC>(
+            seed_pool::new_default<TICKET_USDC, SUI, USDC>(
                 &mut registry,
                 //mint_for_testing(usdc_amount, ctx(scenario_mut)),
                 ticket_coin_cap,
@@ -60,7 +59,7 @@ module memechan::bound_curve_amm_tests {
 
             assert_eq(coin::get_symbol(&ticket_coin_metadata), to_ascii(utf8(b"ticket-USDC")));
             assert_eq(coin::get_name(&ticket_coin_metadata), utf8(b"USD Coin Ticket Coin"));
-            assert_eq(index::exists_seed_pool<Bound, TICKET_USDC, SUI>(&registry), true);
+            assert_eq(index::exists_seed_pool<TICKET_USDC, SUI, USDC>(&registry), true);
 
             test::return_shared(usdc_metadata);
             test::return_shared(ticket_coin_metadata);
@@ -69,20 +68,20 @@ module memechan::bound_curve_amm_tests {
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<Bound,TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
 
-            assert_eq(bound_curve_amm::meme_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
-            assert_eq(bound_curve_amm::ticket_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
-            assert_eq(bound_curve_amm::balance_m<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
-            assert_eq(bound_curve_amm::balance_s<TICKET_USDC, SUI, USDC>(&request.pool), 0);
-            // assert_eq(bound_curve_amm::decimals_x<TICKET_USDC, SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
-            // assert_eq(bound_curve_amm::decimals_y<TICKET_USDC, SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
-            assert_eq(bound_curve_amm::seed_liquidity<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
-            assert_eq(bound_curve_amm::is_ready_to_launch<TICKET_USDC, SUI, USDC>(&request.pool), false);
-            assert_eq(bound_curve_amm::admin_balance_m<TICKET_USDC, SUI, USDC>(&request.pool), 0);
-            assert_eq(bound_curve_amm::admin_balance_s<TICKET_USDC, SUI, USDC>(&request.pool), 0);
+            assert_eq(seed_pool::meme_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
+            assert_eq(seed_pool::ticket_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
+            assert_eq(seed_pool::balance_m<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
+            assert_eq(seed_pool::balance_s<TICKET_USDC, SUI, USDC>(&request.pool), 0);
+            // assert_eq(seed_pool::decimals_x<TICKET_USDC, SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
+            // assert_eq(seed_pool::decimals_y<TICKET_USDC, SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
+            assert_eq(seed_pool::seed_liquidity<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
+            assert_eq(seed_pool::is_ready_to_launch<TICKET_USDC, SUI, USDC>(&request.pool), false);
+            assert_eq(seed_pool::admin_balance_m<TICKET_USDC, SUI, USDC>(&request.pool), 0);
+            assert_eq(seed_pool::admin_balance_s<TICKET_USDC, SUI, USDC>(&request.pool), 0);
 
-            let fees = bound_curve_amm::fees<TICKET_USDC, SUI, USDC>(&request.pool);
+            let fees = seed_pool::fees<TICKET_USDC, SUI, USDC>(&request.pool);
 
             assert_eq(fees::fee_in_percent(&fees), ADMIN_FEE);
             assert_eq(fees::fee_out_percent(&fees), ADMIN_FEE);
@@ -112,7 +111,7 @@ module memechan::bound_curve_amm_tests {
             let btc_metadata = test::take_shared<CoinMetadata<BTC>>(scenario_mut);
             let lp_coin_metadata = test::take_shared<CoinMetadata<TICKETTCE>>(scenario_mut);
             
-            bound_curve_amm::new_default<TICKETTCE, SUI, BTC>(
+            seed_pool::new_default<TICKETTCE, SUI, BTC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),
@@ -148,7 +147,7 @@ module memechan::bound_curve_amm_tests {
             let btc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
             let lp_coin_metadata = test::take_shared<CoinMetadata<TICKET_BTC>>(scenario_mut);
             
-            bound_curve_amm::new_default<TICKET_BTC, SUI, USDC>(
+            seed_pool::new_default<TICKET_BTC, SUI, USDC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),
@@ -186,7 +185,7 @@ module memechan::bound_curve_amm_tests {
 
             burn_for_testing(coin::mint(&mut lp_coin_cap, 100, ctx(scenario_mut)));
             
-            bound_curve_amm::new_default<TICKET_USDC, SUI, USDC>(
+            seed_pool::new_default<TICKET_USDC, SUI, USDC>(
                 &mut registry,
                 lp_coin_cap,
                 create_treasury_cap_for_testing(ctx(scenario_mut)),
@@ -209,11 +208,11 @@ module memechan::bound_curve_amm_tests {
         fees: Fees
     } 
 
-    fun request<Curve, CoinX, CoinY, LpCoin>(scenario_mut: &Scenario): Request {
+    fun request<M, S, Meme>(scenario_mut: &Scenario): Request {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let pool_address = index::seed_pool_address<Curve, CoinX, CoinY>(&registry);
+            let pool_address = index::seed_pool_address<M, S, Meme>(&registry);
             let pool = test::take_shared_by_id<SeedPool>(scenario_mut, object::id_from_address(option::destroy_some(pool_address)));
-            let fees = bound_curve_amm::fees<CoinX, CoinY, LpCoin>(&pool);
+            let fees = seed_pool::fees<M, S, Meme>(&pool);
 
         Request {
             registry,

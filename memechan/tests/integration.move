@@ -2,17 +2,24 @@
 module memechan::integration {
     use std::vector;
     use sui::table;
+    use sui::transfer;
     use sui::clock;
     use sui::test_utils::assert_eq;
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
     use sui::test_scenario::{Self as test, Scenario, next_tx, ctx};
-    use sui::sui::SUI;
     use sui::token::{Self, TokenPolicy};
+    use clamm::interest_clamm_volatile as volatile;
+    use clamm::interest_pool::InterestPool;
+    use clamm::curves::Volatile;
+    use memechan::go_live;
+    use memechan::utils::mist;
+    use memechan::lp_coin::{Self, LP_COIN};
     use memechan::boden::{Self, BODEN};
+    use memechan::sui::{Self, SUI};
     use memechan::ticket_boden::{Self, TICKET_BODEN};
-    use memechan::admin;
-    use memechan::staked_lp;
-    use memechan::bound_curve_amm::{
+    use memechan::admin::{Self, Admin};
+    use memechan::staked_lp::{Self, default_sell_delay_ms};
+    use memechan::seed_pool::{
         Self, SeedPool, default_price_factor, default_gamma_s, default_gamma_m, default_omega_m,
         is_ready_to_launch
     };
@@ -42,7 +49,7 @@ module memechan::integration {
             
         assert_eq(table::is_empty(index::seed_pools(&registry)), true);
             
-        bound_curve_amm::new<TICKET_BODEN, SUI, BODEN>(
+        seed_pool::new<TICKET_BODEN, SUI, BODEN>(
             &mut registry,
             ticket_coin_cap, // TICKET_BODEN
             boden_coin_cap, // BODEN
@@ -54,6 +61,7 @@ module memechan::integration {
             (default_gamma_s() as u64),
             (default_gamma_m() as u64),
             (default_omega_m() as u64),
+            default_sell_delay_ms(),
             ctx(scenario_mut)
         );
 
@@ -75,7 +83,7 @@ module memechan::integration {
             let amt = sui(sui_amt);
             let sui_mony = coin::mint_for_testing<SUI>(amt, ctx(scenario_mut));
 
-            let staked_sboden = bound_curve_amm::buy_meme<TICKET_BODEN, SUI, BODEN>(
+            let staked_sboden = seed_pool::buy_meme<TICKET_BODEN, SUI, BODEN>(
                 &mut seed_pool,
                 &mut sui_mony,
                 0,
@@ -85,9 +93,8 @@ module memechan::integration {
             amt_raised = amt_raised + amt;
             meme_tokens_in_pool = meme_tokens_in_pool - staked_lp::balance(&staked_sboden);
             
-            // print(&staked_lp::balance(&staked_sboden));
-            assert!(bound_curve_amm::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == amt_raised, 0);
-            assert!(bound_curve_amm::balance_m<TICKET_BODEN, SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
+            assert!(seed_pool::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == amt_raised, 0);
+            assert!(seed_pool::balance_m<TICKET_BODEN, SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
 
             vector::push_back(&mut meme_monies, staked_lp::balance(&staked_sboden));
 
@@ -100,7 +107,7 @@ module memechan::integration {
             }
         };
 
-        bound_curve_amm::unlock_for_testing<TICKET_BODEN, SUI, BODEN>(&mut seed_pool);
+        seed_pool::unlock_for_testing<TICKET_BODEN, SUI, BODEN>(&mut seed_pool);
 
         let i = 0;
 
@@ -108,7 +115,7 @@ module memechan::integration {
             next_tx(scenario_mut, bob);
 
             if (vector::is_empty(&meme_monies)) {
-                let pool_balance = bound_curve_amm::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool);
+                let pool_balance = seed_pool::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool);
                 
                 // Check that the cumulative rounding error of all trades does not exceed 1_000 MIST
                 // The rounding error is in favor of the Pool nonetheless
@@ -126,7 +133,7 @@ module memechan::integration {
 
             let meme_mony = token::mint_for_testing<TICKET_BODEN>(meme_amt, ctx(scenario_mut));
 
-            let sui_mony = bound_curve_amm::sell_meme<TICKET_BODEN, SUI, BODEN>(
+            let sui_mony = seed_pool::sell_meme<TICKET_BODEN, SUI, BODEN>(
                 &mut seed_pool,
                 meme_mony,
                 0,
@@ -139,7 +146,7 @@ module memechan::integration {
 
             coin::burn_for_testing(sui_mony);
 
-            if (bound_curve_amm::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == 0) {
+            if (seed_pool::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == 0) {
                 break
             }
         };
@@ -153,6 +160,130 @@ module memechan::integration {
         test::end(scenario);
     }
     
+    #[test]
+    fun go_live() {
+        let (scenario, alice, _, admin) = start_test_();
+
+        let scenario_mut = &mut scenario;
+        
+        // Initiate S joe boden token
+        next_tx(scenario_mut, alice);
+        {
+            ticket_boden::init_for_testing(ctx(scenario_mut));
+            boden::init_for_testing(ctx(scenario_mut));
+        };
+
+        next_tx(scenario_mut, alice);
+
+        let registry = test::take_shared<Registry>(scenario_mut);
+        let ticket_coin_cap = test::take_from_sender<TreasuryCap<TICKET_BODEN>>(scenario_mut);
+        let ticket_coin_metadata = test::take_shared<CoinMetadata<TICKET_BODEN>>(scenario_mut);
+        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
+        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+
+        let pool = seed_pool::new_full_for_testing<TICKET_BODEN, SUI, BODEN>(
+            &mut registry,
+            ticket_coin_cap, // TICKET_BODEN
+            boden_coin_cap, // BODEN
+            &mut ticket_coin_metadata,
+            &boden_metadata,
+            ctx(scenario_mut)
+        );
+
+        let (lp_treasury, lp_meta) = lp_coin::new(ctx(scenario_mut));
+        let sui_meta = sui::new(ctx(scenario_mut));
+
+        go_live::go_live_default_test<TICKET_BODEN, BODEN, LP_COIN>(
+            &admin,
+            pool,
+            &sui_meta,
+            &boden_metadata,
+            &lp_meta,
+            lp_treasury,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        admin::burn_for_testing(admin);
+        clock::destroy_for_testing(clock);
+        transfer::public_transfer(sui_meta, @0x0);
+        transfer::public_transfer(lp_meta, @0x0);
+        test::return_shared(boden_metadata);
+        test::return_shared(ticket_coin_metadata);
+        test::return_shared(registry);
+        test::end(scenario);
+    }
+
+    #[test]
+    fun go_live_and_trade() {
+        let (scenario, alice, _, admin) = start_test_();
+
+        let scenario_mut = &mut scenario;
+        
+        // Initiate S joe boden token
+        next_tx(scenario_mut, alice);
+        {
+            ticket_boden::init_for_testing(ctx(scenario_mut));
+            boden::init_for_testing(ctx(scenario_mut));
+        };
+
+        next_tx(scenario_mut, alice);
+
+        let registry = test::take_shared<Registry>(scenario_mut);
+        let ticket_coin_cap = test::take_from_sender<TreasuryCap<TICKET_BODEN>>(scenario_mut);
+        let ticket_coin_metadata = test::take_shared<CoinMetadata<TICKET_BODEN>>(scenario_mut);
+        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
+        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+
+        let pool = seed_pool::new_full_for_testing<TICKET_BODEN, SUI, BODEN>(
+            &mut registry,
+            ticket_coin_cap, // TICKET_BODEN
+            boden_coin_cap, // BODEN
+            &mut ticket_coin_metadata,
+            &boden_metadata,
+            ctx(scenario_mut)
+        );
+
+        let (lp_treasury, lp_meta) = lp_coin::new(ctx(scenario_mut));
+        let sui_meta = sui::new(ctx(scenario_mut));
+
+        go_live::go_live_default_test<TICKET_BODEN, BODEN, LP_COIN>(
+            &admin,
+            pool,
+            &sui_meta,
+            &boden_metadata,
+            &lp_meta,
+            lp_treasury,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        // Trade
+        next_tx(scenario_mut, alice);
+        let clamm_pool = test::take_shared<InterestPool<Volatile>>(scenario_mut);
+
+        let output = volatile::swap<SUI, BODEN, LP_COIN>(
+            &mut clamm_pool,
+            &clock,
+            coin::mint_for_testing<SUI>(mist(10), ctx(scenario_mut)),
+            1,
+            ctx(scenario_mut),
+        );
+
+        admin::burn_for_testing(admin);
+        coin::burn_for_testing(output);
+        clock::destroy_for_testing(clock);
+        transfer::public_transfer(sui_meta, @0x0);
+        transfer::public_transfer(lp_meta, @0x0);
+        test::return_shared(clamm_pool);
+        test::return_shared(boden_metadata);
+        test::return_shared(ticket_coin_metadata);
+        test::return_shared(registry);
+        test::end(scenario);
+    }
+    
     fun start_test(): (Scenario, address, address) {
         let scenario = scenario();
         let (alice, bob) = people();
@@ -162,11 +293,24 @@ module memechan::integration {
         deploy_coins(scenario_mut);
 
         next_tx(scenario_mut, alice);
-        {
-            admin::init_for_testing(ctx(scenario_mut));
-            index::init_for_testing(ctx(scenario_mut));
-        };
+        admin::init_for_testing(ctx(scenario_mut));
+        index::init_for_testing(ctx(scenario_mut));
 
-        (scenario, alice, bob)
+        (scenario, alice, bob, )
+    }
+    
+    fun start_test_(): (Scenario, address, address, Admin) {
+        let scenario = scenario();
+        let (alice, bob) = people();
+
+        let scenario_mut = &mut scenario;
+
+        deploy_coins(scenario_mut);
+
+        next_tx(scenario_mut, alice);
+        index::init_for_testing(ctx(scenario_mut));
+        let admin = admin::new_for_testing(ctx(scenario_mut));
+
+        (scenario, alice, bob, admin)
     }
 }

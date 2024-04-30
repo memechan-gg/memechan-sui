@@ -1,6 +1,6 @@
 {
   "name": "@avernikoz/memechan-ts-interface",
-  "version": "1.0.4",
+  "version": "1.0.17",
   "author": "aldrin-labs (@0xxgen, @comradekoval)",
   "license": "private",
   "private": false,
@@ -19,10 +19,10 @@
     "registry": "https://registry.npmjs.org"
   },
   "scripts": {
-    "build": "yarn rimraf dist && yarn run lint && tsup",
-    "lint": "tsc --noEmit && ESLINT_USE_FLAT_CONFIG=false eslint __generated__/**/*.ts",
+    "build": "yarn rimraf dist && yarn run lint && yarn run tsup",
+    "lint": "yarn run tsc --noEmit && ESLINT_USE_FLAT_CONFIG=false yarn run eslint __generated__/**/*.ts",
     "generate": "mkdir -p __generated__ && sui-client-gen --manifest generate.toml --out __generated__/ --clean",
-    "fix:generated": "ESLINT_USE_FLAT_CONFIG=false eslint __generated__/ --fix && prettier --write __generated__/**/*.ts",
+    "fix:generated": "ESLINT_USE_FLAT_CONFIG=false yarn run eslint __generated__/ --fix && yarn run prettier --write __generated__/**/*.ts",
     "deploy": "yarn run generate && yarn run fix:generated && yarn run build && yarn publish"
   },
   "dependencies": {
