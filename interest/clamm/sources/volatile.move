@@ -1214,7 +1214,7 @@ module clamm::interest_clamm_volatile {
 
     // Convert from Price => Coin Balance
     coin_out_amount = if (coin_out_state.index != 0) div_down(coin_out_amount, coin_out_state.price) else coin_out_amount;
-
+    
     coin_out_amount = coin_out_amount - fee_impl(state, balances_in_price) * coin_out_amount / 10000000000;
 
     // Scale to the right decimal house

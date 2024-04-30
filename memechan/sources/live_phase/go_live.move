@@ -11,9 +11,10 @@ module memechan::go_live {
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
 
     use memechan::vesting::{Self, VestingConfig};
+    use memechan::events;
     use memechan::admin::Admin;
     use memechan::math::div_mul;
-    use memechan::seed_pool::{Self as seed_pool, SeedPool};
+    use memechan::seed_pool::{Self as seed_pool, SeedPool, gamma_s};
     use memechan::staking_pool;
     use clamm::interest_pool;
     use clamm::interest_clamm_volatile as volatile_hooks;
@@ -26,7 +27,6 @@ module memechan::go_live {
 
     const SCALE: u256 = 1_000_000_000_000_000_000; // 1e18
 
-    const SUI_THRESHOLD: u64 = 30_000;
     const BPS: u64 = 10_000;
     const LOCKED: u64 = 8_000;
     
@@ -37,9 +37,12 @@ module memechan::go_live {
     const ADJUSTMENT_STEP: u256 = 146000000000000; // 18 decimals
     const MA_TIME: u256 = 600_000; // 10 minutes
 
-    const MID_FEE: u256 = 260_000_000_000_000_000; // (0.26%) swap fee when the pool is balanced
-    const OUT_FEE: u256 = 450_000_000_000_000_000; // (0.45%) swap fee when the pool is out balance
+    const MID_FEE: u256 = 26000000; // (0.26%) swap fee when the pool is balanced
+    const OUT_FEE: u256 = 45000000; // (0.45%) swap fee when the pool is out balance
     const GAMMA_FEE: u256 = 200_000_000_000_000; //  (0.0002%) speed rate that fee increases mid_fee => out_fee
+
+    // const MID_FEE: u256 = 260_000_000_000_000_000; // (0.26%) swap fee when the pool is balanced
+    // const OUT_FEE: u256 = 450_000_000_000_000_000; // (0.45%) swap fee when the pool is out balance
 
     const LAUNCH_FEE: u256 =   50_000_000_000_000_000; // 5%
     const PRECISION: u256 = 1_000_000_000_000_000_000;
@@ -50,17 +53,19 @@ module memechan::go_live {
         seed_pool: SeedPool,
         sui_meta: &CoinMetadata<SUI>,
         meme_meta: &CoinMetadata<Meme>,
+        lp_meta: &CoinMetadata<LP>,
         treasury_cap: TreasuryCap<LP>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         let vesting_config = vesting::default_config(clock);
 
-        go_live_<M, Meme, LP>(
+        go_live_<M, Meme, LP, SUI>(
             admin_cap,
             seed_pool,
             sui_meta,
             meme_meta,
+            lp_meta,
             treasury_cap,
             vesting_config,
             clock,
@@ -74,6 +79,7 @@ module memechan::go_live {
         seed_pool: SeedPool,
         sui_meta: &CoinMetadata<SUI>,
         meme_meta: &CoinMetadata<Meme>,
+        lp_meta: &CoinMetadata<LP>,
         treasury_cap: TreasuryCap<LP>,
         cliff_delta: u64,
         end_vesting_delta: u64,
@@ -88,11 +94,12 @@ module memechan::go_live {
             current_ts + end_vesting_delta,
         );
 
-        go_live_<M, Meme, LP>(
+        go_live_<M, Meme, LP, SUI>(
             admin_cap,
             seed_pool,
             sui_meta,
             meme_meta,
+            lp_meta,
             treasury_cap,
             vesting_config,
             clock,
@@ -101,11 +108,12 @@ module memechan::go_live {
     }
     
     // Admin endpoint
-    public fun go_live_<M, Meme, LP>(
+    public fun go_live_<M, Meme, LP, SUI>(
         _admin_cap: &Admin,
         seed_pool: SeedPool,
         sui_meta: &CoinMetadata<SUI>,
         meme_meta: &CoinMetadata<Meme>,
+        lp_meta: &CoinMetadata<LP>,
         treasury_cap: TreasuryCap<LP>,
         vesting_config: VestingConfig,
         clock: &Clock,
@@ -118,7 +126,7 @@ module memechan::go_live {
             admin_sui_balance,
             meme_balance,
             _,
-            _,
+            params,
             locked,
             fields,
         ) = seed_pool::destroy_pool<M, SUI, Meme>(seed_pool);
@@ -133,7 +141,8 @@ module memechan::go_live {
 
         // 1. Verify if we reached the threshold of SUI amount raised
         let sui_supply = balance::value(&sui_balance);
-        assert!(sui_supply == mist(SUI_THRESHOLD), 0);
+        
+        assert!(sui_supply == mist(gamma_s(&params)), 0);
 
         // 2. Collect live fees
         let live_fee_amt = (mul_div_up((sui_supply as u256), LAUNCH_FEE, PRECISION) as u64);
@@ -150,6 +159,7 @@ module memechan::go_live {
 
         coin_decimals::add(&mut decimals, sui_meta);
         coin_decimals::add(&mut decimals, meme_meta);
+        coin_decimals::add(&mut decimals, lp_meta);
 
         // 3. Create AMM Pool
         let hooks_builder = interest_pool::new_hooks_builder(ctx);
@@ -192,6 +202,11 @@ module memechan::go_live {
             ctx,
         );
 
+        events::go_live<Meme, SUI, LP>(
+            object::id_to_address(&object::id(&amm_pool)),
+            object::id_to_address(&object::id(&staking_pool))
+        );
+
         interest_pool::share(amm_pool);
         transfer::public_share_object(staking_pool);
 
@@ -201,5 +216,36 @@ module memechan::go_live {
 
         coin_decimals::destroy(decimals, &decimals_cap);
         owner::destroy(decimals_cap);
+    }
+
+    // === Test Functions ===
+
+    #[test_only]
+    use memechan::sui::{SUI as MockSUI};
+
+    #[test_only]
+    public fun go_live_default_test<M, Meme, LP>(
+        admin_cap: &Admin,
+        seed_pool: SeedPool,
+        sui_meta: &CoinMetadata<MockSUI>,
+        meme_meta: &CoinMetadata<Meme>,
+        lp_meta: &CoinMetadata<LP>,
+        treasury_cap: TreasuryCap<LP>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let vesting_config = vesting::default_config(clock);
+
+        go_live_<M, Meme, LP, MockSUI>(
+            admin_cap,
+            seed_pool,
+            sui_meta,
+            meme_meta,
+            lp_meta,
+            treasury_cap,
+            vesting_config,
+            clock,
+            ctx,
+        );
     }
 }
