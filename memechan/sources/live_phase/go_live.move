@@ -11,6 +11,7 @@ module memechan::go_live {
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
 
     use memechan::vesting::{Self, VestingConfig};
+    use memechan::events;
     use memechan::admin::Admin;
     use memechan::math::div_mul;
     use memechan::seed_pool::{Self as seed_pool, SeedPool, gamma_s};
@@ -196,6 +197,11 @@ module memechan::go_live {
             admin,
             fields,
             ctx,
+        );
+
+        events::go_live<Meme, SUI, LP>(
+            object::id_to_address(&object::id(&amm_pool)),
+            object::id_to_address(&object::id(&staking_pool))
         );
 
         interest_pool::share(amm_pool);
