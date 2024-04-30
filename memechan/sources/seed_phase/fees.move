@@ -31,7 +31,7 @@ module memechan::fees {
         get_fee_amount(amount, fees.fee_out_percent)
     }
 
-    public fun get_fee_in_initial_amount(fees: &Fees, amount: u64): u64 {
+    public fun get_gross_amount(fees: &Fees, amount: u64): u64 {
         get_initial_amount(amount, fees.fee_in_percent)
     }
 

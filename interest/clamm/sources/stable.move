@@ -19,8 +19,8 @@ module clamm::interest_clamm_stable {
   use clamm::pool_events as events;
   use clamm::stable_fees::{Self, StableFees};
   use clamm::stable_math::{y, y_lp, a as get_a, invariant_};
-  use clamm::interest_pool::{Self, InterestPool, HooksBuilder};
   use clamm::utils::{empty_vector, make_coins_vec_set_from_vector};
+  use clamm::interest_pool::{Self, InterestPool, HooksBuilder, Request};
 
   use fun coin::take as Balance.take;
   use fun utils::to_u64 as u256.to_u64;
@@ -79,11 +79,11 @@ module clamm::interest_clamm_stable {
 
   public fun new_2_pool<CoinA, CoinB, LpCoin>(
     clock: &Clock,
-    initial_a: u256,
+    coin_decimals: &CoinDecimals,    
     coin_a: Coin<CoinA>,
-    coin_b: Coin<CoinB>,
-    coin_decimals: &CoinDecimals,     
+    coin_b: Coin<CoinB>, 
     lp_coin_supply: Supply<LpCoin>,
+    initial_a: u256,
     ctx: &mut TxContext
   ): (InterestPool<Stable>, PoolAdmin, Coin<LpCoin>)  {
     let coins = vector[type_name::get<CoinA>(), type_name::get<CoinB>()];
@@ -110,12 +110,12 @@ module clamm::interest_clamm_stable {
 
   public fun new_3_pool<CoinA, CoinB, CoinC, LpCoin>(
     clock: &Clock,
-    initial_a: u256,
+    coin_decimals: &CoinDecimals,     
     coin_a: Coin<CoinA>,
     coin_b: Coin<CoinB>,
     coin_c: Coin<CoinC>,
-    coin_decimals: &CoinDecimals,     
     lp_coin_supply: Supply<LpCoin>,
+    initial_a: u256,
     ctx: &mut TxContext
   ): (InterestPool<Stable>, PoolAdmin, Coin<LpCoin>) {
     let coins = vector[type_name::get<CoinA>(), type_name::get<CoinB>(), type_name::get<CoinC>()];
@@ -143,13 +143,13 @@ module clamm::interest_clamm_stable {
 
   public fun new_4_pool<CoinA, CoinB, CoinC, CoinD, LpCoin>(
     clock: &Clock,
-    initial_a: u256,
+    coin_decimals: &CoinDecimals,   
     coin_a: Coin<CoinA>,
     coin_b: Coin<CoinB>,
     coin_c: Coin<CoinC>,
-    coin_d: Coin<CoinD>,
-    coin_decimals: &CoinDecimals,      
+    coin_d: Coin<CoinD>,   
     lp_coin_supply: Supply<LpCoin>,
+    initial_a: u256,
     ctx: &mut TxContext
   ): (InterestPool<Stable>, PoolAdmin, Coin<LpCoin>) {
     let coins = vector[
@@ -183,14 +183,14 @@ module clamm::interest_clamm_stable {
 
   public fun new_5_pool<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
     clock: &Clock,
-    initial_a: u256,
+    coin_decimals: &CoinDecimals,   
     coin_a: Coin<CoinA>,
     coin_b: Coin<CoinB>,
     coin_c: Coin<CoinC>,
     coin_d: Coin<CoinD>,
-    coin_e: Coin<CoinE>,
-    coin_decimals: &CoinDecimals,      
+    coin_e: Coin<CoinE>,   
     lp_coin_supply: Supply<LpCoin>,
+    initial_a: u256,
     ctx: &mut TxContext
   ): (InterestPool<Stable>, PoolAdmin, Coin<LpCoin>) {
     let coins = vector[
@@ -231,7 +231,7 @@ module clamm::interest_clamm_stable {
     min_amount: u64,
     ctx: &mut TxContext
   ): Coin<CoinOut> {
-    assert!(!pool.has_swap_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_swap_hooks(), errors::pool_has_no_swap_hooks());
     swap_impl<CoinIn, CoinOut, LpCoin>(pool, clock, coin_in, min_amount, ctx)
   }
 
@@ -243,7 +243,7 @@ module clamm::interest_clamm_stable {
     lp_coin_min_amount: u64,
     ctx: &mut TxContext     
   ): Coin<LpCoin> {
-    assert!(!pool.has_add_liquidity_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_add_liquidity_hooks(), errors::pool_has_no_add_liquidity_hooks());
     add_liquidity_2_pool_impl<CoinA, CoinB, LpCoin>(pool, clock, coin_a, coin_b, lp_coin_min_amount, ctx)
   }  
 
@@ -256,7 +256,7 @@ module clamm::interest_clamm_stable {
     lp_coin_min_amount: u64,
     ctx: &mut TxContext     
   ): Coin<LpCoin> {
-    assert!(!pool.has_add_liquidity_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_add_liquidity_hooks(), errors::pool_has_no_add_liquidity_hooks());
     add_liquidity_3_pool_impl<CoinA, CoinB, CoinC, LpCoin>(
       pool, 
       clock, 
@@ -278,7 +278,7 @@ module clamm::interest_clamm_stable {
     lp_coin_min_amount: u64,
     ctx: &mut TxContext     
   ): Coin<LpCoin> {
-    assert!(!pool.has_add_liquidity_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_add_liquidity_hooks(), errors::pool_has_no_add_liquidity_hooks());
     add_liquidity_4_pool_impl<CoinA, CoinB, CoinC, CoinD, LpCoin>(
       pool, 
       clock, 
@@ -302,7 +302,7 @@ module clamm::interest_clamm_stable {
     lp_coin_min_amount: u64,
     ctx: &mut TxContext     
   ): Coin<LpCoin> {
-    assert!(!pool.has_add_liquidity_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_add_liquidity_hooks(), errors::pool_has_no_add_liquidity_hooks());
     add_liquidity_5_pool_impl<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
       pool, 
       clock, 
@@ -316,6 +316,14 @@ module clamm::interest_clamm_stable {
     )      
   }
 
+  public fun donate<CoinType, LpCoin>(
+    pool: &mut InterestPool<Stable>, 
+    coin_in: Coin<CoinType>,    
+  ) {
+    assert!(!pool.has_donate_hooks(), errors::pool_has_no_donate_hooks());
+    donate_impl<CoinType, LpCoin>(pool, coin_in);
+  } 
+
   public fun remove_liquidity_2_pool<CoinA, CoinB, LpCoin>(
     pool: &mut InterestPool<Stable>, 
     clock: &Clock,
@@ -323,7 +331,7 @@ module clamm::interest_clamm_stable {
     min_amounts: vector<u64>,
     ctx: &mut TxContext
   ): (Coin<CoinA>, Coin<CoinB>) {
-    assert!(!pool.has_remove_liquidity_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_remove_liquidity_hooks(), errors::pool_has_no_remove_liquidity_hooks());
     remove_liquidity_2_pool_impl(pool, clock, lp_coin, min_amounts, ctx)
   }
 
@@ -334,18 +342,18 @@ module clamm::interest_clamm_stable {
     min_amounts: vector<u64>,
     ctx: &mut TxContext
   ): (Coin<CoinA>, Coin<CoinB>, Coin<CoinC>) {
-    assert!(!pool.has_remove_liquidity_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_remove_liquidity_hooks(), errors::pool_has_no_remove_liquidity_hooks());
     remove_liquidity_3_pool_impl(pool, clock, lp_coin, min_amounts, ctx)
   }
 
   public fun remove_liquidity_4_pool<CoinA, CoinB, CoinC, CoinD, LpCoin>(
     pool: &mut InterestPool<Stable>, 
-    lp_coin: Coin<LpCoin>,
     clock: &Clock,
+    lp_coin: Coin<LpCoin>,
     min_amounts: vector<u64>,
     ctx: &mut TxContext
   ): (Coin<CoinA>, Coin<CoinB>, Coin<CoinC>, Coin<CoinD>) {
-    assert!(!pool.has_remove_liquidity_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_remove_liquidity_hooks(), errors::pool_has_no_remove_liquidity_hooks());
     remove_liquidity_4_pool_impl(pool, clock, lp_coin, min_amounts, ctx)    
   }
 
@@ -356,20 +364,423 @@ module clamm::interest_clamm_stable {
     min_amounts: vector<u64>,
     ctx: &mut TxContext
   ): (Coin<CoinA>, Coin<CoinB>, Coin<CoinC>, Coin<CoinD>, Coin<CoinE>) {
-    assert!(!pool.has_remove_liquidity_hook(), errors::this_pool_has_hooks());
+    assert!(!pool.has_remove_liquidity_hooks(), errors::pool_has_no_remove_liquidity_hooks());
     remove_liquidity_5_pool_impl(pool, clock, lp_coin, min_amounts, ctx)       
   }
 
-  public fun remove_one_coin_liquidity<CoinType, LpCoin>(
+  public fun remove_liquidity_one_coin<CoinType, LpCoin>(
     pool: &mut InterestPool<Stable>, 
     clock: &Clock,
     lp_coin: Coin<LpCoin>,
     min_amount: u64,
     ctx: &mut TxContext    
   ): Coin<CoinType> {
-    assert!(!pool.has_remove_liquidity_hook(), errors::this_pool_has_hooks());
-    remove_one_coin_liquidity_impl(pool, clock, lp_coin, min_amount, ctx)
+    assert!(!pool.has_remove_liquidity_hooks(), errors::pool_has_no_remove_liquidity_hooks());
+    remove_liquidity_one_coin_impl(pool, clock, lp_coin, min_amount, ctx)
   }
+
+  public fun new_2_pool_with_hooks<CoinA, CoinB, LpCoin>(
+    clock: &Clock,
+    coin_decimals: &CoinDecimals,  
+    hooks_builder: HooksBuilder,
+    coin_a: Coin<CoinA>,
+    coin_b: Coin<CoinB>,   
+    lp_coin_supply: Supply<LpCoin>,
+    initial_a: u256,
+    ctx: &mut TxContext
+  ): (InterestPool<Stable>, PoolAdmin, Coin<LpCoin>)  {
+    let coins = vector[type_name::get<CoinA>(), type_name::get<CoinB>()];
+
+    let (pool, pool_admin) = new_pool_with_hooks<LpCoin>( 
+      hooks_builder,
+      coin_decimals,
+      initial_a, 
+      lp_coin_supply, 
+      coins,
+      ctx
+    );
+    
+    let (pool, lp_coin) = new_2_pool_impl<CoinA, CoinB, LpCoin>(
+      pool,
+      clock, 
+      coin_a, 
+      coin_b, 
+      coin_decimals, 
+      ctx
+    );
+
+    (pool, pool_admin, lp_coin)
+  }
+
+  public fun new_3_pool_with_hooks<CoinA, CoinB, CoinC, LpCoin>(
+    clock: &Clock,
+    coin_decimals: &CoinDecimals,    
+    hooks_builder: HooksBuilder,
+    coin_a: Coin<CoinA>,
+    coin_b: Coin<CoinB>,
+    coin_c: Coin<CoinC>, 
+    lp_coin_supply: Supply<LpCoin>,
+    initial_a: u256,
+    ctx: &mut TxContext
+  ): (InterestPool<Stable>, PoolAdmin, Coin<LpCoin>) {
+    let coins = vector[type_name::get<CoinA>(), type_name::get<CoinB>(), type_name::get<CoinC>()];
+
+    let (pool, pool_admin) = new_pool_with_hooks<LpCoin>( 
+      hooks_builder,
+      coin_decimals,
+      initial_a, 
+      lp_coin_supply, 
+      coins,
+      ctx
+    );
+
+    let (pool, lp_coin) = new_3_pool_impl<CoinA, CoinB, CoinC, LpCoin>(
+      pool,
+      clock, 
+      coin_a, 
+      coin_b,
+      coin_c, 
+      coin_decimals, 
+      ctx
+    );
+
+    (pool, pool_admin, lp_coin)        
+  }
+
+  public fun new_4_pool_with_hooks<CoinA, CoinB, CoinC, CoinD, LpCoin>(
+    clock: &Clock,
+    coin_decimals: &CoinDecimals,  
+    hooks_builder: HooksBuilder,
+    coin_a: Coin<CoinA>,
+    coin_b: Coin<CoinB>,
+    coin_c: Coin<CoinC>,
+    coin_d: Coin<CoinD>,    
+    lp_coin_supply: Supply<LpCoin>,
+    initial_a: u256,
+    ctx: &mut TxContext
+  ): (InterestPool<Stable>, PoolAdmin, Coin<LpCoin>) {
+    let coins = vector[
+      type_name::get<CoinA>(), 
+      type_name::get<CoinB>(), 
+      type_name::get<CoinC>(), 
+      type_name::get<CoinD>()
+    ];
+
+    let (pool, pool_admin) = new_pool_with_hooks<LpCoin>( 
+      hooks_builder,
+      coin_decimals,
+      initial_a, 
+      lp_coin_supply, 
+      coins,
+      ctx
+    );
+
+    let (pool, lp_coin) = new_4_pool_impl<CoinA, CoinB, CoinC, CoinD, LpCoin>(
+      pool,
+      clock, 
+      coin_a, 
+      coin_b,
+      coin_c, 
+      coin_d,
+      coin_decimals, 
+      ctx
+    );
+
+    (pool, pool_admin, lp_coin)      
+  }
+
+  public fun new_5_pool_with_hooks<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+    clock: &Clock,
+    coin_decimals: &CoinDecimals,   
+    hooks_builder: HooksBuilder,
+    coin_a: Coin<CoinA>,
+    coin_b: Coin<CoinB>,
+    coin_c: Coin<CoinC>,
+    coin_d: Coin<CoinD>,
+    coin_e: Coin<CoinE>,   
+    lp_coin_supply: Supply<LpCoin>,
+    initial_a: u256,
+    ctx: &mut TxContext
+  ): (InterestPool<Stable>, PoolAdmin, Coin<LpCoin>) {
+    let coins = vector[
+      type_name::get<CoinA>(), 
+      type_name::get<CoinB>(), 
+      type_name::get<CoinC>(), 
+      type_name::get<CoinD>(),
+      type_name::get<CoinE>()
+    ];
+
+    let (pool, pool_admin) = new_pool_with_hooks<LpCoin>( 
+      hooks_builder,
+      coin_decimals,
+      initial_a, 
+      lp_coin_supply, 
+      coins,
+      ctx
+    );
+
+    let (pool, lp_coin) = new_5_pool_impl<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+      pool,
+      clock, 
+      coin_a, 
+      coin_b,
+      coin_c, 
+      coin_d,
+      coin_e,
+      coin_decimals, 
+      ctx
+    );
+
+    (pool, pool_admin, lp_coin)   
+  }
+
+  public fun swap_with_hooks<CoinIn, CoinOut, LpCoin>(
+    pool: &mut InterestPool<Stable>,
+    clock: &Clock,
+    request: Request,
+    coin_in: Coin<CoinIn>,
+    min_amount: u64,
+    ctx: &mut TxContext
+  ): (Request, Coin<CoinOut>) {
+    let request = pool.finish_swap(request);
+
+    (
+      request,
+      swap_impl<CoinIn, CoinOut, LpCoin>(pool, clock, coin_in, min_amount, ctx)
+    )
+  }  
+
+  public fun add_liquidity_2_pool_with_hooks<CoinA, CoinB, LpCoin>(
+    pool: &mut InterestPool<Stable>,
+    clock: &Clock,
+    request: Request,
+    coin_a: Coin<CoinA>,
+    coin_b: Coin<CoinB>,
+    lp_coin_min_amount: u64,
+    ctx: &mut TxContext     
+  ): (Request, Coin<LpCoin>) {
+   let request = pool.finish_add_liquidity(request);
+
+    (
+      request,
+      add_liquidity_2_pool_impl(pool, clock, coin_a, coin_b, lp_coin_min_amount, ctx)
+    )
+  } 
+
+  public fun add_liquidity_3_pool_with_hooks<CoinA, CoinB, CoinC, LpCoin>(
+    pool: &mut InterestPool<Stable>, 
+    clock: &Clock,
+    request: Request,   
+    coin_a: Coin<CoinA>,
+    coin_b: Coin<CoinB>,
+    coin_c: Coin<CoinC>,
+    lp_coin_min_amount: u64,
+    ctx: &mut TxContext     
+  ): (Request, Coin<LpCoin>) {
+    let request = pool.finish_add_liquidity(request);
+
+    (
+      request,
+      add_liquidity_3_pool_impl(pool, clock, coin_a, coin_b, coin_c, lp_coin_min_amount, ctx)
+    )
+  } 
+
+  public fun add_liquidity_4_pool_with_hooks<CoinA, CoinB, CoinC, CoinD, LpCoin>(
+    pool: &mut InterestPool<Stable>,     
+    clock: &Clock,
+    request: Request, 
+    coin_a: Coin<CoinA>,
+    coin_b: Coin<CoinB>,
+    coin_c: Coin<CoinC>,
+    coin_d: Coin<CoinD>,
+    lp_coin_min_amount: u64,
+    ctx: &mut TxContext     
+  ): (Request, Coin<LpCoin>) {
+    let request = pool.finish_add_liquidity(request);
+
+    (
+      request,
+      add_liquidity_4_pool_impl(
+        pool, 
+        clock, 
+        coin_a, 
+        coin_b, 
+        coin_c, 
+        coin_d, 
+        lp_coin_min_amount, 
+        ctx
+      )      
+    )    
+  }
+
+  public fun add_liquidity_5_pool_with_hooks<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+    pool: &mut InterestPool<Stable>,    
+    clock: &Clock,
+    request: Request,  
+    coin_a: Coin<CoinA>,
+    coin_b: Coin<CoinB>,
+    coin_c: Coin<CoinC>,
+    coin_d: Coin<CoinD>,
+    coin_e: Coin<CoinE>,
+    lp_coin_min_amount: u64,
+    ctx: &mut TxContext     
+  ): (Request, Coin<LpCoin>) {
+    let request = pool.finish_add_liquidity(request);
+
+    (
+      request,
+      add_liquidity_5_pool_impl(
+        pool, 
+        clock, 
+        coin_a, 
+        coin_b, 
+        coin_c, 
+        coin_d, 
+        coin_e,
+        lp_coin_min_amount, 
+        ctx
+      )        
+    )    
+  } 
+
+  public fun donate_with_hooks<CoinType, LpCoin>(
+    pool: &mut InterestPool<Stable>, 
+    request: Request,
+    coin_in: Coin<CoinType>,    
+  ): Request {
+    let request = pool.finish_donate(request);
+    donate_impl<CoinType, LpCoin>(pool, coin_in);
+    
+    request
+  } 
+
+  public fun remove_liquidity_2_pool_with_hooks<CoinA, CoinB, LpCoin>(
+    pool: &mut InterestPool<Stable>,  
+    clock: &Clock,
+    request: Request, 
+    lp_coin: Coin<LpCoin>,
+    min_amounts: vector<u64>,
+    ctx: &mut TxContext
+  ): (Request, Coin<CoinA>, Coin<CoinB>) {
+    let request = pool.finish_remove_liquidity(request);
+
+    let (coin_a, coin_b) = remove_liquidity_2_pool_impl(
+      pool,
+      clock,
+      lp_coin,        
+      min_amounts, 
+      ctx
+    );
+
+    (
+      request,
+      coin_a,
+      coin_b
+    )
+  }   
+
+  public fun remove_liquidity_3_pool_with_hooks<CoinA, CoinB, CoinC, LpCoin>(
+    pool: &mut InterestPool<Stable>, 
+    clock: &Clock,
+    request: Request, 
+    lp_coin: Coin<LpCoin>,
+    min_amounts: vector<u64>,
+    ctx: &mut TxContext
+  ): (Request, Coin<CoinA>, Coin<CoinB>, Coin<CoinC>) {
+    let request = pool.finish_remove_liquidity(request);
+
+    let (coin_a, coin_b, coin_c) = remove_liquidity_3_pool_impl(
+      pool,
+      clock,
+      lp_coin,        
+      min_amounts, 
+      ctx
+    );
+
+    (
+      request,
+      coin_a,
+      coin_b,
+      coin_c,
+    )
+  }  
+
+  public fun remove_liquidity_4_pool_with_hooks<CoinA, CoinB, CoinC, CoinD, LpCoin>(
+    pool: &mut InterestPool<Stable>,  
+    clock: &Clock,     
+    request: Request, 
+    lp_coin: Coin<LpCoin>,
+    min_amounts: vector<u64>,
+    ctx: &mut TxContext
+  ): (Request, Coin<CoinA>, Coin<CoinB>, Coin<CoinC>, Coin<CoinD>) {
+    let request = pool.finish_remove_liquidity(request);
+
+    let (coin_a, coin_b, coin_c, coin_d) = remove_liquidity_4_pool_impl(
+      pool,
+      clock,
+      lp_coin,        
+      min_amounts, 
+      ctx
+    );
+
+    (
+      request,
+      coin_a,
+      coin_b,
+      coin_c,
+      coin_d
+    )
+  }
+
+  public fun remove_liquidity_5_pool_with_hooks<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+    pool: &mut InterestPool<Stable>,   
+    clock: &Clock,    
+    request: Request, 
+    lp_coin: Coin<LpCoin>,
+    min_amounts: vector<u64>,
+    ctx: &mut TxContext
+  ): (Request, Coin<CoinA>, Coin<CoinB>, Coin<CoinC>, Coin<CoinD>, Coin<CoinE>) {
+    let request = pool.finish_remove_liquidity(request);
+    
+    let (coin_a, coin_b, coin_c, coin_d, coin_e) = remove_liquidity_5_pool_impl(
+      pool,
+      clock,
+      lp_coin,        
+      min_amounts, 
+      ctx
+    );
+
+    (
+      request,
+      coin_a,
+      coin_b,
+      coin_c,
+      coin_d,
+      coin_e
+    )    
+  }
+
+  public fun remove_liquidity_one_coin_with_hooks<CoinType, LpCoin>(
+    pool: &mut InterestPool<Stable>, 
+    clock: &Clock,
+    request: Request, 
+    lp_coin: Coin<LpCoin>,
+    min_amount: u64,
+    ctx: &mut TxContext    
+  ): (Request, Coin<CoinType>) {
+    let request = pool.finish_remove_liquidity(request);
+
+    (
+      request,
+      remove_liquidity_one_coin_impl(
+        pool,
+        clock,
+        lp_coin,
+        min_amount, 
+        ctx
+      )
+    )
+  } 
 
   // === Public-View Functions ===
 
@@ -553,7 +964,7 @@ module clamm::interest_clamm_stable {
     admin_balance.take(amount, ctx)
   }
 
-  // === Public-Package Functions ===
+  // === Private Functions ===
 
   fun new_state_v1<LpCoin>(
     coin_decimals: &CoinDecimals,  
@@ -581,7 +992,29 @@ module clamm::interest_clamm_stable {
     }  
   }
 
-  public(package) fun new_pool_with_hooks<LpCoin>(
+  fun new_pool<LpCoin>(
+    coin_decimals: &CoinDecimals,  
+    initial_a: u256,
+    lp_coin_supply: Supply<LpCoin>,
+    coins: vector<TypeName>,
+    ctx: &mut TxContext
+  ): (InterestPool<Stable>, PoolAdmin) {
+    let state_v1 = new_state_v1(
+      coin_decimals,
+      initial_a,
+      lp_coin_supply,
+      coins.length(),
+      ctx
+    );
+
+    interest_pool::new<Stable>(
+      make_coins_vec_set_from_vector(coins),
+      versioned::create(STATE_V1_VERSION, state_v1, ctx), 
+      ctx
+    )
+  }
+
+  fun new_pool_with_hooks<LpCoin>(
     hooks_builder: HooksBuilder,
     coin_decimals: &CoinDecimals,  
     initial_a: u256,
@@ -605,7 +1038,7 @@ module clamm::interest_clamm_stable {
     )
   }
 
-  public(package) fun new_2_pool_impl<CoinA, CoinB, LpCoin>(
+  fun new_2_pool_impl<CoinA, CoinB, LpCoin>(
     mut pool: InterestPool<Stable>,
     clock: &Clock,
     coin_a: Coin<CoinA>,
@@ -628,7 +1061,7 @@ module clamm::interest_clamm_stable {
     (pool, lp_coin)
   }
 
-  public(package) fun new_3_pool_impl<CoinA, CoinB, CoinC, LpCoin>(
+  fun new_3_pool_impl<CoinA, CoinB, CoinC, LpCoin>(
     mut pool: InterestPool<Stable>,
     clock: &Clock,
     coin_a: Coin<CoinA>,
@@ -653,7 +1086,7 @@ module clamm::interest_clamm_stable {
     (pool, lp_coin)
   }
 
-  public(package) fun new_4_pool_impl<CoinA, CoinB, CoinC, CoinD, LpCoin>(
+  fun new_4_pool_impl<CoinA, CoinB, CoinC, CoinD, LpCoin>(
     mut pool: InterestPool<Stable>,
     clock: &Clock,
     coin_a: Coin<CoinA>,
@@ -686,7 +1119,7 @@ module clamm::interest_clamm_stable {
     (pool, lp_coin)
   }
 
-  public(package) fun new_5_pool_impl<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+  fun new_5_pool_impl<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
     mut pool: InterestPool<Stable>,    
     clock: &Clock,
     coin_a: Coin<CoinA>,
@@ -723,7 +1156,7 @@ module clamm::interest_clamm_stable {
     (pool, lp_coin)
   }
 
-  public(package) fun swap_impl<CoinIn, CoinOut, LpCoin>(
+ fun swap_impl<CoinIn, CoinOut, LpCoin>(
     pool: &mut InterestPool<Stable>,
     clock: &Clock,
     mut coin_in: Coin<CoinIn>,
@@ -805,7 +1238,7 @@ module clamm::interest_clamm_stable {
     coin_out
   }
 
-  public(package) fun add_liquidity_2_pool_impl<CoinA, CoinB, LpCoin>(
+  fun add_liquidity_2_pool_impl<CoinA, CoinB, LpCoin>(
     pool: &mut InterestPool<Stable>,
     clock: &Clock,
     coin_a: Coin<CoinA>,
@@ -843,7 +1276,7 @@ module clamm::interest_clamm_stable {
     lp_coin
   }
 
-  public(package) fun add_liquidity_3_pool_impl<CoinA, CoinB, CoinC, LpCoin>(
+  fun add_liquidity_3_pool_impl<CoinA, CoinB, CoinC, LpCoin>(
     pool: &mut InterestPool<Stable>,
     clock: &Clock,
     coin_a: Coin<CoinA>,
@@ -884,7 +1317,7 @@ module clamm::interest_clamm_stable {
     lp_coin
   }
 
-  public(package) fun add_liquidity_4_pool_impl<CoinA, CoinB, CoinC, CoinD, LpCoin>(
+  fun add_liquidity_4_pool_impl<CoinA, CoinB, CoinC, CoinD, LpCoin>(
     pool: &mut InterestPool<Stable>,
     clock: &Clock,
     coin_a: Coin<CoinA>,
@@ -931,7 +1364,7 @@ module clamm::interest_clamm_stable {
     lp_coin
   }
 
-  public(package) fun add_liquidity_5_pool_impl<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+  fun add_liquidity_5_pool_impl<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
     pool: &mut InterestPool<Stable>,
     clock: &Clock,
     coin_a: Coin<CoinA>,
@@ -982,52 +1415,20 @@ module clamm::interest_clamm_stable {
     lp_coin
   }
 
-  public(package) fun remove_one_coin_liquidity_impl<CoinType, LpCoin>(
-    pool: &mut InterestPool<Stable>, 
-    clock: &Clock,
-    lp_coin: Coin<LpCoin>,
-    min_amount: u64,
-    ctx: &mut TxContext    
-  ): Coin<CoinType> {
-    let lp_coin_value = lp_coin.value();
-    assert!(lp_coin_value != 0, errors::no_zero_coin());
-
+  fun donate_impl<CoinType, LpCoin>(
+    pool: &mut InterestPool<Stable>,
+    coin_in: Coin<CoinType>
+  ) {
     let pool_address = pool.addy();
     let state = load_mut<LpCoin>(pool.state_mut());
 
-    let prev_invariant = virtual_price_impl(state, clock);
+    let coin_in_value = deposit_coin<CoinType, LpCoin>(state, coin_in);
+    assert!(coin_in_value != 0, errors::no_zero_coin());  
 
-    let (index, decimals) = coin_state_metadata<CoinType, LpCoin>(state);
-
-    let balances = state.balances;
-
-    let current_coin_balance = &mut state.balances[index]; 
-    let initial_coin_balance = *current_coin_balance;
-    
-    *current_coin_balance = y_lp(
-      get_a(state.initial_a, state.initial_a_time, state.future_a, state.future_a_time, clock),
-      index.to_u256(),
-      balances,
-      lp_coin_value.to_u256(),
-      state.lp_coin_supply.supply_value().to_u256(),
-    ) + 1; // give an edge to the protocol
-
-    let amount_to_take = ((initial_coin_balance - min(initial_coin_balance, *current_coin_balance)) * decimals / PRECISION).to_u64();
-
-    assert!(amount_to_take >= min_amount, errors::slippage());
-
-    state.lp_coin_supply.decrease_supply(lp_coin.into_balance());
-
-    events::emit_remove_liquidity<Stable, CoinType, LpCoin>(pool_address, amount_to_take, lp_coin_value);
-
-    let coin_out = coin_state_balance_mut<CoinType, LpCoin>(state).take(amount_to_take, ctx);
-
-    assert!(virtual_price_impl(load<LpCoin>(pool.state_mut()), clock) >= prev_invariant, errors::invalid_invariant());
-
-    coin_out
+    events::emit_donate<Stable, CoinType, LpCoin>(pool_address, coin_in_value);
   }
 
-  public(package) fun remove_liquidity_2_pool_impl<CoinA, CoinB, LpCoin>(
+  fun remove_liquidity_2_pool_impl<CoinA, CoinB, LpCoin>(
     pool: &mut InterestPool<Stable>, 
     clock: &Clock,
     lp_coin: Coin<LpCoin>,
@@ -1067,7 +1468,7 @@ module clamm::interest_clamm_stable {
     (coin_a, coin_b)
   }
 
-  public(package) fun remove_liquidity_3_pool_impl<CoinA, CoinB, CoinC, LpCoin>(
+  fun remove_liquidity_3_pool_impl<CoinA, CoinB, CoinC, LpCoin>(
     pool: &mut InterestPool<Stable>, 
     clock: &Clock,
     lp_coin: Coin<LpCoin>,
@@ -1109,7 +1510,7 @@ module clamm::interest_clamm_stable {
     (coin_a, coin_b, coin_c)
   }
 
-  public(package) fun remove_liquidity_4_pool_impl<CoinA, CoinB, CoinC, CoinD, LpCoin>(
+  fun remove_liquidity_4_pool_impl<CoinA, CoinB, CoinC, CoinD, LpCoin>(
     pool: &mut InterestPool<Stable>, 
     clock: &Clock,
     lp_coin: Coin<LpCoin>,
@@ -1153,7 +1554,7 @@ module clamm::interest_clamm_stable {
     (coin_a, coin_b, coin_c, coin_d)
   }
 
-  public(package) fun remove_liquidity_5_pool_impl<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
+  fun remove_liquidity_5_pool_impl<CoinA, CoinB, CoinC, CoinD, CoinE, LpCoin>(
     pool: &mut InterestPool<Stable>, 
     clock: &Clock,
     lp_coin: Coin<LpCoin>,
@@ -1199,30 +1600,6 @@ module clamm::interest_clamm_stable {
     (coin_a, coin_b, coin_c, coin_d, coin_e)
   }
 
-  // === Private Functions ===
-
-  fun new_pool<LpCoin>(
-    coin_decimals: &CoinDecimals,  
-    initial_a: u256,
-    lp_coin_supply: Supply<LpCoin>,
-    coins: vector<TypeName>,
-    ctx: &mut TxContext
-  ): (InterestPool<Stable>, PoolAdmin) {
-    let state_v1 = new_state_v1(
-      coin_decimals,
-      initial_a,
-      lp_coin_supply,
-      coins.length(),
-      ctx
-    );
-
-    interest_pool::new<Stable>(
-      make_coins_vec_set_from_vector(coins),
-      versioned::create(STATE_V1_VERSION, state_v1, ctx), 
-      ctx
-    )
-  }
-
   fun calculate_mint_amount<LpCoin>(state: &StateV1<LpCoin>, amp: u256, prev_k: u256, lp_coin_min_amount: u64): u64 {
     let new_k = invariant_(amp, state.balances);
 
@@ -1235,6 +1612,51 @@ module clamm::interest_clamm_stable {
     assert!(mint_amount >= lp_coin_min_amount, errors::slippage());
 
     mint_amount
+  }
+
+  fun remove_liquidity_one_coin_impl<CoinType, LpCoin>(
+    pool: &mut InterestPool<Stable>, 
+    clock: &Clock,
+    lp_coin: Coin<LpCoin>,
+    min_amount: u64,
+    ctx: &mut TxContext    
+  ): Coin<CoinType> {
+    let lp_coin_value = lp_coin.value();
+    assert!(lp_coin_value != 0, errors::no_zero_coin());
+
+    let pool_address = pool.addy();
+    let state = load_mut<LpCoin>(pool.state_mut());
+
+    let prev_invariant = virtual_price_impl(state, clock);
+
+    let (index, decimals) = coin_state_metadata<CoinType, LpCoin>(state);
+
+    let balances = state.balances;
+
+    let current_coin_balance = &mut state.balances[index]; 
+    let initial_coin_balance = *current_coin_balance;
+    
+    *current_coin_balance = y_lp(
+      get_a(state.initial_a, state.initial_a_time, state.future_a, state.future_a_time, clock),
+      index.to_u256(),
+      balances,
+      lp_coin_value.to_u256(),
+      state.lp_coin_supply.supply_value().to_u256(),
+    ) + 1; // give an edge to the protocol
+
+    let amount_to_take = ((initial_coin_balance - min(initial_coin_balance, *current_coin_balance)) * decimals / PRECISION).to_u64();
+
+    assert!(amount_to_take >= min_amount, errors::slippage());
+
+    state.lp_coin_supply.decrease_supply(lp_coin.into_balance());
+
+    events::emit_remove_liquidity<Stable, CoinType, LpCoin>(pool_address, amount_to_take, lp_coin_value);
+
+    let coin_out = coin_state_balance_mut<CoinType, LpCoin>(state).take(amount_to_take, ctx);
+
+    assert!(virtual_price_impl(load<LpCoin>(pool.state_mut()), clock) >= prev_invariant, errors::invalid_invariant());
+
+    coin_out
   }
 
   fun deposit_coin<CoinType, LpCoin>(state: &mut StateV1<LpCoin>, coin_in: Coin<CoinType>): u64 {

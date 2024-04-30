@@ -2,7 +2,7 @@
 
 [move]
 version = 1
-manifest_digest = "C5B2E805EE7E74EE46C6AE549D0DE5911396DA21766B7A3DD64F37103A0C0D4E"
+manifest_digest = "ECA730AA848576A7FA3129F2E6FBFF1F37EA2D2CDCAADDD97894796CE0FDB21C"
 deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
 dependencies = [
   { name = "CLAMM" },
@@ -36,6 +36,7 @@ name = "SuiTears"
 source = { local = "../interest/suitears" }
 
 dependencies = [
+  { name = "MoveStdlib" },
   { name = "Sui" },
 ]
 
