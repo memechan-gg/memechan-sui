@@ -11,12 +11,12 @@ Launchpad protocol for memecoins
 
 We have a piece-wise linear equation:
 
-$$F(S) = M = \begin{cases} 0 & \text{if } S < 0 \\ \alpha S+ \beta & \text{if } 0 \leq S \leq \Gamma_S \\ 0 & \text{if } S > \Gamma_S \end{cases}$$
+$$F(S) = \begin{cases} 0 & \text{if } S < 0 \\ \alpha S+ \beta & \text{if } 0 \leq S \leq \Gamma_S \\ 0 & \text{if } S > \Gamma_S \end{cases}$$
 
 
 From which we compute the amount $\Delta M$ to swap, given an input $\Delta S$:
 
-$$\begin{align*} \Delta M = \int_{a}^{b} f(S) \, ds = \frac{\alpha S_b^2}{2}+\beta S_b+C-(\frac{\alpha S_a^2}{2}+\beta S_a + C) \\ = \frac{\alpha S_b^2}{2}+\beta S_b-\frac{ \alpha S_a^2}{2}-\beta S_a = \frac{\alpha (S_b^2 -S_a^2)}{2}+\beta(S_b-S_a) \end{align*}$$
+$$\begin{align*} \Delta M = \int_{a}^{b} f(S)ds = \frac{\alpha S_b^2}{2}+\beta S_b+C-(\frac{\alpha S_a^2}{2}+\beta S_a + C) \\ = \frac{\alpha S_b^2}{2}+\beta S_b-\frac{ \alpha S_a^2}{2}-\beta S_a = \frac{\alpha (S_b^2 -S_a^2)}{2}+\beta(S_b-S_a) \end{align*}$$
 
 Note: For the purpose of using only unsigned integers we transform this to a canonical formula:
 

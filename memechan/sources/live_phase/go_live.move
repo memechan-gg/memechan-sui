@@ -37,9 +37,12 @@ module memechan::go_live {
     const ADJUSTMENT_STEP: u256 = 146000000000000; // 18 decimals
     const MA_TIME: u256 = 600_000; // 10 minutes
 
-    const MID_FEE: u256 = 260_000_000_000_000_000; // (0.26%) swap fee when the pool is balanced
-    const OUT_FEE: u256 = 450_000_000_000_000_000; // (0.45%) swap fee when the pool is out balance
+    const MID_FEE: u256 = 26000000; // (0.26%) swap fee when the pool is balanced
+    const OUT_FEE: u256 = 45000000; // (0.45%) swap fee when the pool is out balance
     const GAMMA_FEE: u256 = 200_000_000_000_000; //  (0.0002%) speed rate that fee increases mid_fee => out_fee
+
+    // const MID_FEE: u256 = 260_000_000_000_000_000; // (0.26%) swap fee when the pool is balanced
+    // const OUT_FEE: u256 = 450_000_000_000_000_000; // (0.45%) swap fee when the pool is out balance
 
     const LAUNCH_FEE: u256 =   50_000_000_000_000_000; // 5%
     const PRECISION: u256 = 1_000_000_000_000_000_000;
