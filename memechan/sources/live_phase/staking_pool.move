@@ -45,7 +45,6 @@ module memechan::staking_pool {
         fields: UID,
         ctx: &mut TxContext,
     ): StakingPool<Meme, S, LP> {
-
         let stake_total = balance::value(&balance_lp);
 
         StakingPool {
@@ -118,8 +117,6 @@ module memechan::staking_pool {
             coin::from_balance(balance_sui, ctx)
         )
     }
-
-    
 
     public fun collect_fees<Meme, S, LP>(
         staking_pool: &mut StakingPool<Meme, S, LP>,

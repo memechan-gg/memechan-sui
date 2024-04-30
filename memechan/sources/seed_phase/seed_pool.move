@@ -794,7 +794,7 @@ module memechan::seed_pool {
         ticket_coin_metadata: &mut CoinMetadata<M>,
         meme_coin_metadata: &CoinMetadata<Meme>,
         ctx: &mut TxContext
-    ): SeedPool {
+    ): (SeedPool, Token<M>) {
         let pool = new_<M, S, Meme>(
             registry,
             ticket_coin_cap,
@@ -812,7 +812,6 @@ module memechan::seed_pool {
         );
 
         let pool_state = pool_state_mut<M, S, Meme>(&mut pool);
-
         
         balance::join(
             &mut pool_state.balance_s,
@@ -827,7 +826,7 @@ module memechan::seed_pool {
 
         pool_state.locked = true;
 
-        pool
+        (pool, token::mint_for_testing((default_gamma_m() as u64), ctx))
     }
     
     #[test_only]

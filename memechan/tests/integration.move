@@ -23,6 +23,7 @@ module memechan::integration {
         Self, SeedPool, default_price_factor, default_gamma_s, default_gamma_m, default_omega_m,
         is_ready_to_launch
     };
+    use memechan::staking_pool::{Self, StakingPool};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people, scenario, deploy_coins, sui};
 
@@ -182,7 +183,7 @@ module memechan::integration {
         let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
         let clock = clock::create_for_testing(ctx(scenario_mut));
 
-        let pool = seed_pool::new_full_for_testing<TICKET_BODEN, SUI, BODEN>(
+        let (pool, token_m) = seed_pool::new_full_for_testing<TICKET_BODEN, SUI, BODEN>(
             &mut registry,
             ticket_coin_cap, // TICKET_BODEN
             boden_coin_cap, // BODEN
@@ -206,6 +207,7 @@ module memechan::integration {
         );
 
         admin::burn_for_testing(admin);
+        token::burn_for_testing(token_m);
         clock::destroy_for_testing(clock);
         transfer::public_transfer(sui_meta, @0x0);
         transfer::public_transfer(lp_meta, @0x0);
@@ -237,7 +239,7 @@ module memechan::integration {
         let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
         let clock = clock::create_for_testing(ctx(scenario_mut));
 
-        let pool = seed_pool::new_full_for_testing<TICKET_BODEN, SUI, BODEN>(
+        let (pool, token_m) = seed_pool::new_full_for_testing<TICKET_BODEN, SUI, BODEN>(
             &mut registry,
             ticket_coin_cap, // TICKET_BODEN
             boden_coin_cap, // BODEN
@@ -275,8 +277,92 @@ module memechan::integration {
         admin::burn_for_testing(admin);
         coin::burn_for_testing(output);
         clock::destroy_for_testing(clock);
+        token::burn_for_testing(token_m);
         transfer::public_transfer(sui_meta, @0x0);
         transfer::public_transfer(lp_meta, @0x0);
+        test::return_shared(clamm_pool);
+        test::return_shared(boden_metadata);
+        test::return_shared(ticket_coin_metadata);
+        test::return_shared(registry);
+        test::end(scenario);
+    }
+
+    #[test]
+    fun go_live_trade_and_collect_fees() {
+        let (scenario, alice, _, admin) = start_test_();
+
+        let scenario_mut = &mut scenario;
+        
+        // Initiate S joe boden token
+        next_tx(scenario_mut, alice);
+        {
+            ticket_boden::init_for_testing(ctx(scenario_mut));
+            boden::init_for_testing(ctx(scenario_mut));
+        };
+
+        next_tx(scenario_mut, alice);
+
+        let registry = test::take_shared<Registry>(scenario_mut);
+        let ticket_coin_cap = test::take_from_sender<TreasuryCap<TICKET_BODEN>>(scenario_mut);
+        let ticket_coin_metadata = test::take_shared<CoinMetadata<TICKET_BODEN>>(scenario_mut);
+        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
+        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+
+        let (pool, m_token) = seed_pool::new_full_for_testing<TICKET_BODEN, SUI, BODEN>(
+            &mut registry,
+            ticket_coin_cap, // TICKET_BODEN
+            boden_coin_cap, // BODEN
+            &mut ticket_coin_metadata,
+            &boden_metadata,
+            ctx(scenario_mut)
+        );
+
+        let (lp_treasury, lp_meta) = lp_coin::new(ctx(scenario_mut));
+        let sui_meta = sui::new(ctx(scenario_mut));
+
+        go_live::go_live_default_test<TICKET_BODEN, BODEN, LP_COIN>(
+            &admin,
+            pool,
+            &sui_meta,
+            &boden_metadata,
+            &lp_meta,
+            lp_treasury,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        // Trade
+        next_tx(scenario_mut, alice);
+        let clamm_pool = test::take_shared<InterestPool<Volatile>>(scenario_mut);
+
+        let output = volatile::swap<SUI, BODEN, LP_COIN>(
+            &mut clamm_pool,
+            &clock,
+            coin::mint_for_testing<SUI>(mist(10_000), ctx(scenario_mut)),
+            1,
+            ctx(scenario_mut),
+        );
+
+        next_tx(scenario_mut, alice);
+        let staking_pool = test::take_shared<StakingPool<BODEN, SUI, LP_COIN>>(scenario_mut);
+
+        staking_pool::collect_fees<BODEN, SUI, LP_COIN>(
+            &mut staking_pool,
+            &mut clamm_pool,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        // TODO: withdraw fees and check amt
+
+        token::burn_for_testing(m_token);
+        admin::burn_for_testing(admin);
+        coin::burn_for_testing(output);
+        clock::destroy_for_testing(clock);
+        transfer::public_transfer(sui_meta, @0x0);
+        transfer::public_transfer(lp_meta, @0x0);
+        test::return_shared(staking_pool);
         test::return_shared(clamm_pool);
         test::return_shared(boden_metadata);
         test::return_shared(ticket_coin_metadata);
