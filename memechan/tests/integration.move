@@ -93,7 +93,6 @@ module memechan::integration {
             amt_raised = amt_raised + amt;
             meme_tokens_in_pool = meme_tokens_in_pool - staked_lp::balance(&staked_sboden);
             
-            // print(&staked_lp::balance(&staked_sboden));
             assert!(seed_pool::balance_s<TICKET_BODEN, SUI, BODEN>(&seed_pool) == amt_raised, 0);
             assert!(seed_pool::balance_m<TICKET_BODEN, SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
 

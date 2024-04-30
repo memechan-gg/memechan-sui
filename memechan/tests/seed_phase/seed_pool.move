@@ -1,7 +1,6 @@
 #[test_only]
 module memechan::bound_curve_tests {
     use std::option;
-    use std::debug::print;
 
     use sui::object;
     use sui::test_utils::assert_eq;
@@ -15,7 +14,7 @@ module memechan::bound_curve_tests {
     use memechan::usdc::USDC;
     use memechan::fees::{Fees};
     use memechan::ticket_usdc::TICKET_USDC;
-    use memechan::seed_pool::{Self, SeedPool, decimals_s, default_gamma_s, default_gamma_m};
+    use memechan::seed_pool::{Self, SeedPool, decimals_s};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people5, people, scenario, deploy_usdc_sui_pool_default_liquidity};
     use memechan::staked_lp;
@@ -454,8 +453,6 @@ module memechan::bound_curve_tests {
             } = request;
             
             let sui_res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut pool, meme_in, 1, &policy, ctx(scenario_mut));
-
-            print(&sui_res);
 
             coin::burn_for_testing(coin_in);
             coin::burn_for_testing(sui_res);

@@ -5,7 +5,6 @@ module clamm::interest_clamm_volatile {
   // === Imports ===
 
   use std::type_name::{Self, TypeName};
-  use std::debug::print;
 
   use sui::clock::Clock;
   use sui::bag::{Self, Bag};
@@ -1215,13 +1214,6 @@ module clamm::interest_clamm_volatile {
 
     // Convert from Price => Coin Balance
     coin_out_amount = if (coin_out_state.index != 0) div_down(coin_out_amount, coin_out_state.price) else coin_out_amount;
-
-    print(&(fee_impl(state, balances_in_price) * coin_out_amount / 10000000000));
-    print(&(fee_impl(state, balances_in_price) * coin_out_amount / 10000000000));
-
-    // Coin out amount:                                   306_132_560_571_024_958_982_900
-    // fee impl                                                   449_961_855_248_418_213
-    // fee impl * coin_out_amt / 1...          13_774_797_490_648_715_343_341_287_716_843
     
     coin_out_amount = coin_out_amount - fee_impl(state, balances_in_price) * coin_out_amount / 10000000000;
 
@@ -1985,11 +1977,6 @@ module clamm::interest_clamm_volatile {
 
   fun fee_impl<LpCoin>(state: &StateV1<LpCoin>, balances: vector<u256>): u256 {
     let f = volatile_math::reduction_coefficient(balances, state.fees.gamma_fee);
-    // print(&state.fees.gamma_fee);
-    // print(&f);
-    // print(&state.fees.mid_fee);
-    // print(&state.fees.out_fee);
-    // print(&((state.fees.mid_fee * f + state.fees.out_fee * (PRECISION - f)) / PRECISION));
     (state.fees.mid_fee * f + state.fees.out_fee * (PRECISION - f)) / PRECISION
   }
 
