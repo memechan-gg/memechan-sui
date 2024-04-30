@@ -9,7 +9,6 @@ module clamm::interest_clamm_volatile {
   use sui::clock::Clock;
   use sui::bag::{Self, Bag};
   use sui::coin::{Self, Coin};
-  use sui::table::{Self, Table};
   use sui::vec_map::{Self, VecMap};
   use sui::versioned::{Self, Versioned};
   use sui::balance::{Self, Supply, Balance};
@@ -103,7 +102,7 @@ module clamm::interest_clamm_volatile {
     max_a: u256,
     not_adjusted: bool,
     version: u256,
-    coin_states: Table<TypeName, CoinState>,
+    coin_states: VecMap<TypeName, CoinState>,
     coin_balances: Bag,
     admin_balance: Balance<LpCoin>
   }
@@ -663,8 +662,8 @@ module clamm::interest_clamm_volatile {
     ROLL * xcp_impl(state, coin_states, state.d) / supply.to_u256()
   }
 
-  public fun quote_swap<CoinIn, CoinOut, LpCoin>(pool: &mut InterestPool<Volatile>, clock: &Clock, amount: u64): u64 {
-    if (amount == 0) return 0;
+  public fun quote_swap<CoinIn, CoinOut, LpCoin>(pool: &mut InterestPool<Volatile>, clock: &Clock, amount: u64): (u64, u64) {
+    if (amount == 0) return (0, 0);
     let (state, coin_states) = state_and_coin_states<LpCoin>(pool);
     let coin_in_state = coin_state<CoinIn, LpCoin>(state);
     let coin_out_state = coin_state<CoinOut, LpCoin>(state);
@@ -697,9 +696,11 @@ module clamm::interest_clamm_volatile {
 
    if (coin_out_state.index != 0) coin_out_amount = div_down(coin_out_amount, coin_out_state.price);
 
-   coin_out_amount = coin_out_amount - fee_impl(state, balances_price) * coin_out_amount / 10000000000;
+   let fee = fee_impl(state, balances_price) * coin_out_amount / 10000000000;
 
-   mul_down(coin_out_amount, coin_out_state.decimals_scalar).to_u64()
+   coin_out_amount = coin_out_amount - fee;
+
+   (mul_down(coin_out_amount, coin_out_state.decimals_scalar).to_u64(), fee.to_u64())
   }   
 
   public fun quote_add_liquidity<LpCoin>(pool: &mut InterestPool<Volatile>, clock: &Clock, amounts: vector<u64>): u64 {
@@ -913,13 +914,7 @@ module clamm::interest_clamm_volatile {
     let adjustment_step = option::destroy_with_default(*&values[5], state.rebalancing_params.adjustment_step);
     let ma_half_time = option::destroy_with_default(*&values[6], state.rebalancing_params.ma_half_time); 
 
-    assert!(MAX_FEE >= out_fee && out_fee >= MIN_FEE, errors::out_fee_out_of_range());
-    assert!(MAX_FEE >= mid_fee && MIN_FEE >= MIN_FEE, errors::mid_fee_out_of_range());
-    assert!(MAX_ADMIN_FEE > admin_fee, errors::admin_fee_is_too_big());
-    assert!(gamma_fee != 0 && PRECISION >= gamma_fee, errors::gamma_fee_out_of_range());
-    assert!(PRECISION > allowed_extra_profit, errors::extra_profit_is_too_big());
-    assert!(PRECISION > adjustment_step, errors::adjustment_step_is_too_big());
-    assert!(ma_half_time >= 1000 && ONE_WEEK >= ma_half_time, errors::ma_half_time_out_of_range());
+    assert_parameters_values(mid_fee, out_fee, gamma_fee, admin_fee, allowed_extra_profit, adjustment_step, ma_half_time);
 
     state.fees.admin_fee = admin_fee;
     state.fees.out_fee = out_fee;
@@ -960,6 +955,7 @@ module clamm::interest_clamm_volatile {
     let (mid_fee, out_fee, gamma_fee) = fee_params.to_3_tuple();
 
     let n_coins = balances.length();
+    assert_parameters_values(mid_fee, out_fee, gamma_fee, ADMIN_FEE, extra_profit, adjustment_step, ma_half_time);
  
     StateV1 {
       id: object::new(ctx),
@@ -994,7 +990,7 @@ module clamm::interest_clamm_volatile {
       max_a: volatile_math::max_a(n_coins),
       not_adjusted: false,
       version: 0,
-      coin_states: table::new(ctx),
+      coin_states: vec_map::empty(),
       coin_balances: bag::new(ctx),
       admin_balance: balance::zero()
     }    
@@ -1214,7 +1210,7 @@ module clamm::interest_clamm_volatile {
 
     // Convert from Price => Coin Balance
     coin_out_amount = if (coin_out_state.index != 0) div_down(coin_out_amount, coin_out_state.price) else coin_out_amount;
-    
+
     coin_out_amount = coin_out_amount - fee_impl(state, balances_in_price) * coin_out_amount / 10000000000;
 
     // Scale to the right decimal house
@@ -1745,7 +1741,7 @@ module clamm::interest_clamm_volatile {
   ) {
     let coin_name = type_name::get<CoinType>();
 
-    state.coin_states.add(coin_name, CoinState {
+    state.coin_states.insert(coin_name, CoinState {
       index,
       price,
       price_oracle: price,
@@ -2044,6 +2040,24 @@ module clamm::interest_clamm_volatile {
 
   // * Borrow State Functions
 
+  fun assert_parameters_values(
+    mid_fee: u256,
+    out_fee: u256,
+    gamma_fee: u256,
+    admin_fee: u256,
+    allowed_extra_profit: u256,
+    adjustment_step: u256,
+    ma_half_time: u256
+  ) {
+    assert!(MAX_FEE >= out_fee && out_fee >= MIN_FEE, errors::out_fee_out_of_range());
+    assert!(MAX_FEE >= mid_fee && mid_fee >= MIN_FEE, errors::mid_fee_out_of_range());
+    assert!(MAX_ADMIN_FEE > admin_fee, errors::admin_fee_is_too_big());
+    assert!(gamma_fee != 0 && PRECISION >= gamma_fee, errors::gamma_fee_out_of_range());
+    assert!(PRECISION > allowed_extra_profit, errors::extra_profit_is_too_big());
+    assert!(PRECISION > adjustment_step, errors::adjustment_step_is_too_big());
+    assert!(ma_half_time >= 1000 && ONE_WEEK >= ma_half_time, errors::ma_half_time_out_of_range());
+  }
+
   fun state_and_coin_states<LpCoin>(pool: &mut InterestPool<Volatile>): (&StateV1<LpCoin>, vector<CoinState>) {
     let coins = pool.coins();    
     let state = load<LpCoin>(pool.state_mut());
@@ -2064,7 +2078,7 @@ module clamm::interest_clamm_volatile {
     
     while (n_coins > i) {
       let new_state = vector::borrow(&new_coin_states, i);
-      let current_state = coin_state_with_key_mut(state, new_state.type_name);
+      let current_state = coin_state_with_key_mut(state, &new_state.type_name);
       current_state.last_price = new_state.last_price;
       current_state.price = new_state.price;
       current_state.price_oracle = new_state.price_oracle;
@@ -2079,7 +2093,7 @@ module clamm::interest_clamm_volatile {
     
     while (n_coins > i) {
         let coin_key = *&coins[i];
-        data.push_back(*coin_state_with_key(state, coin_key));
+        data.push_back(*coin_state_with_key(state, &coin_key));
         i = i + 1;
     };
     data
@@ -2090,7 +2104,7 @@ module clamm::interest_clamm_volatile {
   }
 
   fun coin_state<CoinType, LpCoin>(state: &StateV1<LpCoin>): CoinState {
-    *coin_state_with_key(state, type_name::get<CoinType>())
+    *coin_state_with_key(state, &type_name::get<CoinType>())
   }
 
   fun coin_balance_impl<CoinType, LpCoin>(state: &StateV1<LpCoin>): &Balance<CoinType>  {
@@ -2101,12 +2115,12 @@ module clamm::interest_clamm_volatile {
     state.coin_balances.borrow_mut(type_name::get<CoinType>())
   }
 
-  fun coin_state_with_key<LpCoin>(state: &StateV1<LpCoin>, type_name: TypeName): &CoinState {
-    state.coin_states.borrow(type_name)
+  fun coin_state_with_key<LpCoin>(state: &StateV1<LpCoin>, type_name: &TypeName): &CoinState {
+    state.coin_states.get(type_name)
   }
 
-  fun coin_state_with_key_mut<LpCoin>(state: &mut StateV1<LpCoin>, type_name: TypeName): &mut CoinState {
-    state.coin_states.borrow_mut(type_name)
+  fun coin_state_with_key_mut<LpCoin>(state: &mut StateV1<LpCoin>, type_name: &TypeName): &mut CoinState {
+    state.coin_states.get_mut(type_name)
   }
 
   fun load<LpCoin>(versioned: &mut Versioned): &StateV1<LpCoin> {
