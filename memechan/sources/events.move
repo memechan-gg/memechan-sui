@@ -3,12 +3,18 @@ module memechan::events {
 
     friend memechan::seed_pool;
     friend memechan::token_ir;
+    friend memechan::go_live;
 
     struct NewPool<phantom M, phantom S, phantom Meme> has copy, drop {
         pool_address: address,
         amount_x: u64,
         amount_y: u64,
         policy_address: address,
+    }
+    
+    struct GoLive<phantom Meme, phantom S, phantom LP> has copy, drop {
+        clamm_address: address,
+        staking_pool_address: address,
     }
 
     struct Swap<phantom CoinIn, phantom CoinOut, T: drop + copy + store> has copy, drop {
@@ -40,6 +46,13 @@ module memechan::events {
         policy_address: address,
     ) {
         emit(NewPool<M, S, Meme>{ pool_address, amount_x, amount_y, policy_address });
+    }
+    
+    public(friend) fun go_live<Meme, S, LP>(
+        clamm_address: address,
+        staking_pool_address: address,
+    ) {
+        emit(GoLive<Meme, S, LP>{ clamm_address, staking_pool_address });
     }
 
     public(friend) fun swap<CoinIn, CoinOut, T: copy + drop + store>(

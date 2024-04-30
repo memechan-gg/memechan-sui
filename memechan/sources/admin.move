@@ -16,4 +16,15 @@ module memechan::admin {
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx);
     }
+    
+    #[test_only]
+    public fun new_for_testing(ctx: &mut TxContext): Admin {
+        Admin { id: object::new(ctx) }
+    }
+    
+    #[test_only]
+    public fun burn_for_testing(admin: Admin) {
+        let Admin { id } = admin;
+        object::delete(id);
+    }
 }

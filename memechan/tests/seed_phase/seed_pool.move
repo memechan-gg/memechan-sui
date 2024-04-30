@@ -1,7 +1,6 @@
 #[test_only]
 module memechan::bound_curve_tests {
     use std::option;
-    use std::debug::print;
 
     use sui::object;
     use sui::test_utils::assert_eq;
@@ -15,7 +14,7 @@ module memechan::bound_curve_tests {
     use memechan::usdc::USDC;
     use memechan::fees::{Fees};
     use memechan::ticket_usdc::TICKET_USDC;
-    use memechan::seed_pool::{Self, SeedPool, decimals_s, default_gamma_s, default_gamma_m};
+    use memechan::seed_pool::{Self, SeedPool, decimals_s};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people5, people, scenario, deploy_usdc_sui_pool_default_liquidity};
     use memechan::staked_lp;
@@ -408,7 +407,7 @@ module memechan::bound_curve_tests {
     #[test]
     fun test_bound_full_amt_out_y_with_sell() {
         let scenario = scenario();
-        let (alice, bob, chad, dan, erin) = people5();
+        let (alice, _bob, chad, dan, erin) = people5();
 
         let scenario_mut = &mut scenario;
 
@@ -416,8 +415,7 @@ module memechan::bound_curve_tests {
         deploy_usdc_sui_pool_default_liquidity(scenario_mut);
 
         let clock = clock::create_for_testing(ctx(scenario_mut));
-       
-        let acc: u256 = 0;
+
         
         next_tx(scenario_mut, alice);
         let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
@@ -428,7 +426,6 @@ module memechan::bound_curve_tests {
 
         let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
             
-        acc = acc + (staked_lp::balance(&res) as u256);
         assert_eq(staked_lp::balance(&res), 895_500_000_000_000); // i.e. gamma_m * (1 - fee rate)
 
         coin::burn_for_testing(coin_in);
@@ -456,8 +453,6 @@ module memechan::bound_curve_tests {
             } = request;
             
             let sui_res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut pool, meme_in, 1, &policy, ctx(scenario_mut));
-
-            print(&sui_res);
 
             coin::burn_for_testing(coin_in);
             coin::burn_for_testing(sui_res);

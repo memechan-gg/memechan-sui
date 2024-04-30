@@ -1,4 +1,56 @@
 #[test_only]
+module memechan::lp_coin {
+    use sui::transfer;
+    use std::option;
+    use sui::coin::{Self, TreasuryCap, CoinMetadata};
+    use sui::tx_context::TxContext;
+
+    /// Name of the coin
+    struct LP_COIN has drop {}
+    
+    public fun new(ctx: &mut TxContext): (TreasuryCap<LP_COIN>, CoinMetadata<LP_COIN>) {
+        let (treasury, metadata) = coin::create_currency(
+            LP_COIN {},
+            9,
+            b"LP_COIN",
+            b"LpCoin",
+            b"",
+            option::none(),
+            ctx
+        );
+        
+        (treasury, metadata)
+        
+    }
+}
+
+#[test_only]
+module memechan::sui {
+    use sui::transfer;
+    use std::option;
+    use sui::coin::{Self, CoinMetadata};
+    use sui::tx_context::TxContext;
+
+    /// Name of the coin
+    struct SUI has drop {}
+    
+    public fun new(ctx: &mut TxContext): CoinMetadata<SUI> {
+        let (treasury, metadata) = coin::create_currency(
+            SUI {},
+            9,
+            b"SUI",
+            b"Sui",
+            b"",
+            option::none(),
+            ctx
+        );
+        transfer::public_freeze_object(treasury);
+        metadata
+    }
+}
+
+
+#[test_only]
 module memechan::eth {
     use std::option;
 

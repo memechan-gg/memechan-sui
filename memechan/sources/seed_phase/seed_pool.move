@@ -102,6 +102,14 @@ module memechan::seed_pool {
         sell_delay_ms: u64,
     }
 
+    public fun alpha_abs(params: &Params): u256 { params.alpha_abs }
+    public fun beta(params: &Params): u256 { params.beta }
+    public fun price_factor(params: &Params): u64 { params.price_factor }
+    public fun gamma_s(params: &Params): u64 { params.gamma_s }
+    public fun gamma_m(params: &Params): u64 { params.gamma_m }
+    public fun omega_m(params: &Params): u64 { params.omega_m }
+    public fun sell_delay_ms(params: &Params): u64 { params.sell_delay_ms }
+
     struct SwapAmount has store, drop, copy {
         amount_in: u64,
         amount_out: u64,
@@ -120,7 +128,7 @@ module memechan::seed_pool {
         meme_coin_metadata: &CoinMetadata<Meme>,
         ctx: &mut TxContext
     ) {
-        new<M, S, Meme>(
+        let pool = new_<M, S, Meme>(
             registry,
             ticket_coin_cap,
             meme_coin_cap,
@@ -135,6 +143,8 @@ module memechan::seed_pool {
             default_sell_delay_ms(),
             ctx,
         );
+
+        share_object(pool);
     }
     
     #[lint_allow(share_owned)]
@@ -153,6 +163,40 @@ module memechan::seed_pool {
         sell_delay_ms: u64,
         ctx: &mut TxContext
     ) {
+        let pool = new_<M, S, Meme>(
+            registry,
+            ticket_coin_cap,
+            meme_coin_cap,
+            ticket_coin_metadata,
+            meme_coin_metadata,
+            fee_in_percent,
+            fee_out_percent,
+            price_factor,
+            gamma_s,
+            gamma_m,
+            omega_m,
+            sell_delay_ms,
+            ctx,
+        );
+        share_object(pool);
+    }
+    
+    #[lint_allow(share_owned)]
+    public fun new_<M, S, Meme>(
+        registry: &mut Registry,
+        ticket_coin_cap: TreasuryCap<M>,
+        meme_coin_cap: TreasuryCap<Meme>,
+        ticket_coin_metadata: &mut CoinMetadata<M>,
+        meme_coin_metadata: &CoinMetadata<Meme>,
+        fee_in_percent: u256,
+        fee_out_percent: u256,
+        price_factor: u64,
+        gamma_s: u64,
+        gamma_m: u64,
+        omega_m: u64,
+        sell_delay_ms: u64,
+        ctx: &mut TxContext
+    ): SeedPool {
         utils::assert_ticket_coin_integrity<M, S, Meme>(ticket_coin_metadata);
         utils::assert_coin_integrity<M, S, Meme>(&ticket_coin_cap, ticket_coin_metadata, &meme_coin_cap, meme_coin_metadata);
 
@@ -191,7 +235,7 @@ module memechan::seed_pool {
         token::share_policy(policy);
         sui::transfer::public_transfer(ticket_coin_cap, @0x2);
         sui::transfer::public_transfer(meme_coin_cap, @0x2);
-        share_object(pool);
+        pool
     }
 
     public fun compute_alpha_abs(
@@ -743,6 +787,50 @@ module memechan::seed_pool {
 
     // === Test Functions ===
 
+    #[test_only]
+    public fun new_full_for_testing<M, S, Meme>(
+        registry: &mut Registry,
+        ticket_coin_cap: TreasuryCap<M>,
+        meme_coin_cap: TreasuryCap<Meme>,
+        ticket_coin_metadata: &mut CoinMetadata<M>,
+        meme_coin_metadata: &CoinMetadata<Meme>,
+        ctx: &mut TxContext
+    ): SeedPool {
+        let pool = new_<M, S, Meme>(
+            registry,
+            ticket_coin_cap,
+            meme_coin_cap,
+            ticket_coin_metadata,
+            meme_coin_metadata,
+            DEFAULT_ADMIN_FEE,
+            DEFAULT_ADMIN_FEE,
+            DEFAULT_PRICE_FACTOR,
+            (default_gamma_s() as u64),
+            (default_gamma_m() as u64),
+            (default_omega_m() as u64),
+            default_sell_delay_ms(),
+            ctx,
+        );
+
+        let pool_state = pool_state_mut<M, S, Meme>(&mut pool);
+
+        
+        balance::join(
+            &mut pool_state.balance_s,
+            balance::create_for_testing(pool_state.params.gamma_s * (DECIMALS_S as u64))
+        );
+
+        balance::destroy_for_testing(
+            balance::withdraw_all(
+                &mut pool_state.balance_m
+            )
+        );
+
+        pool_state.locked = true;
+
+        pool
+    }
+    
     #[test_only]
     public fun unlock_for_testing<M, S, Meme>(pool: &mut SeedPool) {
         let pool_state = pool_state_mut<M, S, Meme>(pool);
