@@ -1,22 +1,21 @@
 module memechan::seed_pool {
     use std::type_name;
 
-    use sui::object::{Self, UID};
-    use sui::dynamic_field as df;
+    use sui::object::{Self, UID, id, id_to_address};
     use sui::table::{Self, Table};
     use sui::tx_context::{TxContext, sender};
     use sui::transfer::share_object;
     use sui::balance::{Self, Balance};
-    use sui::coin::{Self, Coin, CoinMetadata, TreasuryCap};
+    use sui::coin::{Self, Coin, TreasuryCap};
     use sui::clock::Clock;
     use sui::math;
-    use sui::token::{Self, Token, TokenPolicy};
+    use sui::token::{Self, Token, TokenPolicy, TokenPolicyCap};
 
-    use memechan::math256::pow_2;
     use suitears::math256::sqrt_down;
 
+    use memechan::math256::pow_2;
     use memechan::index::{Self, Registry, policies_mut};
-    use memechan::utils::{Self, mist, meme_cap_key, ticket_cap_key};
+    use memechan::utils::mist;
     use memechan::errors;
     use memechan::staked_lp;
     use memechan::events;
@@ -25,7 +24,7 @@ module memechan::seed_pool {
     use memechan::staked_lp::{StakedLP, default_sell_delay_ms};
     use memechan::token_ir;
     use memechan::vesting::{
-        VestingData, notional_mut, accounting_key, new_vesting_data
+        VestingData, notional_mut, new_vesting_data
     };
 
     friend memechan::go_live;
@@ -62,28 +61,25 @@ module memechan::seed_pool {
 
     // === Structs ===
     
-    struct SeedPool has key {
+    struct SeedPool<phantom S, phantom Meme> has key {
         id: UID,
-        fields: UID,
-    }
-
-    struct PoolStateKey has drop, copy, store {}
-
-    struct PoolState<phantom M, phantom S, phantom Meme> has store {
         /// X --> sMeme token, representing ownership of Meme coin
-        balance_m: Balance<M>,
+        balance_m: Balance<Meme>,
         /// Y --> quote coin, usually SUI
         balance_s: Balance<S>,
-        admin_balance_m: Balance<M>,
+        admin_balance_m: Balance<Meme>,
         admin_balance_s: Balance<S>,
         launch_balance: Balance<Meme>,
+        accounting: Table<address, VestingData>,
+        meme_cap: TreasuryCap<Meme>,
+        policy_cap: TokenPolicyCap<Meme>,
         fees: Fees,
         params: Params,
         locked: bool,
     }
 
-    fun gamma_s_mist<M, S, Meme>(
-        self: &PoolState<M, S, Meme>,
+    fun gamma_s_mist<S, Meme>(
+        self: &SeedPool<S, Meme>,
     ): u64 {
         mist(self.params.gamma_s)
     }
@@ -119,20 +115,14 @@ module memechan::seed_pool {
     // === DEX ===
 
     #[lint_allow(share_owned)]
-    public fun new_default<M, S, Meme>(
+    public fun new_default<S, Meme>(
         registry: &mut Registry,
-        ticket_coin_cap: TreasuryCap<M>,
         meme_coin_cap: TreasuryCap<Meme>,
-        ticket_coin_metadata: &mut CoinMetadata<M>,
-        meme_coin_metadata: &CoinMetadata<Meme>,
         ctx: &mut TxContext
     ) {
-        let pool = new_<M, S, Meme>(
+        let pool = new_<S, Meme>(
             registry,
-            ticket_coin_cap,
             meme_coin_cap,
-            ticket_coin_metadata,
-            meme_coin_metadata,
             DEFAULT_ADMIN_FEE,
             DEFAULT_ADMIN_FEE,
             DEFAULT_PRICE_FACTOR,
@@ -147,12 +137,9 @@ module memechan::seed_pool {
     }
     
     #[lint_allow(share_owned)]
-    public fun new<M, S, Meme>(
+    public fun new<S, Meme>(
         registry: &mut Registry,
-        ticket_coin_cap: TreasuryCap<M>,
         meme_coin_cap: TreasuryCap<Meme>,
-        ticket_coin_metadata: &mut CoinMetadata<M>,
-        meme_coin_metadata: &CoinMetadata<Meme>,
         fee_in_percent: u256,
         fee_out_percent: u256,
         price_factor: u64,
@@ -162,12 +149,9 @@ module memechan::seed_pool {
         sell_delay_ms: u64,
         ctx: &mut TxContext
     ) {
-        let pool = new_<M, S, Meme>(
+        let pool = new_<S, Meme>(
             registry,
-            ticket_coin_cap,
             meme_coin_cap,
-            ticket_coin_metadata,
-            meme_coin_metadata,
             fee_in_percent,
             fee_out_percent,
             price_factor,
@@ -181,12 +165,9 @@ module memechan::seed_pool {
     }
     
     #[lint_allow(share_owned)]
-    public fun new_<M, S, Meme>(
+    public fun new_<S, Meme>(
         registry: &mut Registry,
-        ticket_coin_cap: TreasuryCap<M>,
         meme_coin_cap: TreasuryCap<Meme>,
-        ticket_coin_metadata: &mut CoinMetadata<M>,
-        meme_coin_metadata: &CoinMetadata<Meme>,
         fee_in_percent: u256,
         fee_out_percent: u256,
         price_factor: u64,
@@ -195,26 +176,26 @@ module memechan::seed_pool {
         omega_m: u64,
         sell_delay_ms: u64,
         ctx: &mut TxContext
-    ): SeedPool {
-        utils::assert_ticket_coin_integrity<M, S, Meme>(ticket_coin_metadata);
-        utils::assert_coin_integrity<M, S, Meme>(&ticket_coin_cap, ticket_coin_metadata, &meme_coin_cap, meme_coin_metadata);
-
-        coin::update_name(&ticket_coin_cap, ticket_coin_metadata, utils::get_ticket_coin_name(meme_coin_metadata));
-        coin::update_symbol(&ticket_coin_cap, ticket_coin_metadata, utils::get_ticket_coin_symbol(meme_coin_metadata));
+    ): SeedPool<S, Meme> {
+        assert!(balance::supply_value(coin::supply(&mut meme_coin_cap)) == 0, errors::should_have_0_total_supply());
 
         let launch_coin = coin::mint<Meme>(
             &mut meme_coin_cap,
             ((gamma_m + omega_m) as u64),
             ctx);
 
-        let balance_m: Balance<M> = balance::increase_supply(coin::supply_mut(&mut ticket_coin_cap), (gamma_m as u64));
+        let balance_m: Balance<Meme> = balance::increase_supply(coin::supply_mut(&mut meme_coin_cap), (gamma_m as u64));
         let coin_m_value = balance::value(&balance_m);
 
-        let pool = new_pool_internal<M, S, Meme>(
+        let (policy, policy_cap) = token_ir::init_token<Meme>(&meme_coin_cap, ctx);
+
+        let pool = new_pool_internal<S, Meme>(
             registry,
             balance_m,
             coin::zero(ctx),
             launch_coin,
+            meme_coin_cap,
+            policy_cap,
             fee_in_percent,
             fee_out_percent,
             price_factor,
@@ -224,16 +205,16 @@ module memechan::seed_pool {
             sell_delay_ms,
             ctx,
         );
+
         let pool_address = object::uid_to_address(&pool.id);
+        let policy_address = id_to_address(&id(&policy));
 
-        let (policy, policy_address) = token_ir::init_token<M>(&mut pool.id, &ticket_coin_cap, ctx);
-        table::add(policies_mut(registry), type_name::get<M>(), policy_address);
+        index::add_seed_pool<S, Meme>(registry, pool_address);
+        table::add(policies_mut(registry), type_name::get<Meme>(), policy_address);
 
-        events::new_pool<M, S, Meme>(pool_address, coin_m_value, 0, policy_address);
+        events::new_pool<S, Meme>(pool_address, coin_m_value, 0, policy_address);
 
         token::share_policy(policy);
-        df::add(&mut pool.fields, meme_cap_key(), meme_coin_cap);
-        df::add(&mut pool.fields, ticket_cap_key(), ticket_coin_cap);
         pool
     }
 
@@ -265,76 +246,66 @@ module memechan::seed_pool {
 
     // === Public-View Functions ===
 
-    public fun ticket_coin_supply<M, S, Meme>(pool: &SeedPool): u64 {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        balance::value(&pool_state.balance_m)
+    public fun ticket_coin_supply<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.balance_m)
     }
 
-    public fun meme_coin_supply<M, S, Meme>(pool: &SeedPool): u64 {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        balance::value(&pool_state.launch_balance)
+    public fun meme_coin_supply<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.launch_balance)
     }
 
-    public fun balance_m<M, S, Meme>(pool: &SeedPool): u64 {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        balance::value(&pool_state.balance_m)
+    public fun balance_m<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.balance_m)
     }
 
-    public fun balance_s<M, S, Meme>(pool: &SeedPool): u64 {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        balance::value(&pool_state.balance_s)
+    public fun balance_s<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.balance_s)
     }
 
-    public fun fees<M, S, Meme>(pool: &SeedPool): Fees {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        pool_state.fees
+    public fun fees<S, Meme>(pool: &SeedPool<S, Meme>): Fees {
+        pool.fees
     }
 
-    public fun is_ready_to_launch<M, S, Meme>(pool: &SeedPool): bool {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        pool_state.locked
+    public fun is_ready_to_launch<S, Meme>(pool: &SeedPool<S, Meme>): bool {
+        pool.locked
     }
 
-    public fun admin_balance_m<M, S, Meme>(pool: &SeedPool): u64 {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        balance::value(&pool_state.admin_balance_m)
+    public fun admin_balance_m<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.admin_balance_m)
     }
 
-    public fun admin_balance_s<M, S, Meme>(pool: &SeedPool): u64 {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        balance::value(&pool_state.admin_balance_s)
+    public fun admin_balance_s<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.admin_balance_s)
     }
 
     // === Admin Functions ===
 
-    public fun take_fees<M, S, Meme>(
+    public fun take_fees<S, Meme>(
         _: &Admin,
-        pool: &mut SeedPool,
-        policy: &TokenPolicy<M>,
-        ctx: &mut TxContext
-    ): (Token<M>, Coin<S>) {
-        let pool_state = pool_state_mut<M, S, Meme>(pool);
-
-        let amount_x = balance::value(&pool_state.admin_balance_m);
-        let amount_y = balance::value(&pool_state.admin_balance_s);
+        pool: &mut SeedPool<S, Meme>,
+        policy: &TokenPolicy<Meme>,
+        ctx: &mut TxContext,
+    ): (Token<Meme>, Coin<S>) {
+        let amount_x = balance::value(&pool.admin_balance_m);
+        let amount_y = balance::value(&pool.admin_balance_s);
 
         add_from_token_acc(pool, amount_x, sender(ctx));
 
-        let pool_state = pool_state_mut<M, S, Meme>(pool);
-
         (
-            token_ir::take(policy, &mut pool_state.admin_balance_m, amount_x, ctx),
-            coin::take(&mut pool_state.admin_balance_s, amount_y, ctx)
+            token_ir::take(policy, &mut pool.admin_balance_m, amount_x, ctx),
+            coin::take(&mut pool.admin_balance_s, amount_y, ctx)
         )
     }
 
     // === Private Functions ===
 
-    fun new_pool_internal<M, S, Meme>(
-        registry: &mut Registry,
-        coin_m: Balance<M>,
+    fun new_pool_internal<S, Meme>(
+        registry: &Registry,
+        coin_m: Balance<Meme>,
         coin_s: Coin<S>,
         launch_coin: Coin<Meme>,
+        meme_cap: TreasuryCap<Meme>,
+        policy_cap: TokenPolicyCap<Meme>,
         fee_in_percent: u256,
         fee_out_percent: u256,
         price_factor: u64,
@@ -343,7 +314,7 @@ module memechan::seed_pool {
         omega_m: u64,
         sell_delay_ms: u64,
         ctx: &mut TxContext
-    ): SeedPool {
+    ): SeedPool<S, Meme> {
         let coin_m_value = balance::value(&coin_m);
         let coin_s_value = coin::value(&coin_s);
         let launch_coin_value = coin::value(&launch_coin);
@@ -352,9 +323,10 @@ module memechan::seed_pool {
         assert!(coin_s_value == 0, errors::provide_both_coins());
         assert!(launch_coin_value == ((gamma_m + omega_m) as u64), errors::provide_both_coins());
         
-        index::assert_new_pool<M, S, Meme>(registry);
+        index::assert_new_pool<S, Meme>(registry);
 
-        let pool_state = PoolState {
+        let pool = SeedPool<S, Meme> {
+            id: object::new(ctx),
             balance_m: coin_m,
             balance_s: coin::into_balance(coin_s),
             fees: new_fees(
@@ -383,76 +355,64 @@ module memechan::seed_pool {
                 omega_m,
                 price_factor,
                 sell_delay_ms,
-            }
+            },
+            accounting: table::new<address, VestingData>(ctx),
+            meme_cap,
+            policy_cap,
         };
-
-        let pool = SeedPool {
-            id: object::new(ctx),
-            fields: object::new(ctx),
-        };
-
-        let pool_address = object::uid_to_address(&pool.id);
-
-        df::add(fields_mut(&mut pool), PoolStateKey {}, pool_state);
-        df::add(fields_mut(&mut pool), accounting_key(), table::new<address, VestingData>(ctx));
-        
-        index::add_seed_pool<M, S, Meme>(registry, pool_address);
 
         pool
     }
 
-    public fun sell_meme<M, S, Meme>(
-        pool: &mut SeedPool,
-        coin_m: Token<M>,
+    public fun sell_meme<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
+        coin_m: Token<Meme>,
         coin_s_min_value: u64,
-        policy: &TokenPolicy<M>,
+        policy: &TokenPolicy<Meme>,
         ctx: &mut TxContext
     ): Coin<S> {
         assert!(token::value(&coin_m) != 0, errors::no_zero_coin());
 
         let pool_address = object::uid_to_address(&pool.id);
-        let pool_state = pool_state_mut<M, S, Meme>(pool);
-        assert!(!pool_state.locked, errors::pool_is_locked());
+        assert!(!pool.locked, errors::pool_is_locked());
 
         let coin_in_amount = token::value(&coin_m);
         
         let swap_amount = swap_amounts(
-            pool_state, 
+            pool, 
             coin_in_amount, 
             coin_s_min_value, 
             false,
         );
 
         if (swap_amount.admin_fee_in != 0) {
-            balance::join(&mut pool_state.admin_balance_m, token_ir::into_balance(policy, token::split(&mut coin_m, swap_amount.admin_fee_in, ctx), ctx));
+            balance::join(&mut pool.admin_balance_m, token_ir::into_balance(policy, token::split(&mut coin_m, swap_amount.admin_fee_in, ctx), ctx));
         };
 
         if (swap_amount.admin_fee_out != 0) {
-            balance::join(&mut pool_state.admin_balance_s, balance::split(&mut pool_state.balance_s, swap_amount.admin_fee_out));
+            balance::join(&mut pool.admin_balance_s, balance::split(&mut pool.balance_s, swap_amount.admin_fee_out));
         };
 
-        balance::join(&mut pool_state.balance_m, token_ir::into_balance(policy, coin_m, ctx));
+        balance::join(&mut pool.balance_m, token_ir::into_balance(policy, coin_m, ctx));
 
-        events::swap<M, S, SwapAmount>(pool_address, coin_in_amount, swap_amount);
+        events::swap<S, Meme, SwapAmount>(pool_address, coin_in_amount, swap_amount);
 
-        let coin_s = coin::take(&mut pool_state.balance_s, swap_amount.amount_out, ctx);
+        let coin_s = coin::take(&mut pool.balance_s, swap_amount.amount_out, ctx);
 
         // We keep track of how much each address ownes of coin_m
         subtract_from_token_acc(pool, coin_in_amount, sender(ctx));
         coin_s
     }
     
-    public fun quote_sell_meme<M, S, Meme>(
-        pool: &mut SeedPool,
+    public fun quote_sell_meme<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
         coin_m: u64,
     ): u64 {
         assert!(coin_m != 0, errors::no_zero_coin());
-
-        let pool_state = pool_state_mut<M, S, Meme>(pool);
-        assert!(!pool_state.locked, errors::pool_is_locked());
+        assert!(!pool.locked, errors::pool_is_locked());
         
         let swap_amount = swap_amounts(
-            pool_state, 
+            pool, 
             coin_m, 
             0, 
             false,
@@ -461,8 +421,8 @@ module memechan::seed_pool {
         swap_amount.amount_out
     }
 
-    public fun compute_delta_m<M, S, Meme>(
-        self: &PoolState<M, S, Meme>,
+    public fun compute_delta_m<S, Meme>(
+        self: &SeedPool<S, Meme>,
         s_a: u64,
         s_b: u64,
     ): u64 {
@@ -478,9 +438,8 @@ module memechan::seed_pool {
         ((left - right) as u64)
     }
     
-    public fun compute_delta_s<M, S, Meme>(
-        self: &PoolState<M, S, Meme>,
-        // s_a: u64,
+    public fun compute_delta_s<S, Meme>(
+        self: &SeedPool<S, Meme>,
         s_b: u64,
         delta_m: u64,
     ): u64 {
@@ -511,50 +470,49 @@ module memechan::seed_pool {
         ((num / denom) as u64)
     }
 
-    public fun buy_meme<M, S, Meme>(
-        pool: &mut SeedPool,
+    public fun buy_meme<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
         coin_s: &mut Coin<S>,
         coin_m_min_value: u64,
         clock: &Clock,
         ctx: &mut TxContext
-    ): StakedLP<M> {
+    ): StakedLP<Meme> {
         assert!(coin::value(coin_s) != 0, errors::no_zero_coin());
 
         let pool_address = object::uid_to_address(&pool.id);
-        let pool_state = pool_state_mut<M, S, Meme>(pool);
-        assert!(!pool_state.locked, errors::pool_is_locked());
+        assert!(!pool.locked, errors::pool_is_locked());
 
         let coin_in_amount = coin::value(coin_s);
 
         let swap_amount = swap_amounts(
-            pool_state,
+            pool,
             coin_in_amount,
             coin_m_min_value,
             true,
         );
 
         if (swap_amount.admin_fee_in != 0) {
-            balance::join(&mut pool_state.admin_balance_s, coin::into_balance(coin::split(coin_s, swap_amount.admin_fee_in, ctx)));
+            balance::join(&mut pool.admin_balance_s, coin::into_balance(coin::split(coin_s, swap_amount.admin_fee_in, ctx)));
         };
 
         if (swap_amount.admin_fee_out != 0) {
-            balance::join(&mut pool_state.admin_balance_m, balance::split(&mut pool_state.balance_m, swap_amount.admin_fee_out)); 
+            balance::join(&mut pool.admin_balance_m, balance::split(&mut pool.balance_m, swap_amount.admin_fee_out)); 
         };
 
-        balance::join(&mut pool_state.balance_s, coin::into_balance(coin::split(coin_s, swap_amount.amount_in, ctx)));
+        balance::join(&mut pool.balance_s, coin::into_balance(coin::split(coin_s, swap_amount.amount_in, ctx)));
 
-        events::swap<S, M, SwapAmount>(pool_address, coin_in_amount,swap_amount);
+        events::swap<S, Meme, SwapAmount>(pool_address, coin_in_amount,swap_amount);
 
         let swap_amount = swap_amount.amount_out;
         let staked_lp = staked_lp::new(
-            balance::split(&mut pool_state.balance_m, swap_amount),
-            pool_state.params.sell_delay_ms,
+            balance::split(&mut pool.balance_m, swap_amount),
+            pool.params.sell_delay_ms,
             clock,
             ctx
         );
 
-        if (balance::value(&pool_state.balance_m) == 0) {
-            pool_state.locked = true;
+        if (balance::value(&pool.balance_m) == 0) {
+            pool.locked = true;
         };
 
         // We keep track of how much each address ownes of coin_m
@@ -562,18 +520,15 @@ module memechan::seed_pool {
         staked_lp
     }
 
-    public fun quote_buy_meme<M, S, Meme>(
-        pool: &mut SeedPool,
+    public fun quote_buy_meme<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
         coin_s: u64,
     ): u64 {
         assert!(coin_s != 0, errors::no_zero_coin());
-
-        let pool_state = pool_state_mut<M, S, Meme>(pool);
-        assert!(!pool_state.locked, errors::pool_is_locked());
-
+        assert!(!pool.locked, errors::pool_is_locked());
 
         let swap_amount = swap_amounts(
-            pool_state, 
+            pool, 
             coin_s, 
             0,
             true,
@@ -589,15 +544,15 @@ module memechan::seed_pool {
         fees::new(fee_in_percent, fee_out_percent)
     }
 
-    fun balances<M, S, Meme>(state: &PoolState<M, S, Meme>): (u64, u64) {
+    fun balances<S, Meme>(pool: &SeedPool<S, Meme>): (u64, u64) {
         ( 
-            balance::value(&state.balance_m), 
-            balance::value(&state.balance_s)
+            balance::value(&pool.balance_m), 
+            balance::value(&pool.balance_s)
         )
     }
 
-    fun buy_meme_swap_amounts<M, S, Meme>(
-        self: &PoolState<M, S, Meme>,
+    fun buy_meme_swap_amounts<S, Meme>(
+        self: &SeedPool<S, Meme>,
         delta_s: u64,
         min_delta_m: u64,
     ): SwapAmount {
@@ -635,8 +590,8 @@ module memechan::seed_pool {
         }
     }
 
-    fun sell_meme_swap_amounts<M, S, Meme>(
-        self: &PoolState<M, S, Meme>,
+    fun sell_meme_swap_amounts<S, Meme>(
+        self: &SeedPool<S, Meme>,
         delta_m: u64,
         min_delta_s: u64,
     ): SwapAmount {
@@ -670,8 +625,8 @@ module memechan::seed_pool {
         }
     }
 
-    fun swap_amounts<M, S, Meme>(
-        self: &PoolState<M, S, Meme>,
+    fun swap_amounts<S, Meme>(
+        self: &SeedPool<S, Meme>,
         coin_in_amount: u64,
         coin_out_min_value: u64,
         buy_meme: bool,
@@ -683,22 +638,13 @@ module memechan::seed_pool {
         }
     }
 
-    fun pool_state<M, S, Meme>(pool: &SeedPool): &PoolState<M, S, Meme> {
-        df::borrow(fields(pool), PoolStateKey {})
-    }
-
-    fun pool_state_mut<M, S, Meme>(pool: &mut SeedPool): &mut PoolState<M, S, Meme> {
-        df::borrow_mut(fields_mut(pool), PoolStateKey {})
-    }
-
-    public fun transfer<M, S, Meme>(
-        pool: &mut SeedPool,
-        policy: &TokenPolicy<M>,
-        token: Token<M>,
+    public fun transfer<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
+        policy: &TokenPolicy<Meme>,
+        token: Token<Meme>,
         recipient: address,
         ctx: &mut TxContext,
     ) {
-        let _ = pool_state_mut<M, S, Meme>(pool);
         let amount = token::value(&token);
 
         subtract_from_token_acc(pool, amount, sender(ctx));
@@ -711,65 +657,61 @@ module memechan::seed_pool {
         );
     }
 
-    fun subtract_from_token_acc(
-        pool: &mut SeedPool,
+    fun subtract_from_token_acc<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
         amount: u64,
         beneficiary: address,
     ) {
-        let accounting: &mut Table<address, VestingData> = df::borrow_mut(fields_mut(pool), accounting_key());
-
-        let position = table::borrow_mut(accounting, beneficiary);
+        let position = table::borrow_mut(&mut pool.accounting, beneficiary);
         let notional = notional_mut(position);
         *notional = *notional - amount;
     }
     
-    fun add_from_token_acc(
-        pool: &mut SeedPool,
+    fun add_from_token_acc<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
         amount: u64,
         beneficiary: address,
     ) {
-        let accounting: &mut Table<address, VestingData> = df::borrow_mut(fields_mut(pool), accounting_key());
 
-        if (!table::contains(accounting, beneficiary)) {
-            table::add(accounting, beneficiary, new_vesting_data(amount));
+        if (!table::contains(&pool.accounting, beneficiary)) {
+            table::add(&mut pool.accounting, beneficiary, new_vesting_data(amount));
         };
 
-        let position = table::borrow_mut(accounting, beneficiary);
+        let position = table::borrow_mut(&mut pool.accounting, beneficiary);
         let notional = notional_mut(position);
         *notional = *notional + amount;
     }
 
-    public fun fields(pool: &SeedPool): &UID { &pool.fields }
-    fun fields_mut(pool: &mut SeedPool): &mut UID { &mut pool.fields }
-
     // Not safe to expose!
-    public(friend) fun destroy_pool<M, S, Meme>(pool: SeedPool): (
-        Balance<M>,
-        Balance<S>,
-        Balance<M>,
+    public(friend) fun destroy_pool<S, Meme>(pool: SeedPool<S, Meme>): (
+        Balance<Meme>,
         Balance<S>,
         Balance<Meme>,
+        Balance<S>,
+        Balance<Meme>,
+        Table<address, VestingData>,
+        TreasuryCap<Meme>,
+        TokenPolicyCap<Meme>,
         Fees,
         Params,
         bool,
-        UID, // Fields
     ) {
-        let state = df::remove(fields_mut(&mut pool), PoolStateKey {});
-        
-
-        let SeedPool { id, fields } = pool;
-        object::delete(id);
-
-        let PoolState {
+        let SeedPool {
+            id,
             balance_m,
             balance_s,
             admin_balance_m,
             admin_balance_s,
             launch_balance,
+            accounting,
+            meme_cap,
+            policy_cap,
             fees,
             params,
             locked,
-        } = state;
+        } = pool;
+
+        object::delete(id);
 
         (
             balance_m,
@@ -777,30 +719,26 @@ module memechan::seed_pool {
             admin_balance_m,
             admin_balance_s,
             launch_balance,
+            accounting,
+            meme_cap,
+            policy_cap,
             fees,
             params,
             locked,
-            fields,
         )
     }
 
     // === Test Functions ===
 
     #[test_only]
-    public fun new_full_for_testing<M, S, Meme>(
+    public fun new_full_for_testing<S, Meme>(
         registry: &mut Registry,
-        ticket_coin_cap: TreasuryCap<M>,
         meme_coin_cap: TreasuryCap<Meme>,
-        ticket_coin_metadata: &mut CoinMetadata<M>,
-        meme_coin_metadata: &CoinMetadata<Meme>,
         ctx: &mut TxContext
-    ): (SeedPool, Token<M>) {
-        let pool = new_<M, S, Meme>(
+    ): (SeedPool<S, Meme>, Token<Meme>) {
+        let pool = new_<S, Meme>(
             registry,
-            ticket_coin_cap,
             meme_coin_cap,
-            ticket_coin_metadata,
-            meme_coin_metadata,
             DEFAULT_ADMIN_FEE,
             DEFAULT_ADMIN_FEE,
             DEFAULT_PRICE_FACTOR,
@@ -811,41 +749,38 @@ module memechan::seed_pool {
             ctx,
         );
 
-        let pool_state = pool_state_mut<M, S, Meme>(&mut pool);
+        let gamma_s = pool.params.gamma_s;
         
         balance::join(
-            &mut pool_state.balance_s,
-            balance::create_for_testing(pool_state.params.gamma_s * (DECIMALS_S as u64))
+            &mut pool.balance_s,
+            balance::create_for_testing(gamma_s * (DECIMALS_S as u64))
         );
 
         balance::destroy_for_testing(
             balance::withdraw_all(
-                &mut pool_state.balance_m
+                &mut pool.balance_m
             )
         );
 
-        pool_state.locked = true;
+        pool.locked = true;
 
         (pool, token::mint_for_testing((default_gamma_m() as u64), ctx))
     }
     
     #[test_only]
-    public fun unlock_for_testing<M, S, Meme>(pool: &mut SeedPool) {
-        let pool_state = pool_state_mut<M, S, Meme>(pool);
-        pool_state.locked = false;
+    public fun unlock_for_testing<S, Meme>(pool: &mut SeedPool<S, Meme>) {
+        pool.locked = false;
     }
     
     #[test_only]
-    public fun seed_liquidity<M, S, Meme>(pool: &SeedPool): u64 {
-        let pool_state = pool_state<M, S, Meme>(pool);
-        balance::value(&pool_state.launch_balance)
+    public fun seed_liquidity<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.launch_balance)
     }
 
     #[test_only]
-    public fun set_liquidity<M, S, Meme>(pool: &mut SeedPool, coin_m: Token<M>, coin_s: Coin<S>) {
-        let pool_state = pool_state_mut<M, S, Meme>(pool);
-        let balance_m = balance::withdraw_all(&mut pool_state.balance_m);
-        let balance_s = balance::withdraw_all(&mut pool_state.balance_s);
+    public fun set_liquidity<S, Meme>(pool: &mut SeedPool<S, Meme>, coin_m: Token<Meme>, coin_s: Coin<S>) {
+        let balance_m = balance::withdraw_all(&mut pool.balance_m);
+        let balance_s = balance::withdraw_all(&mut pool.balance_s);
 
         balance::destroy_for_testing(balance_m);
         balance::destroy_for_testing(balance_s);
@@ -853,8 +788,8 @@ module memechan::seed_pool {
         let coin_m_amount = token::value(&coin_m);
         token::burn_for_testing(coin_m);
         
-        balance::join(&mut pool_state.balance_m, balance::create_for_testing(coin_m_amount));
-        balance::join(&mut pool_state.balance_s, coin::into_balance(coin_s));
+        balance::join(&mut pool.balance_m, balance::create_for_testing(coin_m_amount));
+        balance::join(&mut pool.balance_s, coin::into_balance(coin_s));
     }
 
     #[test]

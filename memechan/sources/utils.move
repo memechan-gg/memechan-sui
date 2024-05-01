@@ -3,10 +3,9 @@ module memechan::utils {
     use std::type_name;
     use std::string::{Self, String};
 
-    use sui::coin::{Self, CoinMetadata, TreasuryCap};
+    use sui::coin::{Self, CoinMetadata};
     use sui::sui::SUI;
 
-    use suitears::comparator;
     use suitears::math64::mul_div_up;
     use memechan::errors;
 
@@ -16,13 +15,6 @@ module memechan::utils {
     /// The amount of Mist per Sui token based on the fact that mist is
     /// 10^-9 of a Sui token
     const MIST_PER_SUI: u64 = 1_000_000_000;
-
-
-    struct MemeCapDfKey has copy, store, drop {}
-    struct TicketCapDfKey has copy, store, drop {}
-
-    public(friend) fun meme_cap_key(): MemeCapDfKey { MemeCapDfKey {} }
-    public(friend) fun ticket_cap_key(): MemeCapDfKey { MemeCapDfKey {} }
 
     public fun mist(sui: u64): u64 { MIST_PER_SUI * sui }
 
@@ -80,38 +72,5 @@ module memechan::utils {
         string::append_utf8(&mut expected_ticket_coin_symbol, b"ticket-");
         string::append_utf8(&mut expected_ticket_coin_symbol, ascii::into_bytes(meme_coin_symbol));
         string::to_ascii(expected_ticket_coin_symbol)
-    }
-
-
-    public fun assert_coin_integrity<TicketCoin, CoinY, MemeCoin>(ticket_cap: &TreasuryCap<TicketCoin>, ticket_meta: &CoinMetadata<TicketCoin>, meme_cap: &TreasuryCap<MemeCoin>, meme_meta: &CoinMetadata<MemeCoin>) {
-        are_coins_suitable<TicketCoin, CoinY>();
-
-        assert_coin_integrity_tm(ticket_cap, ticket_meta);
-        assert_coin_integrity_tm(meme_cap, meme_meta);
-    }
-
-    public fun assert_coin_integrity_tm<Coin>(coin_cap: &TreasuryCap<Coin>, coin_metadata: &CoinMetadata<Coin>) {
-        assert!(coin::get_decimals(coin_metadata) == 6, errors::meme_and_ticket_coins_must_have_6_decimals());
-        assert!(coin::total_supply(coin_cap) == 0, errors::should_have_0_total_supply());
-    }
-
-    public fun assert_ticket_coin_integrity<TicketCoin, CoinY, MemeCoin>(coin_metadata: &CoinMetadata<TicketCoin>) {
-         assert!(coin::get_decimals(coin_metadata) == 6, errors::meme_and_ticket_coins_must_have_6_decimals());
-         assert_ticket_coin_otw<TicketCoin, CoinY, MemeCoin>()
-    }
-
-    fun assert_ticket_coin_otw<TicketCoin, CoinY, MemeCoin>() {
-        are_coins_suitable<TicketCoin, CoinY>();
-        let meme_coin_module_name = type_name::get_module(&type_name::get<MemeCoin>());
-        let ticket_coin_module_name = type_name::get_module(&type_name::get<TicketCoin>());
-
-        let expected_ticket_coin_module_name = string::utf8(b"");
-        string::append_utf8(&mut expected_ticket_coin_module_name, b"ticket_");
-        string::append_utf8(&mut expected_ticket_coin_module_name, ascii::into_bytes(meme_coin_module_name));
-
-        assert!(
-            comparator::eq(&comparator::compare(&ticket_coin_module_name, &string::to_ascii(expected_ticket_coin_module_name))), 
-            errors::wrong_module_name()
-        );
     }
 }

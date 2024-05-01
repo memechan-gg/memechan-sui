@@ -5,14 +5,14 @@ module memechan::events {
     friend memechan::token_ir;
     friend memechan::go_live;
 
-    struct NewPool<phantom M, phantom S, phantom Meme> has copy, drop {
+    struct NewPool<phantom S, phantom Meme> has copy, drop {
         pool_address: address,
         amount_x: u64,
         amount_y: u64,
         policy_address: address,
     }
     
-    struct GoLive<phantom Meme, phantom S, phantom LP> has copy, drop {
+    struct GoLive< phantom S, phantom Meme, phantom LP> has copy, drop {
         clamm_address: address,
         staking_pool_address: address,
     }
@@ -23,14 +23,14 @@ module memechan::events {
         swap_amount: T
     }
 
-    struct AddLiquidity<phantom M, phantom S> has copy, drop {
+    struct AddLiquidity<phantom S, phantom M> has copy, drop {
         pool_address: address,
         amount_x: u64,
         amount_y: u64,
         shares: u64,
     }
 
-    struct RemoveLiquidity<phantom M, phantom S> has copy, drop {
+    struct RemoveLiquidity<phantom S, phantom M> has copy, drop {
         pool_address: address,
         amount_x: u64,
         amount_y: u64,
@@ -39,20 +39,20 @@ module memechan::events {
         fee_y_value: u64,
     }
 
-    public(friend) fun new_pool<M, S, Meme>(
+    public(friend) fun new_pool<S, Meme>(
         pool_address: address,
         amount_x: u64,
         amount_y: u64,
         policy_address: address,
     ) {
-        emit(NewPool<M, S, Meme>{ pool_address, amount_x, amount_y, policy_address });
+        emit(NewPool<S, Meme>{ pool_address, amount_x, amount_y, policy_address });
     }
     
-    public(friend) fun go_live<Meme, S, LP>(
+    public(friend) fun go_live<S, Meme, LP>(
         clamm_address: address,
         staking_pool_address: address,
     ) {
-        emit(GoLive<Meme, S, LP>{ clamm_address, staking_pool_address });
+        emit(GoLive<S, Meme, LP>{ clamm_address, staking_pool_address });
     }
 
     public(friend) fun swap<CoinIn, CoinOut, T: copy + drop + store>(
@@ -63,16 +63,16 @@ module memechan::events {
         emit(Swap<CoinIn, CoinOut, T> { pool_address, amount_in, swap_amount });
     }
 
-    public(friend) fun add_liquidity<M, S>(
+    public(friend) fun add_liquidity<S, M>(
         pool_address: address,
         amount_x: u64,
         amount_y: u64,
         shares: u64,
     ) {
-        emit(AddLiquidity<M, S> { pool_address, amount_x, amount_y, shares });
+        emit(AddLiquidity<S, M> { pool_address, amount_x, amount_y, shares });
     }
 
-    public(friend) fun remove_liquidity<M, S>(
+    public(friend) fun remove_liquidity<S, M>(
         pool_address: address,
         amount_x: u64,
         amount_y: u64,
@@ -80,6 +80,6 @@ module memechan::events {
         fee_x_value: u64,
         fee_y_value: u64,
     ) {
-        emit(RemoveLiquidity<M, S> { pool_address, amount_x, amount_y, shares, fee_x_value, fee_y_value });
+        emit(RemoveLiquidity<S, M> { pool_address, amount_x, amount_y, shares, fee_x_value, fee_y_value });
     }
 }

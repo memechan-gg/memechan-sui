@@ -41,16 +41,17 @@ module memechan::go_live {
     const OUT_FEE: u256 = 45000000; // (0.45%) swap fee when the pool is out balance
     const GAMMA_FEE: u256 = 200_000_000_000_000; //  (0.0002%) speed rate that fee increases mid_fee => out_fee
 
-    // const MID_FEE: u256 = 260_000_000_000_000_000; // (0.26%) swap fee when the pool is balanced
-    // const OUT_FEE: u256 = 450_000_000_000_000_000; // (0.45%) swap fee when the pool is out balance
-
     const LAUNCH_FEE: u256 =   50_000_000_000_000_000; // 5%
     const PRECISION: u256 = 1_000_000_000_000_000_000;
 
+    const EBondingPoolNotReady: u64 = 0;
+    const EBondingPoolMemeBalanceNotEmpty: u64 = 1;
+    const EQuoteSupplyMismatch: u64 = 2;
+
     // Admin endpoint
-    public fun go_live_default<M, Meme, LP>(
+    public fun go_live_default<Meme, LP>(
         admin_cap: &Admin,
-        seed_pool: SeedPool,
+        seed_pool: SeedPool<SUI, Meme>,
         sui_meta: &CoinMetadata<SUI>,
         meme_meta: &CoinMetadata<Meme>,
         lp_meta: &CoinMetadata<LP>,
@@ -60,7 +61,7 @@ module memechan::go_live {
     ) {
         let vesting_config = vesting::default_config(clock);
 
-        go_live_<M, Meme, LP, SUI>(
+        go_live_<SUI, Meme, LP>(
             admin_cap,
             seed_pool,
             sui_meta,
@@ -74,9 +75,9 @@ module memechan::go_live {
     }
 
     // Admin endpoint
-    public fun go_live<M, Meme, LP>(
+    public fun go_live<Meme, LP>(
         admin_cap: &Admin,
-        seed_pool: SeedPool,
+        seed_pool: SeedPool<SUI, Meme>,
         sui_meta: &CoinMetadata<SUI>,
         meme_meta: &CoinMetadata<Meme>,
         lp_meta: &CoinMetadata<LP>,
@@ -94,7 +95,7 @@ module memechan::go_live {
             current_ts + end_vesting_delta,
         );
 
-        go_live_<M, Meme, LP, SUI>(
+        go_live_<SUI, Meme, LP>(
             admin_cap,
             seed_pool,
             sui_meta,
@@ -108,10 +109,10 @@ module memechan::go_live {
     }
     
     // Admin endpoint
-    public fun go_live_<M, Meme, LP, SUI>(
+    public fun go_live_<S, Meme, LP>(
         _admin_cap: &Admin,
-        seed_pool: SeedPool,
-        sui_meta: &CoinMetadata<SUI>,
+        seed_pool: SeedPool<S, Meme>,
+        sui_meta: &CoinMetadata<S>,
         meme_meta: &CoinMetadata<Meme>,
         lp_meta: &CoinMetadata<LP>,
         treasury_cap: TreasuryCap<LP>,
@@ -125,14 +126,16 @@ module memechan::go_live {
             admin_xmeme_balance,
             admin_sui_balance,
             meme_balance,
+            accounting,
+            meme_cap,
+            policy_cap,
             _,
             params,
             locked,
-            fields,
-        ) = seed_pool::destroy_pool<M, SUI, Meme>(seed_pool);
+        ) = seed_pool::destroy_pool<S, Meme>(seed_pool);
 
-        assert!(locked, 0);
-        assert!(balance::value(&xmeme_balance) == 0, 0);
+        assert!(locked == true, EBondingPoolNotReady);
+        assert!(balance::value(&xmeme_balance) == 0, EBondingPoolMemeBalanceNotEmpty);
         balance::destroy_zero(xmeme_balance);
         
         // 0. Transfer admin funds to admin
@@ -142,7 +145,7 @@ module memechan::go_live {
         // 1. Verify if we reached the threshold of SUI amount raised
         let sui_supply = balance::value(&sui_balance);
         
-        assert!(sui_supply == mist(gamma_s(&params)), 0);
+        assert!(sui_supply == mist(gamma_s(&params)), EQuoteSupplyMismatch);
 
         // 2. Collect live fees
         let live_fee_amt = (mul_div_up((sui_supply as u256), LAUNCH_FEE, PRECISION) as u64);
@@ -157,9 +160,9 @@ module memechan::go_live {
         let decimals_cap = coin_decimals::new_cap(ctx);
         let decimals = coin_decimals::new(&mut decimals_cap, ctx);
 
-        coin_decimals::add(&mut decimals, sui_meta);
-        coin_decimals::add(&mut decimals, meme_meta);
-        coin_decimals::add(&mut decimals, lp_meta);
+        coin_decimals::add<S>(&mut decimals, sui_meta);
+        coin_decimals::add<Meme>(&mut decimals, meme_meta);
+        coin_decimals::add<LP>(&mut decimals, lp_meta);
 
         // 3. Create AMM Pool
         let hooks_builder = interest_pool::new_hooks_builder(ctx);
@@ -192,17 +195,19 @@ module memechan::go_live {
         let pool_id = object::id(&amm_pool);
 
         // 4. Create staking pool
-        let staking_pool = staking_pool::new<M, SUI, Meme, LP>(
+        let staking_pool = staking_pool::new<S, Meme, LP>(
             pool_id,
             meme_balance,
             coin::into_balance(lp_tokens),
             vesting_config,
             admin,
-            fields,
+            meme_cap,
+            policy_cap,
+            accounting,
             ctx,
         );
 
-        events::go_live<Meme, SUI, LP>(
+        events::go_live<S, Meme, LP>(
             object::id_to_address(&object::id(&amm_pool)),
             object::id_to_address(&object::id(&staking_pool))
         );
@@ -211,8 +216,9 @@ module memechan::go_live {
         transfer::public_share_object(staking_pool);
 
         // Cleanup
-        coin_decimals::remove_and_destroy<SUI>(&mut decimals, &decimals_cap);
         coin_decimals::remove_and_destroy<Meme>(&mut decimals, &decimals_cap);
+        coin_decimals::remove_and_destroy<LP>(&mut decimals, &decimals_cap);
+        coin_decimals::remove_and_destroy<S>(&mut decimals, &decimals_cap);
 
         coin_decimals::destroy(decimals, &decimals_cap);
         owner::destroy(decimals_cap);
@@ -224,9 +230,9 @@ module memechan::go_live {
     use memechan::sui::{SUI as MockSUI};
 
     #[test_only]
-    public fun go_live_default_test<M, Meme, LP>(
+    public fun go_live_default_test<Meme, LP>(
         admin_cap: &Admin,
-        seed_pool: SeedPool,
+        seed_pool: SeedPool<MockSUI, Meme>,
         sui_meta: &CoinMetadata<MockSUI>,
         meme_meta: &CoinMetadata<Meme>,
         lp_meta: &CoinMetadata<LP>,
@@ -236,7 +242,7 @@ module memechan::go_live {
     ) {
         let vesting_config = vesting::default_config(clock);
 
-        go_live_<M, Meme, LP, MockSUI>(
+        go_live_<MockSUI, Meme, LP>(
             admin_cap,
             seed_pool,
             sui_meta,

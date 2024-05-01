@@ -4,16 +4,11 @@ module memechan::utils_tests {
 
     use sui::coin::CoinMetadata;
     use sui::test_utils::assert_eq;
-    use sui::test_scenario::{Self as test, next_tx, ctx};
+    use sui::test_scenario::{Self as test, next_tx};
     use sui::sui::SUI;
     
-    use memechan::errors;
-    use memechan::utils;
     use memechan::btc::BTC;
     use memechan::eth::ETH;
-    use memechan::ticket_btc::{Self, TICKET_BTC};
-    use memechan::ac_btc_wrong_decimals::{Self, AC_BTC_WRONG_DECIMALS};
-    use memechan::ac_btc_wrong_name::{Self, AC_BTC_WRONG_NAME};
     use memechan::deploy_utils::{scenario, people, deploy_coins};
     use memechan::utils::{
         is_coin_x, 
@@ -21,7 +16,6 @@ module memechan::utils_tests {
         get_ticket_coin_name,
         are_coins_suitable, 
         get_ticket_coin_symbol,
-        assert_ticket_coin_integrity,
         get_optimal_add_liquidity, 
     };
 
@@ -135,85 +129,6 @@ module memechan::utils_tests {
         test::end(scenario);
     }
 
-    #[test]
-    fun test_assert_ticket_coin_integrity() {
-     let scenario = scenario();
-        let (alice, _) = people();
-
-        let test = &mut scenario;
-
-        deploy_coins(test);
-
-        next_tx(test, alice);
-        {
-            ticket_btc::init_for_testing(ctx(test));
-        };
-
-        next_tx(test, alice); 
-        {
-            let metadata = test::take_shared<CoinMetadata<TICKET_BTC>>(test);
-
-            assert_ticket_coin_integrity<TICKET_BTC, SUI, BTC>(&metadata);
-
-            test::return_shared(metadata);
-        };
-
-        test::end(scenario);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = errors::EMemeAndTicketCoinsMustHave6Decimals, location = utils)]
-    fun test_assert_ticket_coin_integrity_wrong_decimal() {
-     let scenario = scenario();
-        let (alice, _) = people();
-
-        let test = &mut scenario;
-
-        deploy_coins(test);
-
-        next_tx(test, alice);
-        {
-            ac_btc_wrong_decimals::init_for_testing(ctx(test));
-        };
-
-        next_tx(test, alice); 
-        {
-            let metadata = test::take_shared<CoinMetadata<AC_BTC_WRONG_DECIMALS>>(test);
-
-            assert_ticket_coin_integrity<AC_BTC_WRONG_DECIMALS, ETH, BTC>(&metadata);
-
-            test::return_shared(metadata);
-        };
-
-        test::end(scenario);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = errors::EWrongModuleName, location = utils)]
-    fun test_assert_ticket_coin_integrity_wrong_lp_module_name() {
-        let scenario = scenario();
-        let (alice, _) = people();
-
-        let test = &mut scenario;
-
-        deploy_coins(test);
-
-        next_tx(test, alice);
-        {
-            ac_btc_wrong_name::init_for_testing(ctx(test));
-        };
-
-        next_tx(test, alice); 
-        {
-            let metadata = test::take_shared<CoinMetadata<AC_BTC_WRONG_NAME>>(test);
-
-            assert_ticket_coin_integrity<AC_BTC_WRONG_NAME, SUI, BTC>(&metadata);
-
-            test::return_shared(metadata);
-        };
-
-        test::end(scenario);
-    }
 
     #[test]
     #[expected_failure]

@@ -1,20 +1,17 @@
 module memechan::staking_pool {
-    use std::type_name::{Self, TypeName};
     use sui::object::{Self, ID, UID};
     use sui::table::{Self, Table};
     use sui::balance::Balance;
-    use sui::token::{Self, Token, TokenPolicy};
+    use sui::token::{Self, Token, TokenPolicy, TokenPolicyCap};
     use sui::clock::{Self, Clock};
     use sui::balance;
-    use sui::dynamic_field as df;
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::tx_context::{sender, TxContext};
 
     use memechan::token_ir;
-    use memechan::utils::ticket_cap_key;
     use memechan::fee_distribution::{Self, FeeState};
     use memechan::vesting::{
-        Self, VestingData, VestingConfig, accounting_key,
+        Self, VestingData, VestingConfig,
     };
     use clamm::interest_pool::InterestPool;
     use clamm::interest_clamm_volatile as volatile;
@@ -24,53 +21,59 @@ module memechan::staking_pool {
 
     friend memechan::go_live;
 
-    struct StakingPool<phantom Meme, phantom S, phantom LP> has key, store {
+    struct StakingPool<phantom S, phantom Meme, phantom LP> has key, store {
         id: UID,
         amm_pool: ID,
         balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
+        vesting_table: Table<address, VestingData>,
+        meme_cap: TreasuryCap<Meme>,
+        policy_cap: TokenPolicyCap<Meme>,
         vesting_config: VestingConfig,
-        fee_state: FeeState<Meme, S>,
+        fee_state: FeeState<S, Meme>,
         pool_admin: PoolAdmin,
-        ticket_type: TypeName,
-        fields: UID,
     }
 
-    public(friend) fun new<M, S, Meme, LP>(
+    public(friend) fun new<S, Meme, LP>(
         amm_pool: ID,
         balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
         vesting_config: VestingConfig,
         pool_admin: PoolAdmin,
-        fields: UID,
+        meme_cap: TreasuryCap<Meme>,
+        policy_cap: TokenPolicyCap<Meme>,
+        vesting_table: Table<address, VestingData>,
         ctx: &mut TxContext,
-    ): StakingPool<Meme, S, LP> {
+    ): StakingPool<S, Meme, LP> {
         let stake_total = balance::value(&balance_lp);
 
-        StakingPool {
+        let staking_pool = StakingPool {
             id: object::new(ctx),
             amm_pool,
             balance_meme,
             balance_lp,
+            meme_cap,
+            policy_cap,
+            vesting_table,
             vesting_config,
-            fee_state: fee_distribution::new<Meme, S>(stake_total, ctx),
+            fee_state: fee_distribution::new<S, Meme>(stake_total, ctx),
             pool_admin,
-            ticket_type: type_name::get<M>(),
-            fields
-        }
+        };
+
+        staking_pool
     }
 
     // Yields back staked `M` in return for the underlying `Meme` token in
     // and the CLAMM `LP` tokens.
-    public fun unstake<M, S, Meme, LP>(
-        staking_pool: &mut StakingPool<Meme, S, LP>,
-        coin_x: Token<M>,
-        policy: &TokenPolicy<M>,
+    public fun unstake<S, Meme, LP>(
+        staking_pool: &mut StakingPool<S, Meme, LP>,
+        coin_x: Token<Meme>,
+        policy: &TokenPolicy<Meme>,
         clock: &Clock,
         ctx: &mut TxContext,
     ): (Coin<Meme>, Coin<S>) {
-        let vesting_table: &mut Table<address, VestingData> = df::borrow_mut(&mut staking_pool.fields, accounting_key());
-        let vesting_data = table::borrow(vesting_table, sender(ctx));
+    
+        let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
         
         let amount_available_to_release = vesting::to_release(
             vesting_data,
@@ -80,7 +83,7 @@ module memechan::staking_pool {
 
         let release_amount = token::value(&coin_x);
         assert!(release_amount <= amount_available_to_release, 0);
-        let vesting_data = table::borrow_mut(vesting_table, sender(ctx));
+        let vesting_data = table::borrow_mut(&mut staking_pool.vesting_table, sender(ctx));
 
         let vesting_old = vesting::current_stake(vesting_data);
 
@@ -88,13 +91,8 @@ module memechan::staking_pool {
 
         vesting::release(vesting_data, release_amount);
 
-        let treasury_cap_m: &mut TreasuryCap<M> = df::borrow_mut(
-            &mut staking_pool.fields,
-            ticket_cap_key()
-        );
-
         coin::burn(
-            treasury_cap_m,
+            &mut staking_pool.meme_cap,
             token_ir::to_coin(policy, coin_x, ctx),
         );
 
@@ -106,9 +104,8 @@ module memechan::staking_pool {
         )
     }
 
-    public fun withdraw_fees<Meme, S, LP>(staking_pool: &mut StakingPool<Meme, S, LP>, ctx: &mut TxContext): (Coin<Meme>, Coin<S>) {
-        let vesting_table: &Table<address, VestingData> = df::borrow(&staking_pool.fields, accounting_key());
-        let vesting_data = table::borrow(vesting_table, sender(ctx));
+    public fun withdraw_fees<S, Meme, LP>(staking_pool: &mut StakingPool<S, Meme, LP>, ctx: &mut TxContext): (Coin<Meme>, Coin<S>) {
+        let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
 
         let (balance_meme, balance_sui) = fee_distribution::withdraw(&mut staking_pool.fee_state, vesting::current_stake(vesting_data), ctx);
 
@@ -118,13 +115,15 @@ module memechan::staking_pool {
         )
     }
 
-    public fun collect_fees<Meme, S, LP>(
-        staking_pool: &mut StakingPool<Meme, S, LP>,
+    public fun collect_fees<S, Meme, LP>(
+        staking_pool: &mut StakingPool<S, Meme, LP>,
         pool: &mut InterestPool<Volatile>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         let req = volatile::balances_request<LP>(pool);
+        volatile::read_balance<S, LP>(pool, &mut req);
+        volatile::read_balance<Meme, LP>(pool, &mut req);
 
         let lp_coin = volatile::claim_admin_fees<LP>(
             pool,
@@ -144,6 +143,6 @@ module memechan::staking_pool {
         );
         
         
-        fee_distribution::add_fees<Meme, S>(&mut staking_pool.fee_state, coin_meme, coin_sui);
+        fee_distribution::add_fees<S, Meme>(&mut staking_pool.fee_state, coin_meme, coin_sui);
     }
 }
