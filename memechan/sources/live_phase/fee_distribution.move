@@ -8,7 +8,7 @@ module memechan::fee_distribution {
 
     // ===== Constants =====
 
-    const PRECISION : u256 = 1_000_000_000_000_000;
+    const PRECISION: u256 = 1_000_000_000_000_000;
 
     // ===== Errors =====
 
@@ -46,17 +46,27 @@ module memechan::fee_distribution {
         ctx: &mut TxContext
     ): (Balance<Meme>, Balance<S>) {
         let sender = tx_context::sender(ctx);
-        
+
+        if (!table::contains(&state.user_withdrawals_x, sender)) {
+            table::add(&mut state.user_withdrawals_x, sender, 0);
+        };
+
         let user_withdrawals_x = table::borrow_mut(&mut state.user_withdrawals_x, sender);
         let max_withdrawal_x = get_max_withdraw(*user_withdrawals_x, state.fees_meme_total, user_stake, state.stakes_total);
         *user_withdrawals_x = ((*user_withdrawals_x + max_withdrawal_x) as u64);
+
+        if (!table::contains(&state.user_withdrawals_y, sender)) {
+            table::add(&mut state.user_withdrawals_y, sender, 0);
+        };
 
         let user_withdrawals_y = table::borrow_mut(&mut state.user_withdrawals_y, sender);
         let max_withdrawal_y = get_max_withdraw(*user_withdrawals_y, state.fees_s_total, user_stake, state.stakes_total);
         *user_withdrawals_y = ((*user_withdrawals_y + max_withdrawal_y) as u64);
 
-        (balance::split(&mut state.fees_meme, max_withdrawal_x),
-        balance::split(&mut state.fees_s, max_withdrawal_y))
+        (
+            balance::split(&mut state.fees_meme, max_withdrawal_x),
+            balance::split(&mut state.fees_s, max_withdrawal_y)
+        )
     }
 
     // ===== Friend Functions =====
@@ -166,13 +176,12 @@ module memechan::fee_distribution {
             (stakes_total as u256)
         );
 
-        let max_user_withdrawal = fees_total * ((user_stake * PRECISION) / stakes_total);
-
-        assert!(max_user_withdrawal <= user_withdrawals_total * PRECISION, ENoFundsToWithdraw);
+        let max_user_withdrawal = (fees_total * user_stake) / stakes_total;
+        assert!(max_user_withdrawal >= user_withdrawals_total, ENoFundsToWithdraw);
 
         let allowed_withdrawal = max_user_withdrawal - user_withdrawals_total;
 
-        ((allowed_withdrawal / PRECISION) as u64)
+        (allowed_withdrawal as u64)
     }
 
     /// Calculates the withdrawal difference based on stake difference.

@@ -737,6 +737,9 @@ module memechan::seed_pool {
     // ===== Test Functions =====
 
     #[test_only]
+    use memechan::vesting;
+
+    #[test_only]
     public fun new_full_for_testing<S, Meme>(
         registry: &mut Registry,
         meme_coin_cap: TreasuryCap<Meme>,
@@ -754,6 +757,9 @@ module memechan::seed_pool {
             default_sell_delay_ms(),
             ctx,
         );
+
+        let notional = (pool.params.gamma_m as u64);
+        table::add(&mut pool.accounting, sender(ctx), vesting::new_vesting_data(notional));
 
         let gamma_s = pool.params.gamma_s;
         

@@ -121,11 +121,11 @@ module memechan::go_live {
         ctx: &mut TxContext,
     ) {
         let (
-            xmeme_balance,
+            empty_meme_balance, 
             sui_balance,
-            admin_xmeme_balance,
+            admin_meme_balance,
             admin_sui_balance,
-            meme_balance,
+            meme_balance_for_launch,
             accounting,
             meme_cap,
             policy_cap,
@@ -135,11 +135,11 @@ module memechan::go_live {
         ) = seed_pool::destroy_pool<S, Meme>(seed_pool);
 
         assert!(locked == true, EBondingPoolNotReady);
-        assert!(balance::value(&xmeme_balance) == 0, EBondingPoolMemeBalanceNotEmpty);
-        balance::destroy_zero(xmeme_balance);
+        assert!(balance::value(&empty_meme_balance) == 0, EBondingPoolMemeBalanceNotEmpty);
+        balance::destroy_zero(empty_meme_balance);
         
         // 0. Transfer admin funds to admin
-        transfer::public_transfer(coin::from_balance(admin_xmeme_balance, ctx), sender(ctx));
+        transfer::public_transfer(coin::from_balance(admin_meme_balance, ctx), sender(ctx));
         transfer::public_transfer(coin::from_balance(admin_sui_balance, ctx), sender(ctx));
 
         // 1. Verify if we reached the threshold of SUI amount raised
@@ -150,12 +150,6 @@ module memechan::go_live {
         // 2. Collect live fees
         let live_fee_amt = (mul_div_up((sui_supply as u256), LAUNCH_FEE, PRECISION) as u64);
         transfer::public_transfer(coin::from_balance(balance::split(&mut sui_balance, live_fee_amt), ctx), sender(ctx));
-
-        // 3. Split MEME balance amounts into 80/20
-        let meme_supply = balance::value(&meme_balance);
-        let meme_supply_80 = div_mul(meme_supply, BPS, LOCKED);
-
-        let amm_meme_balance = balance::split(&mut meme_balance, meme_supply_80);
         
         let decimals_cap = coin_decimals::new_cap(ctx);
         let decimals = coin_decimals::new(&mut decimals_cap, ctx);
@@ -174,7 +168,7 @@ module memechan::go_live {
         );
 
         let amount_sui = (balance::value(&sui_balance) as u256);
-        let amount_meme = (balance::value(&amm_meme_balance) as u256);
+        let amount_meme = (balance::value(&meme_balance_for_launch) as u256);
 
         let price = (amount_sui * SCALE) / amount_meme;
 
@@ -182,8 +176,8 @@ module memechan::go_live {
             clock,
             &decimals,
             hooks_builder,
-            coin::from_balance(sui_balance, ctx), // coin_a
-            coin::from_balance(amm_meme_balance, ctx), // coin_b
+            coin::from_balance(sui_balance, ctx), // coin SUI
+            coin::from_balance(meme_balance_for_launch, ctx), // coin MEME
             coin::treasury_into_supply(treasury_cap),
             vector[A, GAMMA],
             vector[ALLOWED_EXTRA_PROFIT, ADJUSTMENT_STEP, MA_TIME],
@@ -197,7 +191,7 @@ module memechan::go_live {
         // 4. Create staking pool
         let staking_pool = staking_pool::new<S, Meme, LP>(
             pool_id,
-            meme_balance,
+            (seed_pool::gamma_m(&params) as u64),
             coin::into_balance(lp_tokens),
             vesting_config,
             admin,

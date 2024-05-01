@@ -323,10 +323,17 @@ module memechan::integration {
             ctx(scenario_mut),
         );
 
-        // TODO: withdraw fees and check amt
+        let (coin_s, coin_m) = staking_pool::withdraw_fees<SUI, BODEN, LP_COIN>(
+            &mut staking_pool,
+            ctx(scenario_mut),
+        );
+
+        // TODO: More fee tests with unstaking
 
         token::burn_for_testing(m_token);
         admin::burn_for_testing(admin);
+        coin::burn_for_testing(coin_s);
+        coin::burn_for_testing(coin_m);
         coin::burn_for_testing(output);
         clock::destroy_for_testing(clock);
         transfer::public_transfer(sui_meta, @0x0);

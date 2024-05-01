@@ -36,7 +36,7 @@ module memechan::staking_pool {
 
     public(friend) fun new<S, Meme, LP>(
         amm_pool: ID,
-        balance_meme: Balance<Meme>,
+        stake_total: u64,
         balance_lp: Balance<LP>,
         vesting_config: VestingConfig,
         pool_admin: PoolAdmin,
@@ -45,12 +45,10 @@ module memechan::staking_pool {
         vesting_table: Table<address, VestingData>,
         ctx: &mut TxContext,
     ): StakingPool<S, Meme, LP> {
-        let stake_total = balance::value(&balance_lp);
-
         let staking_pool = StakingPool {
             id: object::new(ctx),
             amm_pool,
-            balance_meme,
+            balance_meme: balance::zero(),
             balance_lp,
             meme_cap,
             policy_cap,
@@ -106,7 +104,6 @@ module memechan::staking_pool {
 
     public fun withdraw_fees<S, Meme, LP>(staking_pool: &mut StakingPool<S, Meme, LP>, ctx: &mut TxContext): (Coin<Meme>, Coin<S>) {
         let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
-
         let (balance_meme, balance_sui) = fee_distribution::withdraw(&mut staking_pool.fee_state, vesting::current_stake(vesting_data), ctx);
 
         (
