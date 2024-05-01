@@ -1,19 +1,15 @@
 module memechan::token_ir {
     use std::vector;
-    use sui::object::{Self, UID, id_to_address};
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::balance::Balance;
     use sui::tx_context::TxContext;
-    use sui::dynamic_field as df;
-    use sui::token::{Self, Token, ActionRequest, TokenPolicy};
+    use sui::token::{Self, Token, ActionRequest, TokenPolicy, TokenPolicyCap};
 
     friend memechan::seed_pool;
     friend memechan::staked_lp;
     friend memechan::staking_pool;
 
     struct Witness has drop {}
-
-    struct PolicyCapDfKey<phantom T> has store, copy, drop {}
 
     public fun merge<T>(tokens: vector<Token<T>>): Token<T> {
         vector::reverse(&mut tokens);
@@ -34,12 +30,10 @@ module memechan::token_ir {
     }
 
     public(friend) fun init_token<T>(
-        pool_uid: &mut UID,
         treasury_cap: &TreasuryCap<T>,
         ctx: &mut TxContext
-     ): (TokenPolicy<T>, address) {
+     ): (TokenPolicy<T>, TokenPolicyCap<T>) {
         let (policy, cap) = token::new_policy(treasury_cap, ctx);
-        let policy_id = object::id(&policy);
 
         token::add_rule_for_action<T, Witness>(
             &mut policy,
@@ -69,12 +63,8 @@ module memechan::token_ir {
             ctx
         );
 
-        df::add(pool_uid, PolicyCapDfKey<T> {}, cap);
-
-        (policy, id_to_address(&policy_id))
+        (policy, cap)
     }
-
-    // coin::take(&mut pool_state.admin_balance_y, amount_y, ctx)
     
     public(friend) fun take<T>(
         policy: &TokenPolicy<T>,

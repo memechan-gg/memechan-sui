@@ -13,7 +13,6 @@ module memechan::bound_curve_tests {
     use memechan::admin;
     use memechan::usdc::USDC;
     use memechan::fees::{Fees};
-    use memechan::ticket_usdc::TICKET_USDC;
     use memechan::seed_pool::{Self, SeedPool, decimals_s};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people5, people, scenario, deploy_usdc_sui_pool_default_liquidity};
@@ -44,13 +43,13 @@ module memechan::bound_curve_tests {
         
         next_tx(scenario_mut, alice);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 5_000 * decimals_s();
 
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
 
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
             
             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -61,12 +60,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, bob);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 5_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -77,12 +76,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, chad);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 5_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -93,12 +92,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, dan);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 7_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -109,12 +108,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, erin);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 15_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             acc = acc + (staked_lp::balance(&res) as u256);
 
@@ -125,13 +124,13 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
-            let adm_fee_m = (seed_pool::admin_balance_m<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
-            let adm_fee_s = (seed_pool::admin_balance_s<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+            let adm_fee_m = (seed_pool::admin_balance_m<SUI, USDC>(&request.pool) as u256);
+            let adm_fee_s = (seed_pool::admin_balance_s<SUI, USDC>(&request.pool) as u256);
 
-            let balance_m = (seed_pool::balance_m<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
-            let balance_s = (seed_pool::balance_s<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+            let balance_m = (seed_pool::balance_m<SUI, USDC>(&request.pool) as u256);
+            let balance_s = (seed_pool::balance_s<SUI, USDC>(&request.pool) as u256);
 
             assert_eq(acc + adm_fee_m, MAX_X * (USDC_DECIMAL_SCALAR as u256));
             assert_eq(balance_m, 0);
@@ -164,12 +163,12 @@ module memechan::bound_curve_tests {
         // Buy Meme
         next_tx(scenario_mut, chad);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 5_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            chad_staked_lp = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            chad_staked_lp = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             destroy_request(request);
@@ -177,12 +176,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 6_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
 
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             staked_lp::destroy_for_testing(res);
@@ -191,12 +190,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, bob);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 7_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             staked_lp::destroy_for_testing(res);
@@ -209,12 +208,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, chad);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
             let policy = &request.policy;
 
             let token_in =  staked_lp::into_token(chad_staked_lp, &clock, policy, ctx(scenario_mut));
             
-            let res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
+            let res = seed_pool::sell_meme<SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
 
             coin::burn_for_testing(res);
             destroy_request(request);
@@ -222,12 +221,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, dan);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 7_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             staked_lp::destroy_for_testing(res);
@@ -236,12 +235,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, erin);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 15_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             staked_lp::destroy_for_testing(res);
@@ -250,10 +249,10 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
-            let balance_m = (seed_pool::balance_m<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
-            let balance_s = (seed_pool::balance_s<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+            let balance_m = (seed_pool::balance_m<SUI, USDC>(&request.pool) as u256);
+            let balance_s = (seed_pool::balance_s<SUI, USDC>(&request.pool) as u256);
 
             assert_eq(balance_m, 0);
             assert_eq(balance_s, MAX_Y * (decimals_s() as u256));
@@ -284,12 +283,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, chad);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 5_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            chad_staked_lp = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            chad_staked_lp = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             destroy_request(request);
@@ -297,12 +296,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 5_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            alice_staked_lp = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            alice_staked_lp = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             destroy_request(request);
@@ -310,12 +309,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, bob);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in = 5_000 * decimals_s();
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
             
-            bob_staked_lp = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+            bob_staked_lp = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             destroy_request(request);
@@ -327,12 +326,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, chad);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
             let policy = &request.policy;
 
             let token_in =  staked_lp::into_token(chad_staked_lp, &clock, policy, ctx(scenario_mut));
             
-            let res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
+            let res = seed_pool::sell_meme<SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
 
             coin::burn_for_testing(res);
             destroy_request(request);
@@ -340,12 +339,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
             let policy = &request.policy;
 
             let token_in =  staked_lp::into_token(alice_staked_lp, &clock, policy, ctx(scenario_mut));
             
-            let res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
+            let res = seed_pool::sell_meme<SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
 
             coin::burn_for_testing(res);
             destroy_request(request);
@@ -353,12 +352,12 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, bob);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
             let policy = &request.policy;
 
             let token_in =  staked_lp::into_token(bob_staked_lp, &clock, policy, ctx(scenario_mut));
             
-            let res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
+            let res = seed_pool::sell_meme<SUI, USDC>(&mut request.pool, token_in, 1, policy, ctx(scenario_mut));
 
             coin::burn_for_testing(res);
             destroy_request(request);
@@ -373,15 +372,15 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, erin); 
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
             let policy = &request.policy;
 
             let admin = test::take_from_sender<admin::Admin>(scenario_mut);
             
             let adm_coin_y;
-            (adm_token_x, adm_coin_y) = seed_pool::take_fees<TICKET_USDC, SUI, USDC>(&admin, &mut request.pool, policy, ctx(scenario_mut));
+            (adm_token_x, adm_coin_y) = seed_pool::take_fees<SUI, USDC>(&admin, &mut request.pool, policy, ctx(scenario_mut));
             
-            //let res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, adm_token_x, 1, policy, ctx(scenario_mut));
+            //let res = seed_pool::sell_meme<SUI, USDC>(&mut request.pool, adm_token_x, 1, policy, ctx(scenario_mut));
 
             coin::burn_for_testing(adm_coin_y);
             test::return_to_sender<admin::Admin>(scenario_mut, admin);
@@ -391,8 +390,8 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, erin);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
-            let balance_m = (seed_pool::balance_m<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+            let request = request<SUI, USDC>(scenario_mut);
+            let balance_m = (seed_pool::balance_m<SUI, USDC>(&request.pool) as u256);
 
             assert_eq(MAX_X * (USDC_DECIMAL_SCALAR as u256), (balance_m + (sui::token::value(&adm_token_x) as u256)));
 
@@ -418,29 +417,30 @@ module memechan::bound_curve_tests {
 
         
         next_tx(scenario_mut, alice);
-        let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+        let request = request<SUI, USDC>(scenario_mut);
 
         let amount_in = 35_000 * decimals_s();
 
         let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
 
-        let res = seed_pool::buy_meme<TICKET_USDC, SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
+        let res = seed_pool::buy_meme<SUI, USDC>(&mut request.pool, &mut coin_in, 1, &clock, ctx(scenario_mut));
             
         assert_eq(staked_lp::balance(&res), 895_500_000_000_000); // i.e. gamma_m * (1 - fee rate)
 
         coin::burn_for_testing(coin_in);
-        seed_pool::unlock_for_testing<TICKET_USDC, SUI, USDC>(&mut request.pool);
+        seed_pool::unlock_for_testing<SUI, USDC>(&mut request.pool);
         destroy_request(request);
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
             let amount_in =  298_500_000_000_000;
             let coin_in = mint_for_testing<SUI>(amount_in, ctx(scenario_mut));
-            // let meme_in = staked_lp::split<TICKET_USDC>(&mut res, amount_in, ctx(scenario_mut));
-            let meme_in = staked_lp::into_token_for_testing(
-                staked_lp::split<TICKET_USDC>(&mut res, amount_in, ctx(scenario_mut)),
+
+            
+            let meme_in = staked_lp::into_token_for_testing<USDC>(
+                staked_lp::split<USDC>(&mut res, amount_in, ctx(scenario_mut)),
                 &request.policy,
                 ctx(scenario_mut)
             );
@@ -452,7 +452,7 @@ module memechan::bound_curve_tests {
                 policy,
             } = request;
             
-            let sui_res = seed_pool::sell_meme<TICKET_USDC, SUI, USDC>(&mut pool, meme_in, 1, &policy, ctx(scenario_mut));
+            let sui_res = seed_pool::sell_meme<SUI, USDC>(&mut pool, meme_in, 1, &policy, ctx(scenario_mut));
 
             coin::burn_for_testing(coin_in);
             coin::burn_for_testing(sui_res);
@@ -484,13 +484,13 @@ module memechan::bound_curve_tests {
 
         next_tx(scenario_mut, alice);
         {
-            // let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            // let request = request<SUI, USDC>(scenario_mut);
 
-            // let adm_fee_m = (seed_pool::admin_balance_m<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
-            // let adm_fee_s = (seed_pool::admin_balance_s<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+            // let adm_fee_m = (seed_pool::admin_balance_m<SUI, USDC>(&request.pool) as u256);
+            // let adm_fee_s = (seed_pool::admin_balance_s<SUI, USDC>(&request.pool) as u256);
 
-            // let balance_m = (seed_pool::balance_m<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
-            // let balance_s = (seed_pool::balance_s<TICKET_USDC, SUI, USDC>(&request.pool) as u256);
+            // let balance_m = (seed_pool::balance_m<SUI, USDC>(&request.pool) as u256);
+            // let balance_s = (seed_pool::balance_s<SUI, USDC>(&request.pool) as u256);
 
             // assert_eq(acc + adm_fee_m, MAX_X * (USDC_DECIMAL_SCALAR as u256));
             // assert_eq(balance_m, 0);
@@ -508,11 +508,11 @@ module memechan::bound_curve_tests {
 
     // Set up
 
-    struct Request<phantom CoinX> {
+    struct Request<phantom S, phantom Meme> {
         registry: Registry,
-        pool: SeedPool,
+        pool: SeedPool<S, Meme>,
         pool_fees: Fees,
-        policy: TokenPolicy<CoinX>
+        policy: TokenPolicy<Meme>
     }
 
     fun set_up_test(scenario_mut: &mut Scenario) {
@@ -524,14 +524,14 @@ module memechan::bound_curve_tests {
         };
     }
 
-    fun request<CoinX, CoinY, LPCoinType>(scenario_mut: &Scenario): Request<CoinX> {
+    fun request<S, Meme>(scenario_mut: &Scenario): Request<S, Meme> {
         let registry = test::take_shared<Registry>(scenario_mut);
-        let pool_address = index::seed_pool_address<CoinX, CoinY, LPCoinType>(&registry);
-        let pool = test::take_shared_by_id<SeedPool>(
+        let pool_address = index::seed_pool_address<S, Meme>(&registry);
+        let pool = test::take_shared_by_id<SeedPool<S, Meme>>(
             scenario_mut, object::id_from_address(option::destroy_some(pool_address))
         );
-        let pool_fees = seed_pool::fees<CoinX, CoinY, LPCoinType>(&pool);
-        let policy = test::take_shared<TokenPolicy<CoinX>>(scenario_mut);
+        let pool_fees = seed_pool::fees<S, Meme>(&pool);
+        let policy = test::take_shared<TokenPolicy<Meme>>(scenario_mut);
 
         Request {
             registry,
@@ -541,7 +541,7 @@ module memechan::bound_curve_tests {
         }
     }
 
-    fun destroy_request<CoinX>(request: Request<CoinX>) {
+    fun destroy_request<S, Meme>(request: Request<S, Meme>) {
         let Request { registry, pool, pool_fees: _, policy } = request;
 
         test::return_shared(registry);

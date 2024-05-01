@@ -1,24 +1,20 @@
 #[test_only]
 module memechan::seed_pool_tests {
     use std::option;
-    use std::string::{utf8, to_ascii};
 
     use sui::table;
+    use sui::transfer;
+    use sui::coin;
     use sui::object;
     use sui::test_utils::assert_eq;
-    use sui::coin::{Self, burn_for_testing, TreasuryCap, CoinMetadata, create_treasury_cap_for_testing};
+    use sui::coin::{TreasuryCap, CoinMetadata};
     use sui::test_scenario::{Self as test, Scenario, next_tx, ctx};
     use sui::sui::SUI;
     
     use memechan::errors;
-    use memechan::utils;
-    use memechan::btc::BTC;
     use memechan::usdc::USDC;
     use memechan::fees::{Self, Fees};
     use memechan::admin;
-    use memechan::ticket_btc::{Self, TICKET_BTC};
-    use memechan::tickettce::{Self, TICKETTCE};
-    use memechan::ticket_usdc::{Self, TICKET_USDC};
     use memechan::seed_pool::{Self, SeedPool};
     use memechan::index::{Self, Registry};
     use memechan::deploy_utils::{people, scenario, deploy_coins};
@@ -32,56 +28,43 @@ module memechan::seed_pool_tests {
         let (scenario, alice, _) = start_test();
 
         let scenario_mut = &mut scenario;
-        
-        next_tx(scenario_mut, alice);
-        {
-            ticket_usdc::init_for_testing(ctx(scenario_mut));
-        };
 
         next_tx(scenario_mut, alice);
         {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let ticket_coin_cap = test::take_from_sender<TreasuryCap<TICKET_USDC>>(scenario_mut);
+            let meme_coin_cap = test::take_from_sender<TreasuryCap<USDC>>(scenario_mut);
             let usdc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
-            let ticket_coin_metadata = test::take_shared<CoinMetadata<TICKET_USDC>>(scenario_mut);
             
             assert_eq(table::is_empty(index::seed_pools(&registry)), true);
             
-            seed_pool::new_default<TICKET_USDC, SUI, USDC>(
+            seed_pool::new_default<SUI, USDC>(
                 &mut registry,
-                //mint_for_testing(usdc_amount, ctx(scenario_mut)),
-                ticket_coin_cap,
-                create_treasury_cap_for_testing(ctx(scenario_mut)),
-                &mut ticket_coin_metadata,
-                &usdc_metadata,
+                meme_coin_cap,
                 ctx(scenario_mut)
             );
 
-            assert_eq(coin::get_symbol(&ticket_coin_metadata), to_ascii(utf8(b"ticket-USDC")));
-            assert_eq(coin::get_name(&ticket_coin_metadata), utf8(b"USD Coin Ticket Coin"));
-            assert_eq(index::exists_seed_pool<TICKET_USDC, SUI, USDC>(&registry), true);
+            assert_eq(index::exists_seed_pool<SUI, USDC>(&registry), true);
 
             test::return_shared(usdc_metadata);
-            test::return_shared(ticket_coin_metadata);
             test::return_shared(registry);
         };
 
         next_tx(scenario_mut, alice);
         {
-            let request = request<TICKET_USDC, SUI, USDC>(scenario_mut);
+            let request = request<SUI, USDC>(scenario_mut);
 
-            assert_eq(seed_pool::meme_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
-            assert_eq(seed_pool::ticket_coin_supply<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
-            assert_eq(seed_pool::balance_m<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
-            assert_eq(seed_pool::balance_s<TICKET_USDC, SUI, USDC>(&request.pool), 0);
-            // assert_eq(seed_pool::decimals_x<TICKET_USDC, SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
-            // assert_eq(seed_pool::decimals_y<TICKET_USDC, SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
-            assert_eq(seed_pool::seed_liquidity<TICKET_USDC, SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
-            assert_eq(seed_pool::is_ready_to_launch<TICKET_USDC, SUI, USDC>(&request.pool), false);
-            assert_eq(seed_pool::admin_balance_m<TICKET_USDC, SUI, USDC>(&request.pool), 0);
-            assert_eq(seed_pool::admin_balance_s<TICKET_USDC, SUI, USDC>(&request.pool), 0);
+            assert_eq(seed_pool::meme_coin_supply<SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
+            assert_eq(seed_pool::ticket_coin_supply<SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
+            assert_eq(seed_pool::balance_m<SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
+            assert_eq(seed_pool::balance_s<SUI, USDC>(&request.pool), 0);
+            // assert_eq(seed_pool::decimals_x<SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
+            // assert_eq(seed_pool::decimals_y<SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
+            assert_eq(seed_pool::seed_liquidity<SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
+            assert_eq(seed_pool::is_ready_to_launch<SUI, USDC>(&request.pool), false);
+            assert_eq(seed_pool::admin_balance_m<SUI, USDC>(&request.pool), 0);
+            assert_eq(seed_pool::admin_balance_s<SUI, USDC>(&request.pool), 0);
 
-            let fees = seed_pool::fees<TICKET_USDC, SUI, USDC>(&request.pool);
+            let fees = seed_pool::fees<SUI, USDC>(&request.pool);
 
             assert_eq(fees::fee_in_percent(&fees), ADMIN_FEE);
             assert_eq(fees::fee_out_percent(&fees), ADMIN_FEE);
@@ -93,79 +76,7 @@ module memechan::seed_pool_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = errors::EMemeAndTicketCoinsMustHave6Decimals, location = utils)]
-    fun test_new_pool_wrong_lp_coin_decimals() {
-        let (scenario, alice, _) = start_test();
-
-        let scenario_mut = &mut scenario;
-
-        next_tx(scenario_mut, alice);
-        {
-            tickettce::init_for_testing(ctx(scenario_mut));
-        };
-
-        next_tx(scenario_mut, alice);
-        {
-            let registry = test::take_shared<Registry>(scenario_mut);
-            let lp_coin_cap = test::take_from_sender<TreasuryCap<TICKETTCE>>(scenario_mut);
-            let btc_metadata = test::take_shared<CoinMetadata<BTC>>(scenario_mut);
-            let lp_coin_metadata = test::take_shared<CoinMetadata<TICKETTCE>>(scenario_mut);
-            
-            seed_pool::new_default<TICKETTCE, SUI, BTC>(
-                &mut registry,
-                lp_coin_cap,
-                create_treasury_cap_for_testing(ctx(scenario_mut)),
-                //mint_for_testing(100, ctx(scenario_mut)),
-                &mut lp_coin_metadata,
-                &btc_metadata,
-                ctx(scenario_mut)
-            );
-
-            test::return_shared(btc_metadata);
-            test::return_shared(lp_coin_metadata);
-            test::return_shared(registry);
-        };
-        test::end(scenario);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = errors::EWrongModuleName, location = utils)]
-    fun test_new_pool_wrong_lp_coin_metadata() {
-        let (scenario, alice, _) = start_test();
-
-        let scenario_mut = &mut scenario;
-
-        next_tx(scenario_mut, alice);
-        {
-            ticket_btc::init_for_testing(ctx(scenario_mut));
-        };
-
-        next_tx(scenario_mut, alice);
-        {
-            let registry = test::take_shared<Registry>(scenario_mut);
-            let lp_coin_cap = test::take_from_sender<TreasuryCap<TICKET_BTC>>(scenario_mut);
-            let btc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
-            let lp_coin_metadata = test::take_shared<CoinMetadata<TICKET_BTC>>(scenario_mut);
-            
-            seed_pool::new_default<TICKET_BTC, SUI, USDC>(
-                &mut registry,
-                lp_coin_cap,
-                create_treasury_cap_for_testing(ctx(scenario_mut)),
-                //mint_for_testing(100, ctx(scenario_mut)),
-                &mut lp_coin_metadata,
-                &btc_metadata,
-                ctx(scenario_mut)
-            );
-
-            test::return_shared(btc_metadata);
-            test::return_shared(lp_coin_metadata);
-            test::return_shared(registry);
-        };
-        test::end(scenario);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = errors::EMemeAndTicketCoinsShouldHaveZeroTotalSupply, location = utils)]
+    #[expected_failure(abort_code = errors::EMemeAndTicketCoinsShouldHaveZeroTotalSupply, location = seed_pool)]
     fun test_new_pool_wrong_lp_coin_supply() {
         let (scenario, alice, _) = start_test();
 
@@ -173,46 +84,36 @@ module memechan::seed_pool_tests {
 
         next_tx(scenario_mut, alice);
         {
-            ticket_usdc::init_for_testing(ctx(scenario_mut));
-        };
-
-        next_tx(scenario_mut, alice);
-        {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let lp_coin_cap = test::take_from_sender<TreasuryCap<TICKET_USDC>>(scenario_mut);
+            let meme_coin_cap = test::take_from_sender<TreasuryCap<USDC>>(scenario_mut);
             let usdc_metadata = test::take_shared<CoinMetadata<USDC>>(scenario_mut);
-            let lp_coin_metadata = test::take_shared<CoinMetadata<TICKET_USDC>>(scenario_mut);
 
-            burn_for_testing(coin::mint(&mut lp_coin_cap, 100, ctx(scenario_mut)));
+            let coins = coin::mint(&mut meme_coin_cap, 1_000_000, ctx(scenario_mut));
             
-            seed_pool::new_default<TICKET_USDC, SUI, USDC>(
+            seed_pool::new_default<SUI, USDC>(
                 &mut registry,
-                lp_coin_cap,
-                create_treasury_cap_for_testing(ctx(scenario_mut)),
-                //mint_for_testing(100, ctx(scenario_mut)),
-                &mut lp_coin_metadata,
-                &usdc_metadata,
-                ctx(scenario_mut)
+                meme_coin_cap,
+                ctx(scenario_mut),
             );
             
+            transfer::public_transfer(coins, @0x0);
             test::return_shared(usdc_metadata);
-            test::return_shared(lp_coin_metadata);
             test::return_shared(registry);
         };
         test::end(scenario);
     }
 
-    struct Request {
+    struct Request<phantom S, phantom Meme> {
         registry: Registry,
-        pool: SeedPool,
+        pool: SeedPool<S, Meme>,
         fees: Fees
     } 
 
-    fun request<M, S, Meme>(scenario_mut: &Scenario): Request {
+    fun request<S, Meme>(scenario_mut: &Scenario): Request<S, Meme> {
             let registry = test::take_shared<Registry>(scenario_mut);
-            let pool_address = index::seed_pool_address<M, S, Meme>(&registry);
-            let pool = test::take_shared_by_id<SeedPool>(scenario_mut, object::id_from_address(option::destroy_some(pool_address)));
-            let fees = seed_pool::fees<M, S, Meme>(&pool);
+            let pool_address = index::seed_pool_address<S, Meme>(&registry);
+            let pool = test::take_shared_by_id<SeedPool<S, Meme>>(scenario_mut, object::id_from_address(option::destroy_some(pool_address)));
+            let fees = seed_pool::fees<S, Meme>(&pool);
 
         Request {
             registry,
@@ -221,7 +122,7 @@ module memechan::seed_pool_tests {
         }
     }
 
-    fun destroy_request(request: Request) {
+    fun destroy_request<S, Meme>(request: Request<S, Meme>) {
         let Request { registry, pool, fees: _ } = request;
     
         test::return_shared(registry);

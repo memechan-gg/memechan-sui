@@ -1,7 +1,7 @@
 #[test_only]
 module memechan::deploy_utils {
     use std::option;
-    use sui::coin::{mint_for_testing, TreasuryCap, CoinMetadata, create_treasury_cap_for_testing};
+    use sui::coin::{mint_for_testing, TreasuryCap, CoinMetadata};
     use sui::test_scenario::{Self as test, Scenario, next_tx, ctx};
     use sui::object;
     use sui::token;
@@ -10,7 +10,6 @@ module memechan::deploy_utils {
     use memechan::btc;
     use memechan::usdt;
     use memechan::usdc::{Self, USDC};
-    use memechan::ticket_usdc::{Self, TICKET_USDC};
     use memechan::seed_pool::{Self, SeedPool};
     use memechan::index::{Self, Registry};
 
@@ -37,9 +36,9 @@ module memechan::deploy_utils {
         next_tx(test, alice);
         {
             let registry = test::take_shared<Registry>(test);
-            let pool_address = index::seed_pool_address<TICKET_USDC, SUI, USDC>(&registry);
-            let pool = test::take_shared_by_id<SeedPool>(test, object::id_from_address(option::destroy_some(pool_address)) );
-            seed_pool::set_liquidity<TICKET_USDC, SUI, USDC>(&mut pool, token::mint_for_testing<TICKET_USDC>(usdc_amount, ctx(test)), mint_for_testing<SUI>(sui_amount, ctx(test)));
+            let pool_address = index::seed_pool_address<SUI, USDC>(&registry);
+            let pool = test::take_shared_by_id<SeedPool<SUI, USDC>>(test, object::id_from_address(option::destroy_some(pool_address)) );
+            seed_pool::set_liquidity<SUI, USDC>(&mut pool, token::mint_for_testing<USDC>(usdc_amount, ctx(test)), mint_for_testing<SUI>(sui_amount, ctx(test)));
             test::return_shared(pool);
             test::return_shared(registry);
         }
@@ -52,27 +51,17 @@ module memechan::deploy_utils {
 
         next_tx(test, alice);
         {
-            ticket_usdc::init_for_testing(ctx(test));
-        };
-
-        next_tx(test, alice);
-        {
             let registry = test::take_shared<Registry>(test);
-            let lp_coin_cap = test::take_from_sender<TreasuryCap<TICKET_USDC>>(test);
+            let usdc_coin_cap = test::take_from_sender<TreasuryCap<USDC>>(test);
             let usdc_metadata = test::take_shared<CoinMetadata<USDC>>(test);
-            let lp_coin_metadata = test::take_shared<CoinMetadata<TICKET_USDC>>(test);
             
-            seed_pool::new_default<TICKET_USDC, SUI, USDC>(
+            seed_pool::new_default<SUI, USDC>(
                 &mut registry,
-                lp_coin_cap,
-                create_treasury_cap_for_testing(ctx(test)),
-                &mut lp_coin_metadata,
-                &usdc_metadata,
-                ctx(test)
+                usdc_coin_cap,
+                ctx(test),
             );
 
             test::return_shared(usdc_metadata);
-            test::return_shared(lp_coin_metadata);
             test::return_shared(registry);
         };
     }
