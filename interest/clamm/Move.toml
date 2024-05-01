@@ -4,12 +4,11 @@ edition = "2024.beta"
 license = "MIT"
 authors = ["Jose Cerqueira (jose@interestprotocol.com)"]
 version = "2.0.1-alpha"
-published = "0x9641311c4442a1464941ed2898b8466820a6313082f271906fb1d0cb3be18c65"
+published-at = "0x9641311c4442a1464941ed2898b8466820a6313082f271906fb1d0cb3be18c65"
 
 [dependencies]
-MoveStdlib = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "framework/mainnet" }
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
-SuiTears = { git = "https://github.com/interest-protocol/suitears.git", subdir = "contracts", rev = "mainnet-1.0.0-beta" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.22.0" }
+SuiTears = { local = "../suitears" }
 
 [addresses]
 clamm = "0x9641311c4442a1464941ed2898b8466820a6313082f271906fb1d0cb3be18c65"

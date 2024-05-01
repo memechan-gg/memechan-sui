@@ -2,7 +2,7 @@
 name = "Memechan"
 version = "0.0.1"
 edition = "legacy"
-published-at = "0x1a0c65c5850f32caf3b8bc1973837c830e1159b566b3684ace43e37c59868974"
+published-at = "0xa06a92a380b04366b5bf54587b89c0d04772e48170ea3c3d0647dac85be038d9"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.22.0" }
@@ -13,4 +13,4 @@ SuiTears = { local = "../interest/suitears" }
 CLAMM = { local = "../interest/clamm" }
 
 [addresses]
-memechan = "0x1a0c65c5850f32caf3b8bc1973837c830e1159b566b3684ace43e37c59868974"
+memechan = "0xa06a92a380b04366b5bf54587b89c0d04772e48170ea3c3d0647dac85be038d9"
