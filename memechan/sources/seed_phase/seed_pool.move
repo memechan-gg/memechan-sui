@@ -16,7 +16,6 @@ module memechan::seed_pool {
     use memechan::math256::pow_2;
     use memechan::index::{Self, Registry, policies_mut};
     use memechan::utils::mist;
-    use memechan::errors;
     use memechan::staked_lp;
     use memechan::events;
     use memechan::admin::Admin;
@@ -29,7 +28,7 @@ module memechan::seed_pool {
 
     friend memechan::go_live;
 
-    // === Constants ===
+    // ===== Constants =====
 
     const DEFAULT_ADMIN_FEE: u256 = 5_000_000_000_000_000; // 0.5%
 
@@ -40,12 +39,11 @@ module memechan::seed_pool {
 
     const DECIMALS_ALPHA: u256 = 1_000_000;
     const DECIMALS_BETA: u256 = 1_000_000;
-
     /// The amount of Mist per Sui token based on the fact that mist is
     /// 10^-9 of a Sui token
     const DECIMALS_S: u256 = 1_000_000_000;
 
-    public fun default_admin(): u256 { DEFAULT_ADMIN_FEE }
+    public fun default_admin_fee(): u256 { DEFAULT_ADMIN_FEE }
     public fun default_price_factor(): u64 { DEFAULT_PRICE_FACTOR }
     public fun default_gamma_m(): u256 { DEFAULT_MAX_M }
     public fun default_omega_m(): u256 { DEFAULT_MAX_M_LP }
@@ -54,12 +52,19 @@ module memechan::seed_pool {
     public fun decimals_beta(): u64 { (DECIMALS_BETA as u64) }
     public fun decimals_s(): u64 { (DECIMALS_S as u64) }
 
-    // Errors
+    // ===== Errors =====
 
+    const ENoZeroCoin: u64 = 0;
     const EBondingCurveMustBeNegativelySloped: u64 = 1;
-    const EBondingCurveInterceptMustBePositive: u64 = 1;
+    const EBondingCurveInterceptMustBePositive: u64 = 2;
+    const EPoolIsLocked: u64 = 3;
+    const EMemeSupplyNotGamma: u64 = 4;
+    const EQuoteSupplyNotZero: u64 = 5;
+    const EMemeTotalSupplyNotGammaOmega: u64 = 6;
+    const EMemeCoinsShouldHaveZeroTotalSupply: u64 = 7;
+    const ESlippage: u64 = 8;
 
-    // === Structs ===
+    // ===== Structs =====
     
     struct SeedPool<phantom S, phantom Meme> has key {
         id: UID,
@@ -78,12 +83,6 @@ module memechan::seed_pool {
         locked: bool,
     }
 
-    fun gamma_s_mist<S, Meme>(
-        self: &SeedPool<S, Meme>,
-    ): u64 {
-        mist(self.params.gamma_s)
-    }
-
     struct Params has store, drop {
         alpha_abs: u256, // |alpha|, because alpha is negative
         beta: u256,
@@ -97,14 +96,6 @@ module memechan::seed_pool {
         sell_delay_ms: u64,
     }
 
-    public fun alpha_abs(params: &Params): u256 { params.alpha_abs }
-    public fun beta(params: &Params): u256 { params.beta }
-    public fun price_factor(params: &Params): u64 { params.price_factor }
-    public fun gamma_s(params: &Params): u64 { params.gamma_s }
-    public fun gamma_m(params: &Params): u64 { params.gamma_m }
-    public fun omega_m(params: &Params): u64 { params.omega_m }
-    public fun sell_delay_ms(params: &Params): u64 { params.sell_delay_ms }
-
     struct SwapAmount has store, drop, copy {
         amount_in: u64,
         amount_out: u64,
@@ -112,10 +103,10 @@ module memechan::seed_pool {
         admin_fee_out: u64,
     }
 
-    // === DEX ===
+    // ===== Entry Functions =====
 
     #[lint_allow(share_owned)]
-    public fun new_default<S, Meme>(
+    public entry fun new_default<S, Meme>(
         registry: &mut Registry,
         meme_coin_cap: TreasuryCap<Meme>,
         ctx: &mut TxContext
@@ -137,7 +128,7 @@ module memechan::seed_pool {
     }
     
     #[lint_allow(share_owned)]
-    public fun new<S, Meme>(
+    public entry fun new<S, Meme>(
         registry: &mut Registry,
         meme_coin_cap: TreasuryCap<Meme>,
         fee_in_percent: u256,
@@ -163,205 +154,76 @@ module memechan::seed_pool {
         );
         share_object(pool);
     }
-    
-    #[lint_allow(share_owned)]
-    public fun new_<S, Meme>(
-        registry: &mut Registry,
-        meme_coin_cap: TreasuryCap<Meme>,
-        fee_in_percent: u256,
-        fee_out_percent: u256,
-        price_factor: u64,
-        gamma_s: u64,
-        gamma_m: u64,
-        omega_m: u64,
-        sell_delay_ms: u64,
-        ctx: &mut TxContext
-    ): SeedPool<S, Meme> {
-        assert!(balance::supply_value(coin::supply(&mut meme_coin_cap)) == 0, errors::should_have_0_total_supply());
 
-        let launch_coin = coin::mint<Meme>(
-            &mut meme_coin_cap,
-            ((gamma_m + omega_m) as u64),
-            ctx);
-
-        let balance_m: Balance<Meme> = balance::increase_supply(coin::supply_mut(&mut meme_coin_cap), (gamma_m as u64));
-        let coin_m_value = balance::value(&balance_m);
-
-        let (policy, policy_cap) = token_ir::init_token<Meme>(&meme_coin_cap, ctx);
-
-        let pool = new_pool_internal<S, Meme>(
-            registry,
-            balance_m,
-            coin::zero(ctx),
-            launch_coin,
-            meme_coin_cap,
-            policy_cap,
-            fee_in_percent,
-            fee_out_percent,
-            price_factor,
-            gamma_s,
-            gamma_m,
-            omega_m,
-            sell_delay_ms,
-            ctx,
-        );
-
-        let pool_address = object::uid_to_address(&pool.id);
-        let policy_address = id_to_address(&id(&policy));
-
-        index::add_seed_pool<S, Meme>(registry, pool_address);
-        table::add(policies_mut(registry), type_name::get<Meme>(), policy_address);
-
-        events::new_pool<S, Meme>(pool_address, coin_m_value, 0, policy_address);
-
-        token::share_policy(policy);
-        pool
-    }
-
-    public fun compute_alpha_abs(
-        gamma_s: u256,
-        gamma_m: u256,
-        omega_m: u256,
-        price_factor: u64,
-    ): u256 {
-        let left = omega_m * (price_factor as u256);
-        assert!(left < gamma_m, EBondingCurveMustBeNegativelySloped);
-
-        // We compute |alpha|, hence the subtraction is switched
-        (2 * ( gamma_m - left ) * DECIMALS_ALPHA) / (pow_2((gamma_s as u256)))
-    }
-    
-    public fun compute_beta(
-        gamma_s: u256,
-        gamma_m: u256,
-        omega_m: u256,
-        price_factor: u64,
-    ): u256 {
-        let left = (2 * gamma_m);
-        let right = omega_m * (price_factor as u256);
-        assert!(left > right, EBondingCurveInterceptMustBePositive);
-      
-        (( left - right ) * DECIMALS_BETA) / gamma_s
-    }
-
-    // === Public-View Functions ===
-
-    public fun ticket_coin_supply<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
-        balance::value(&pool.balance_m)
-    }
-
-    public fun meme_coin_supply<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
-        balance::value(&pool.launch_balance)
-    }
-
-    public fun balance_m<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
-        balance::value(&pool.balance_m)
-    }
-
-    public fun balance_s<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
-        balance::value(&pool.balance_s)
-    }
-
-    public fun fees<S, Meme>(pool: &SeedPool<S, Meme>): Fees {
-        pool.fees
-    }
-
-    public fun is_ready_to_launch<S, Meme>(pool: &SeedPool<S, Meme>): bool {
-        pool.locked
-    }
-
-    public fun admin_balance_m<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
-        balance::value(&pool.admin_balance_m)
-    }
-
-    public fun admin_balance_s<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
-        balance::value(&pool.admin_balance_s)
-    }
-
-    // === Admin Functions ===
-
-    public fun take_fees<S, Meme>(
-        _: &Admin,
+    public entry fun transfer<S, Meme>(
         pool: &mut SeedPool<S, Meme>,
         policy: &TokenPolicy<Meme>,
+        token: Token<Meme>,
+        recipient: address,
         ctx: &mut TxContext,
-    ): (Token<Meme>, Coin<S>) {
-        let amount_x = balance::value(&pool.admin_balance_m);
-        let amount_y = balance::value(&pool.admin_balance_s);
+    ) {
+        let amount = token::value(&token);
 
-        add_from_token_acc(pool, amount_x, sender(ctx));
-
-        (
-            token_ir::take(policy, &mut pool.admin_balance_m, amount_x, ctx),
-            coin::take(&mut pool.admin_balance_s, amount_y, ctx)
-        )
+        subtract_from_token_acc(pool, amount, sender(ctx));
+        add_from_token_acc(pool, amount, recipient);
+        token_ir::transfer(
+            policy,
+            token,
+            recipient,
+            ctx,
+        );
     }
 
-    // === Private Functions ===
+    // ===== Swap Functions =====
 
-    fun new_pool_internal<S, Meme>(
-        registry: &Registry,
-        coin_m: Balance<Meme>,
-        coin_s: Coin<S>,
-        launch_coin: Coin<Meme>,
-        meme_cap: TreasuryCap<Meme>,
-        policy_cap: TokenPolicyCap<Meme>,
-        fee_in_percent: u256,
-        fee_out_percent: u256,
-        price_factor: u64,
-        gamma_s: u64,
-        gamma_m: u64,
-        omega_m: u64,
-        sell_delay_ms: u64,
+    public fun buy_meme<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
+        coin_s: &mut Coin<S>,
+        coin_m_min_value: u64,
+        clock: &Clock,
         ctx: &mut TxContext
-    ): SeedPool<S, Meme> {
-        let coin_m_value = balance::value(&coin_m);
-        let coin_s_value = coin::value(&coin_s);
-        let launch_coin_value = coin::value(&launch_coin);
+    ): StakedLP<Meme> {
+        assert!(coin::value(coin_s) != 0, ENoZeroCoin);
 
-        assert!(coin_m_value == (gamma_m as u64), errors::provide_both_coins());
-        assert!(coin_s_value == 0, errors::provide_both_coins());
-        assert!(launch_coin_value == ((gamma_m + omega_m) as u64), errors::provide_both_coins());
-        
-        index::assert_new_pool<S, Meme>(registry);
+        let pool_address = object::uid_to_address(&pool.id);
+        assert!(!pool.locked, EPoolIsLocked);
 
-        let pool = SeedPool<S, Meme> {
-            id: object::new(ctx),
-            balance_m: coin_m,
-            balance_s: coin::into_balance(coin_s),
-            fees: new_fees(
-                fee_in_percent,
-                fee_out_percent,
-            ),
-            locked: false,
-            launch_balance: coin::into_balance(launch_coin),
-            admin_balance_m: balance::zero(),
-            admin_balance_s: balance::zero(),
-            params: Params {
-                alpha_abs: compute_alpha_abs(
-                    (gamma_s as u256),
-                    (gamma_m as u256),
-                    (omega_m as u256),
-                    price_factor,
-                ),
-                beta: compute_beta(
-                    (gamma_s as u256),
-                    (gamma_m as u256),
-                    (omega_m as u256),
-                    price_factor,
-                ),
-                gamma_s,
-                gamma_m,
-                omega_m,
-                price_factor,
-                sell_delay_ms,
-            },
-            accounting: table::new<address, VestingData>(ctx),
-            meme_cap,
-            policy_cap,
+        let coin_in_amount = coin::value(coin_s);
+
+        let swap_amount = swap_amounts(
+            pool,
+            coin_in_amount,
+            coin_m_min_value,
+            true,
+        );
+
+        if (swap_amount.admin_fee_in != 0) {
+            balance::join(&mut pool.admin_balance_s, coin::into_balance(coin::split(coin_s, swap_amount.admin_fee_in, ctx)));
         };
 
-        pool
+        if (swap_amount.admin_fee_out != 0) {
+            balance::join(&mut pool.admin_balance_m, balance::split(&mut pool.balance_m, swap_amount.admin_fee_out)); 
+        };
+
+        balance::join(&mut pool.balance_s, coin::into_balance(coin::split(coin_s, swap_amount.amount_in, ctx)));
+
+        events::swap<S, Meme, SwapAmount>(pool_address, coin_in_amount,swap_amount);
+
+        let swap_amount = swap_amount.amount_out;
+        let staked_lp = staked_lp::new(
+            balance::split(&mut pool.balance_m, swap_amount),
+            pool.params.sell_delay_ms,
+            clock,
+            ctx
+        );
+
+        if (balance::value(&pool.balance_m) == 0) {
+            pool.locked = true;
+        };
+
+        // We keep track of how much each address ownes of coin_m
+        add_from_token_acc(pool, swap_amount, sender(ctx));
+        staked_lp
     }
 
     public fun sell_meme<S, Meme>(
@@ -371,10 +233,10 @@ module memechan::seed_pool {
         policy: &TokenPolicy<Meme>,
         ctx: &mut TxContext
     ): Coin<S> {
-        assert!(token::value(&coin_m) != 0, errors::no_zero_coin());
+        assert!(token::value(&coin_m) != 0, ENoZeroCoin);
 
         let pool_address = object::uid_to_address(&pool.id);
-        assert!(!pool.locked, errors::pool_is_locked());
+        assert!(!pool.locked, EPoolIsLocked);
 
         let coin_in_amount = token::value(&coin_m);
         
@@ -403,13 +265,30 @@ module memechan::seed_pool {
         subtract_from_token_acc(pool, coin_in_amount, sender(ctx));
         coin_s
     }
-    
+
+    public fun quote_buy_meme<S, Meme>(
+        pool: &mut SeedPool<S, Meme>,
+        coin_s: u64,
+    ): u64 {
+        assert!(coin_s != 0, ENoZeroCoin);
+        assert!(!pool.locked, EPoolIsLocked);
+
+        let swap_amount = swap_amounts(
+            pool, 
+            coin_s, 
+            0,
+            true,
+        );
+
+        swap_amount.amount_out
+    }
+
     public fun quote_sell_meme<S, Meme>(
         pool: &mut SeedPool<S, Meme>,
         coin_m: u64,
     ): u64 {
-        assert!(coin_m != 0, errors::no_zero_coin());
-        assert!(!pool.locked, errors::pool_is_locked());
+        assert!(coin_m != 0, ENoZeroCoin);
+        assert!(!pool.locked, EPoolIsLocked);
         
         let swap_amount = swap_amounts(
             pool, 
@@ -420,6 +299,8 @@ module memechan::seed_pool {
 
         swap_amount.amount_out
     }
+    
+    // ===== Logic Functions =====
 
     public fun compute_delta_m<S, Meme>(
         self: &SeedPool<S, Meme>,
@@ -470,71 +351,213 @@ module memechan::seed_pool {
         ((num / denom) as u64)
     }
 
-    public fun buy_meme<S, Meme>(
-        pool: &mut SeedPool<S, Meme>,
-        coin_s: &mut Coin<S>,
-        coin_m_min_value: u64,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ): StakedLP<Meme> {
-        assert!(coin::value(coin_s) != 0, errors::no_zero_coin());
+    public fun compute_alpha_abs(
+        gamma_s: u256,
+        gamma_m: u256,
+        omega_m: u256,
+        price_factor: u64,
+    ): u256 {
+        let left = omega_m * (price_factor as u256);
+        assert!(left < gamma_m, EBondingCurveMustBeNegativelySloped);
 
-        let pool_address = object::uid_to_address(&pool.id);
-        assert!(!pool.locked, errors::pool_is_locked());
-
-        let coin_in_amount = coin::value(coin_s);
-
-        let swap_amount = swap_amounts(
-            pool,
-            coin_in_amount,
-            coin_m_min_value,
-            true,
-        );
-
-        if (swap_amount.admin_fee_in != 0) {
-            balance::join(&mut pool.admin_balance_s, coin::into_balance(coin::split(coin_s, swap_amount.admin_fee_in, ctx)));
-        };
-
-        if (swap_amount.admin_fee_out != 0) {
-            balance::join(&mut pool.admin_balance_m, balance::split(&mut pool.balance_m, swap_amount.admin_fee_out)); 
-        };
-
-        balance::join(&mut pool.balance_s, coin::into_balance(coin::split(coin_s, swap_amount.amount_in, ctx)));
-
-        events::swap<S, Meme, SwapAmount>(pool_address, coin_in_amount,swap_amount);
-
-        let swap_amount = swap_amount.amount_out;
-        let staked_lp = staked_lp::new(
-            balance::split(&mut pool.balance_m, swap_amount),
-            pool.params.sell_delay_ms,
-            clock,
-            ctx
-        );
-
-        if (balance::value(&pool.balance_m) == 0) {
-            pool.locked = true;
-        };
-
-        // We keep track of how much each address ownes of coin_m
-        add_from_token_acc(pool, swap_amount, sender(ctx));
-        staked_lp
+        // We compute |alpha|, hence the subtraction is switched
+        (2 * ( gamma_m - left ) * DECIMALS_ALPHA) / (pow_2((gamma_s as u256)))
+    }
+    
+    public fun compute_beta(
+        gamma_s: u256,
+        gamma_m: u256,
+        omega_m: u256,
+        price_factor: u64,
+    ): u256 {
+        let left = (2 * gamma_m);
+        let right = omega_m * (price_factor as u256);
+        assert!(left > right, EBondingCurveInterceptMustBePositive);
+      
+        (( left - right ) * DECIMALS_BETA) / gamma_s
     }
 
-    public fun quote_buy_meme<S, Meme>(
-        pool: &mut SeedPool<S, Meme>,
-        coin_s: u64,
-    ): u64 {
-        assert!(coin_s != 0, errors::no_zero_coin());
-        assert!(!pool.locked, errors::pool_is_locked());
+    // ===== Getters =====
 
-        let swap_amount = swap_amounts(
-            pool, 
-            coin_s, 
-            0,
-            true,
+    public fun alpha_abs(params: &Params): u256 { params.alpha_abs }
+    public fun beta(params: &Params): u256 { params.beta }
+    public fun price_factor(params: &Params): u64 { params.price_factor }
+    public fun gamma_s(params: &Params): u64 { params.gamma_s }
+    public fun gamma_m(params: &Params): u64 { params.gamma_m }
+    public fun omega_m(params: &Params): u64 { params.omega_m }
+    public fun sell_delay_ms(params: &Params): u64 { params.sell_delay_ms }
+    public fun gamma_s_mist<S, Meme>(self: &SeedPool<S, Meme>): u64 { mist(self.params.gamma_s) }
+
+    public fun ticket_coin_supply<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.balance_m)
+    }
+
+    public fun meme_coin_supply<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.launch_balance)
+    }
+
+    public fun balance_m<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.balance_m)
+    }
+
+    public fun balance_s<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.balance_s)
+    }
+
+    public fun fees<S, Meme>(pool: &SeedPool<S, Meme>): Fees {
+        pool.fees
+    }
+
+    public fun is_ready_to_launch<S, Meme>(pool: &SeedPool<S, Meme>): bool {
+        pool.locked
+    }
+
+    public fun admin_balance_m<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.admin_balance_m)
+    }
+
+    public fun admin_balance_s<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        balance::value(&pool.admin_balance_s)
+    }
+
+    // ===== Admin Functions =====
+
+    public fun take_fees<S, Meme>(
+        _: &Admin,
+        pool: &mut SeedPool<S, Meme>,
+        policy: &TokenPolicy<Meme>,
+        ctx: &mut TxContext,
+    ): (Token<Meme>, Coin<S>) {
+        let amount_x = balance::value(&pool.admin_balance_m);
+        let amount_y = balance::value(&pool.admin_balance_s);
+
+        add_from_token_acc(pool, amount_x, sender(ctx));
+
+        (
+            token_ir::take(policy, &mut pool.admin_balance_m, amount_x, ctx),
+            coin::take(&mut pool.admin_balance_s, amount_y, ctx)
+        )
+    }
+
+    // === Private Functions ===
+
+    #[lint_allow(share_owned)]
+    fun new_<S, Meme>(
+        registry: &mut Registry,
+        meme_coin_cap: TreasuryCap<Meme>,
+        fee_in_percent: u256,
+        fee_out_percent: u256,
+        price_factor: u64,
+        gamma_s: u64,
+        gamma_m: u64,
+        omega_m: u64,
+        sell_delay_ms: u64,
+        ctx: &mut TxContext
+    ): SeedPool<S, Meme> {
+        assert!(balance::supply_value(coin::supply(&mut meme_coin_cap)) == 0, EMemeCoinsShouldHaveZeroTotalSupply);
+
+        let launch_coin = coin::mint<Meme>(
+            &mut meme_coin_cap,
+            ((gamma_m + omega_m) as u64),
+            ctx);
+
+        let balance_m: Balance<Meme> = balance::increase_supply(coin::supply_mut(&mut meme_coin_cap), (gamma_m as u64));
+        let coin_m_value = balance::value(&balance_m);
+
+        let (policy, policy_cap) = token_ir::init_token<Meme>(&meme_coin_cap, ctx);
+
+        let pool = new_pool_internal<S, Meme>(
+            registry,
+            balance_m,
+            coin::zero(ctx),
+            launch_coin,
+            meme_coin_cap,
+            policy_cap,
+            fee_in_percent,
+            fee_out_percent,
+            price_factor,
+            gamma_s,
+            gamma_m,
+            omega_m,
+            sell_delay_ms,
+            ctx,
         );
 
-        swap_amount.amount_out
+        let pool_address = object::uid_to_address(&pool.id);
+        let policy_address = id_to_address(&id(&policy));
+
+        index::add_seed_pool<S, Meme>(registry, pool_address);
+        table::add(policies_mut(registry), type_name::get<Meme>(), policy_address);
+
+        events::new_pool<S, Meme>(pool_address, coin_m_value, 0, policy_address);
+
+        token::share_policy(policy);
+        pool
+    }
+
+    fun new_pool_internal<S, Meme>(
+        registry: &Registry,
+        coin_m: Balance<Meme>,
+        coin_s: Coin<S>,
+        launch_coin: Coin<Meme>,
+        meme_cap: TreasuryCap<Meme>,
+        policy_cap: TokenPolicyCap<Meme>,
+        fee_in_percent: u256,
+        fee_out_percent: u256,
+        price_factor: u64,
+        gamma_s: u64,
+        gamma_m: u64,
+        omega_m: u64,
+        sell_delay_ms: u64,
+        ctx: &mut TxContext
+    ): SeedPool<S, Meme> {
+        let coin_m_value = balance::value(&coin_m);
+        let coin_s_value = coin::value(&coin_s);
+        let launch_coin_value = coin::value(&launch_coin);
+
+        assert!(coin_m_value == (gamma_m as u64), EMemeSupplyNotGamma);
+        assert!(coin_s_value == 0, EQuoteSupplyNotZero);
+        assert!(launch_coin_value == ((gamma_m + omega_m) as u64), EMemeTotalSupplyNotGammaOmega);
+        
+        index::assert_new_pool<S, Meme>(registry);
+
+        let pool = SeedPool<S, Meme> {
+            id: object::new(ctx),
+            balance_m: coin_m,
+            balance_s: coin::into_balance(coin_s),
+            fees: new_fees(
+                fee_in_percent,
+                fee_out_percent,
+            ),
+            locked: false,
+            launch_balance: coin::into_balance(launch_coin),
+            admin_balance_m: balance::zero(),
+            admin_balance_s: balance::zero(),
+            params: Params {
+                alpha_abs: compute_alpha_abs(
+                    (gamma_s as u256),
+                    (gamma_m as u256),
+                    (omega_m as u256),
+                    price_factor,
+                ),
+                beta: compute_beta(
+                    (gamma_s as u256),
+                    (gamma_m as u256),
+                    (omega_m as u256),
+                    price_factor,
+                ),
+                gamma_s,
+                gamma_m,
+                omega_m,
+                price_factor,
+                sell_delay_ms,
+            },
+            accounting: table::new<address, VestingData>(ctx),
+            meme_cap,
+            policy_cap,
+        };
+
+        pool
     }
 
     fun new_fees(
@@ -580,7 +603,7 @@ module memechan::seed_pool {
         let admin_fee_out = fees::get_fee_out_amount(&self.fees, delta_m);
         let net_delta_m = delta_m - admin_fee_out;
 
-        assert!(net_delta_m >= min_delta_m, errors::slippage());
+        assert!(net_delta_m >= min_delta_m, ESlippage);
         
         SwapAmount {
             amount_in: net_delta_s,
@@ -615,7 +638,7 @@ module memechan::seed_pool {
         let admin_fee_out = fees::get_fee_out_amount(&self.fees, delta_s);
         let net_delta_s = delta_s - admin_fee_out;
 
-        assert!(net_delta_s >= min_delta_s, errors::slippage());
+        assert!(net_delta_s >= min_delta_s, ESlippage);
         
         SwapAmount {
             amount_in: net_delta_m,
@@ -636,25 +659,6 @@ module memechan::seed_pool {
         } else {
             sell_meme_swap_amounts(self, coin_in_amount, coin_out_min_value)
         }
-    }
-
-    public fun transfer<S, Meme>(
-        pool: &mut SeedPool<S, Meme>,
-        policy: &TokenPolicy<Meme>,
-        token: Token<Meme>,
-        recipient: address,
-        ctx: &mut TxContext,
-    ) {
-        let amount = token::value(&token);
-
-        subtract_from_token_acc(pool, amount, sender(ctx));
-        add_from_token_acc(pool, amount, recipient);
-        token_ir::transfer(
-            policy,
-            token,
-            recipient,
-            ctx,
-        );
     }
 
     fun subtract_from_token_acc<S, Meme>(
@@ -681,6 +685,8 @@ module memechan::seed_pool {
         let notional = notional_mut(position);
         *notional = *notional + amount;
     }
+
+    // ===== Friend Functions =====
 
     // Not safe to expose!
     public(friend) fun destroy_pool<S, Meme>(pool: SeedPool<S, Meme>): (
@@ -728,7 +734,7 @@ module memechan::seed_pool {
         )
     }
 
-    // === Test Functions ===
+    // ===== Test Functions =====
 
     #[test_only]
     public fun new_full_for_testing<S, Meme>(
@@ -791,6 +797,8 @@ module memechan::seed_pool {
         balance::join(&mut pool.balance_m, balance::create_for_testing(coin_m_amount));
         balance::join(&mut pool.balance_s, coin::into_balance(coin_s));
     }
+
+    // ===== Tests =====
 
     #[test]
     public fun test_alpha_abs() {

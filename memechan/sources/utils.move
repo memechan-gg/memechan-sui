@@ -7,10 +7,11 @@ module memechan::utils {
     use sui::sui::SUI;
 
     use suitears::math64::mul_div_up;
-    use memechan::errors;
 
     friend memechan::seed_pool;
     friend memechan::staking_pool;
+
+    const ESelectDifferentCoins: u64 = 0;
 
     /// The amount of Mist per Sui token based on the fact that mist is
     /// 10^-9 of a Sui token
@@ -22,7 +23,7 @@ module memechan::utils {
         let coin_a_type_name = type_name::get<CoinA>();
         let coin_b_type_name = type_name::get<CoinB>();
 
-        assert!(coin_a_type_name != coin_b_type_name, errors::select_different_coins());
+        assert!(coin_a_type_name != coin_b_type_name, ESelectDifferentCoins);
         true
     }
 

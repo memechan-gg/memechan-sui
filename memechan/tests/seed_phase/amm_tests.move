@@ -11,7 +11,6 @@ module memechan::seed_pool_tests {
     use sui::test_scenario::{Self as test, Scenario, next_tx, ctx};
     use sui::sui::SUI;
     
-    use memechan::errors;
     use memechan::usdc::USDC;
     use memechan::fees::{Self, Fees};
     use memechan::admin;
@@ -76,7 +75,7 @@ module memechan::seed_pool_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = errors::EMemeAndTicketCoinsShouldHaveZeroTotalSupply, location = seed_pool)]
+    #[expected_failure(abort_code = seed_pool::EMemeCoinsShouldHaveZeroTotalSupply, location = seed_pool)]
     fun test_new_pool_wrong_lp_coin_supply() {
         let (scenario, alice, _) = start_test();
 

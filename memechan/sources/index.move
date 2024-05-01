@@ -7,10 +7,10 @@ module memechan::index {
     use sui::tx_context::TxContext;
     use sui::transfer::share_object;
 
-    use memechan::errors;
-
     friend memechan::go_live;
     friend memechan::seed_pool;
+
+    const EPoolAlreadyDeployed: u64 = 0;
 
     // === Structs ===
 
@@ -104,7 +104,7 @@ module memechan::index {
     
     public fun assert_new_pool<S, Meme>(registry: &Registry) {
         let registry_key = type_name::get<RegistryKey<S, Meme>>();
-        assert!(!table::contains(&registry.seed_pools, registry_key), errors::pool_already_deployed());
+        assert!(!table::contains(&registry.seed_pools, registry_key), EPoolAlreadyDeployed);
     }
 
     public(friend) fun seed_pools_mut(self: &mut Registry): &mut Table<TypeName, address> {

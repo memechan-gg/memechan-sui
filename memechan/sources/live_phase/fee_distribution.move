@@ -1,15 +1,20 @@
 module memechan::fee_distribution {
-
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};
     use sui::tx_context::{Self, TxContext};
 
-    use memechan::errors;
-
     friend memechan::staking_pool;
 
+    // ===== Constants =====
+
     const PRECISION : u256 = 1_000_000_000_000_000;
+
+    // ===== Errors =====
+
+    const ENoFundsToWithdraw: u64 = 0;
+
+    // ===== Structs =====
 
     struct FeeState<phantom S, phantom Meme> has store {
         fees_meme: Balance<Meme>,
@@ -163,7 +168,7 @@ module memechan::fee_distribution {
 
         let max_user_withdrawal = fees_total * ((user_stake * PRECISION) / stakes_total);
 
-        assert!(max_user_withdrawal <= user_withdrawals_total * PRECISION, errors::no_funds_to_withdraw());
+        assert!(max_user_withdrawal <= user_withdrawals_total * PRECISION, ENoFundsToWithdraw);
 
         let allowed_withdrawal = max_user_withdrawal - user_withdrawals_total;
 

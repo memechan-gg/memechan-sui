@@ -5,11 +5,19 @@ module memechan::staked_lp {
     use sui::clock::{Self, Clock};
     use sui::token::{Token, TokenPolicy};
     use memechan::token_ir;
-    use memechan::errors::lp_stake_time_not_passed;
 
     friend memechan::seed_pool;
 
+    // ===== Constants =====
+
     const DEFAULT_SELL_DELAY_MS: u64 = 12 * 3600 * 1000;
+    public fun default_sell_delay_ms(): u64 { DEFAULT_SELL_DELAY_MS }
+    
+    // ===== Errors =====
+
+    const ELPStakeTimeNotPassed: u64 = 0;
+
+    // ===== Structs =====
 
     struct StakedLP<phantom Meme> has key, store {
         id: UID,
@@ -17,24 +25,16 @@ module memechan::staked_lp {
         until_timestamp: u64,
     }
 
-    public fun default_sell_delay_ms(): u64 { DEFAULT_SELL_DELAY_MS }
-    
-    public(friend) fun new<Meme>(balance: Balance<Meme>, sell_delay_ms: u64, clock: &Clock, ctx: &mut TxContext): StakedLP<Meme> {
-        StakedLP  { id: object::new(ctx), balance, until_timestamp: clock::timestamp_ms(clock) + sell_delay_ms }
-    }
+    // ===== Public Functions =====
 
     public fun into_token<Meme>(staked_lp: StakedLP<Meme>, clock: &Clock, policy: &TokenPolicy<Meme>, ctx: &mut TxContext): Token<Meme> {
         let StakedLP { id, balance, until_timestamp } = staked_lp;
 
-        assert!(clock::timestamp_ms(clock) >= until_timestamp, lp_stake_time_not_passed());
+        assert!(clock::timestamp_ms(clock) >= until_timestamp, ELPStakeTimeNotPassed);
 
         delete(id);
         
         token_ir::from_balance(policy, balance, ctx)
-    }
-
-    public fun balance<Meme>(staked_lp: &StakedLP<Meme>): u64 {
-        balance::value(&staked_lp.balance)
     }
 
     // Note: inherits latest timestamp, use with care.
@@ -56,6 +56,25 @@ module memechan::staked_lp {
             until_timestamp: self.until_timestamp,
         }
     }
+
+    // ===== Getters =====
+
+    public fun balance<Meme>(staked_lp: &StakedLP<Meme>): u64 {
+        balance::value(&staked_lp.balance)
+    }
+    
+    public fun until_ts<Meme>(staked_lp: &StakedLP<Meme>): u64 {
+        staked_lp.until_timestamp
+    }
+
+    // ===== Friend Functions =====
+
+    public(friend) fun new<Meme>(balance: Balance<Meme>, sell_delay_ms: u64, clock: &Clock, ctx: &mut TxContext): StakedLP<Meme> {
+        StakedLP  { id: object::new(ctx), balance, until_timestamp: clock::timestamp_ms(clock) + sell_delay_ms }
+    }
+
+
+    // ===== Test Functions =====
 
     #[test_only]
     public fun destroy_for_testing<Meme>(staked_lp: StakedLP<Meme>) {
