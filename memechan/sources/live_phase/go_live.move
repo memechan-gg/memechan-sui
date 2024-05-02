@@ -26,9 +26,6 @@ module memechan::go_live {
     struct AddLiquidityHook has drop {}
 
     const SCALE: u256 = 1_000_000_000_000_000_000; // 1e18
-
-    const BPS: u64 = 10_000;
-    const LOCKED: u64 = 8_000;
     
     const A: u256 = 400_000;
     const GAMMA: u256 = 145_000_000_000_000;

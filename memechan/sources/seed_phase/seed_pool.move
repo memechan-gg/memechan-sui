@@ -209,9 +209,8 @@ module memechan::seed_pool {
 
         events::swap<S, Meme, SwapAmount>(pool_address, coin_in_amount,swap_amount);
 
-        let swap_amount = swap_amount.amount_out;
         let staked_lp = staked_lp::new(
-            balance::split(&mut pool.balance_m, swap_amount),
+            balance::split(&mut pool.balance_m, swap_amount.amount_out),
             pool.params.sell_delay_ms,
             clock,
             ctx
@@ -222,7 +221,7 @@ module memechan::seed_pool {
         };
 
         // We keep track of how much each address ownes of coin_m
-        add_from_token_acc(pool, swap_amount, sender(ctx));
+        add_from_token_acc(pool, swap_amount.amount_out, sender(ctx));
         staked_lp
     }
 
@@ -313,10 +312,11 @@ module memechan::seed_pool {
         let alpha_abs = &self.params.alpha_abs;
         let beta = &self.params.beta;
 
-        let left = (*beta * (s_b - s_a) / (DECIMALS_BETA * DECIMALS_S));
-        let right = ( *alpha_abs * ((pow_2(s_b) / pow_2(DECIMALS_S)) - (pow_2(s_a) / pow_2(DECIMALS_S))) ) / (2 * DECIMALS_ALPHA);
+        let left = *beta * DECIMALS_S * 2 * DECIMALS_ALPHA * (s_b - s_a);
+        let right = *alpha_abs * DECIMALS_BETA * (pow_2(s_b) - pow_2(s_a));
+        let denom =  2 * DECIMALS_ALPHA * DECIMALS_BETA * pow_2(DECIMALS_S);
 
-        ((left - right) as u64)
+        (((left - right) / denom) as u64)
     }
     
     public fun compute_delta_s<S, Meme>(
@@ -601,6 +601,7 @@ module memechan::seed_pool {
         };
 
         let admin_fee_out = fees::get_fee_out_amount(&self.fees, delta_m);
+
         let net_delta_m = delta_m - admin_fee_out;
 
         assert!(net_delta_m >= min_delta_m, ESlippage);
