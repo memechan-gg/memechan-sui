@@ -13,7 +13,6 @@ module memechan::go_live {
     use memechan::vesting::{Self, VestingConfig};
     use memechan::events;
     use memechan::admin::Admin;
-    use memechan::math::div_mul;
     use memechan::seed_pool::{Self as seed_pool, SeedPool, gamma_s};
     use memechan::staking_pool;
     use clamm::interest_pool;
