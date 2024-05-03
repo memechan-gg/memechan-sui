@@ -419,6 +419,13 @@ module memechan::seed_pool {
     public fun admin_balance_s<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
         balance::value(&pool.admin_balance_s)
     }
+    
+    public fun accounting<S, Meme>(pool: &SeedPool<S, Meme>): &Table<address, VestingData> {
+        &pool.accounting
+    }
+    public fun accounting_len<S, Meme>(pool: &SeedPool<S, Meme>): u64 {
+        table::length(&pool.accounting)
+    }
 
     // ===== Admin Functions =====
 

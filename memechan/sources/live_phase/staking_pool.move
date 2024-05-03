@@ -142,4 +142,11 @@ module memechan::staking_pool {
         
         fee_distribution::add_fees<S, Meme>(&mut staking_pool.fee_state, coin_meme, coin_sui);
     }
+
+    public fun vesting_table<S, Meme, LP>(pool: &StakingPool<S, Meme, LP>): &Table<address, VestingData> {
+        &pool.vesting_table
+    }
+    public fun vesting_table_len<S, Meme, LP>(pool: &StakingPool<S, Meme, LP>): u64 {
+        table::length(&pool.vesting_table)
+    }
 }
