@@ -492,6 +492,7 @@ module memechan::integration {
 
         
         go_live::go_live_default_test<BODEN, LP_COIN>(
+            &mut registry,
             &admin,
             pool,
             &sui_meta,
@@ -540,6 +541,7 @@ module memechan::integration {
         let sui_meta = sui::new(ctx(scenario_mut));
 
         go_live::go_live_default_test<BODEN, LP_COIN>(
+            &mut registry,
             &admin,
             pool,
             &sui_meta,
@@ -602,6 +604,7 @@ module memechan::integration {
         let sui_meta = sui::new(ctx(scenario_mut));
 
         go_live::go_live_default_test<BODEN, LP_COIN>(
+            &mut registry,
             &admin,
             pool,
             &sui_meta,
