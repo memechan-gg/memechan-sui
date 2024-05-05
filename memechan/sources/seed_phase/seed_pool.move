@@ -11,7 +11,7 @@ module memechan::seed_pool {
     use sui::math;
     use sui::token::{Self, Token, TokenPolicy, TokenPolicyCap};
 
-    use suitears::math256::sqrt_down;
+    use suitears::math256::{sqrt_down};
 
     use memechan::math256::pow_2;
     use memechan::index::{Self, Registry, policies_mut};
@@ -52,6 +52,9 @@ module memechan::seed_pool {
     public fun decimals_beta(): u64 { (DECIMALS_BETA as u64) }
     public fun decimals_s(): u64 { (DECIMALS_S as u64) }
 
+    public fun decimals_alpha_<S, Meme>(self: &SeedPool<S, Meme>,): u256 {self.params.alpha_decimals}
+    public fun decimals_beta_<S, Meme>(self: &SeedPool<S, Meme>,): u256 {self.params.beta_decimals}
+
     // ===== Errors =====
 
     const ENoZeroCoin: u64 = 0;
@@ -63,6 +66,8 @@ module memechan::seed_pool {
     const EMemeTotalSupplyNotGammaOmega: u64 = 6;
     const EMemeCoinsShouldHaveZeroTotalSupply: u64 = 7;
     const ESlippage: u64 = 8;
+    const EGammaSAboveRelativeLimit: u64 = 9;
+    const EScaleTooLow: u64 = 10;
 
     // ===== Structs =====
     
@@ -94,6 +99,8 @@ module memechan::seed_pool {
         // In raw denomination
         omega_m: u64, // DEFAULT_MAX_M_LP * DECIMALS_M = 200_000_000_000_000
         sell_delay_ms: u64,
+        alpha_decimals: u256,
+        beta_decimals: u256,
     }
 
     struct SwapAmount has store, drop, copy {
@@ -309,12 +316,14 @@ module memechan::seed_pool {
         let s_a = (s_a as u256);
         let s_b = (s_b as u256);
 
-        let alpha_abs = &self.params.alpha_abs;
-        let beta = &self.params.beta;
+        let alpha_abs = self.params.alpha_abs;
+        let beta = self.params.beta;
+        let alpha_decimals = self.params.alpha_decimals;
+        let beta_decimals = self.params.beta_decimals;
 
-        let left = *beta * DECIMALS_S * 2 * DECIMALS_ALPHA * (s_b - s_a);
-        let right = *alpha_abs * DECIMALS_BETA * (pow_2(s_b) - pow_2(s_a));
-        let denom =  2 * DECIMALS_ALPHA * DECIMALS_BETA * pow_2(DECIMALS_S);
+        let left = beta * DECIMALS_S * 2 * alpha_decimals * (s_b - s_a);
+        let right = alpha_abs * beta_decimals * (pow_2(s_b) - pow_2(s_a));
+        let denom =  2 * alpha_decimals * beta_decimals * pow_2(DECIMALS_S);
 
         (((left - right) / denom) as u64)
     }
@@ -329,23 +338,57 @@ module memechan::seed_pool {
 
         let alpha_abs = self.params.alpha_abs;
         let beta = self.params.beta;
+        let alpha_decimals = self.params.alpha_decimals;
+        let beta_decimals = self.params.beta_decimals;
 
-        let a1 = 2 * beta * DECIMALS_ALPHA * DECIMALS_S - 2 * alpha_abs * s_b * DECIMALS_BETA;
-        let b1 = DECIMALS_ALPHA * DECIMALS_BETA * DECIMALS_S;
+        let a1 = 2 * beta * alpha_decimals * DECIMALS_S - 2 * alpha_abs * s_b * beta_decimals;
+        let b1 = beta_decimals * beta_decimals * DECIMALS_S;
         let c1 = 8 * delta_m * alpha_abs;
 
         let a = sqrt_down(
-            pow_2(a1) * DECIMALS_ALPHA + c1 * pow_2(b1)
+            pow_2(a1) * alpha_decimals + c1 * pow_2(b1)
         );
 
         let b = sqrt_down(
-            DECIMALS_ALPHA * pow_2(b1, )
+            alpha_decimals * pow_2(b1, )
         );
 
-        let c = 2 * beta * DECIMALS_ALPHA * DECIMALS_S - 2 * alpha_abs * s_b * DECIMALS_BETA;
-        let d = DECIMALS_ALPHA * DECIMALS_BETA * DECIMALS_S;
+        let c = 2 * beta * alpha_decimals * DECIMALS_S - 2 * alpha_abs * s_b * beta_decimals;
+        let d = alpha_decimals * beta_decimals * DECIMALS_S;
 
-        let num = (a * d - c* b) * DECIMALS_S * DECIMALS_ALPHA;
+        let num = (a * d - c* b) * DECIMALS_S * alpha_decimals;
+        let denom = (2 * alpha_abs) * (b*d);
+
+        ((num / denom) as u64)
+    }
+
+    public fun compute_delta_s_(
+        alpha_abs: u256,
+        beta: u256,
+        s_b: u64,
+        delta_m: u64,
+        alpha_decimals: u256,
+        beta_decimals: u256,
+    ): u64 {
+        let s_b = (s_b as u256);
+        let delta_m = (delta_m as u256);
+
+        let a1 = 2 * beta * alpha_decimals * DECIMALS_S - 2 * alpha_abs * s_b * beta_decimals;
+        let b1 = alpha_decimals * beta_decimals * DECIMALS_S;
+        let c1 = 8 * delta_m * alpha_abs;
+
+        let a = sqrt_down(
+            pow_2(a1) * alpha_decimals + c1 * pow_2(b1)
+        );
+
+        let b = sqrt_down(
+            alpha_decimals * pow_2(b1, )
+        );
+
+        let c = 2 * beta * alpha_decimals * DECIMALS_S - 2 * alpha_abs * s_b * beta_decimals;
+        let d = alpha_decimals * beta_decimals * DECIMALS_S;
+
+        let num = (a * d - c* b) * DECIMALS_S * alpha_decimals;
         let denom = (2 * alpha_abs) * (b*d);
 
         ((num / denom) as u64)
@@ -356,12 +399,43 @@ module memechan::seed_pool {
         gamma_m: u256,
         omega_m: u256,
         price_factor: u64,
-    ): u256 {
+    ): (u256, u256) {
         let left = omega_m * (price_factor as u256);
         assert!(left < gamma_m, EBondingCurveMustBeNegativelySloped);
+        
+        let num = 2 * ( gamma_m - left );
+        let denom = (pow_2((gamma_s as u256)));
+
+        assert!(num > denom, EGammaSAboveRelativeLimit);
+
+        let num_scale = compute_scale(num);
+        let denom_scale = compute_scale(denom);
+
+        let net_scale = num_scale - denom_scale;
+
+        let alpha_decimals = compute_decimals(net_scale);
 
         // We compute |alpha|, hence the subtraction is switched
-        (2 * ( gamma_m - left ) * DECIMALS_ALPHA) / (pow_2((gamma_s as u256)))
+        (
+            (num * alpha_decimals) / denom,
+            alpha_decimals
+        )
+    }
+
+    public fun compute_decimals(scale: u64): u256 {
+        assert!(scale >= 5, EScaleTooLow);
+
+        if (scale == 5) { return 100_000_000 };
+        if (scale == 6) { return 10_000_000 };
+        if (scale == 7) { return 1_000_000 };
+        if (scale == 8) { return 100_000 };
+        if (scale == 9) { return 10_000 };
+        if (scale == 10) { return  1_000 };
+        if (scale == 11) { return  100 };
+        if (scale == 12) { return  10 };
+        
+        // If scale above 13
+        1
     }
     
     public fun compute_beta(
@@ -369,12 +443,19 @@ module memechan::seed_pool {
         gamma_m: u256,
         omega_m: u256,
         price_factor: u64,
-    ): u256 {
+        beta_decimals: u256,
+    ): (u256, u256) {
         let left = (2 * gamma_m);
         let right = omega_m * (price_factor as u256);
         assert!(left > right, EBondingCurveInterceptMustBePositive);
+
+        let num = ( left - right );
+        let denom = gamma_s;
       
-        (( left - right ) * DECIMALS_BETA) / gamma_s
+        (
+            (num * beta_decimals) / denom,
+            beta_decimals
+        )
     }
 
     // ===== Getters =====
@@ -528,6 +609,21 @@ module memechan::seed_pool {
         
         index::assert_new_pool<S, Meme>(registry);
 
+        let (alpha_abs, alpha_decimals) = compute_alpha_abs(
+            (gamma_s as u256),
+            (gamma_m as u256),
+            (omega_m as u256),
+            price_factor,
+        );
+
+        let (beta, beta_decimals) = compute_beta(
+            (gamma_s as u256),
+            (gamma_m as u256),
+            (omega_m as u256),
+            price_factor,
+            alpha_decimals,
+        );
+
         let pool = SeedPool<S, Meme> {
             id: object::new(ctx),
             balance_m: coin_m,
@@ -541,23 +637,15 @@ module memechan::seed_pool {
             admin_balance_m: balance::zero(),
             admin_balance_s: balance::zero(),
             params: Params {
-                alpha_abs: compute_alpha_abs(
-                    (gamma_s as u256),
-                    (gamma_m as u256),
-                    (omega_m as u256),
-                    price_factor,
-                ),
-                beta: compute_beta(
-                    (gamma_s as u256),
-                    (gamma_m as u256),
-                    (omega_m as u256),
-                    price_factor,
-                ),
+                alpha_abs,
+                beta,
                 gamma_s,
                 gamma_m,
                 omega_m,
                 price_factor,
                 sell_delay_ms,
+                alpha_decimals,
+                beta_decimals,
             },
             accounting: table::new<address, VestingData>(ctx),
             meme_cap,
@@ -694,6 +782,21 @@ module memechan::seed_pool {
         *notional = *notional + amount;
     }
 
+    fun compute_scale(num: u256): u64 {
+        if (num == 0) {
+            return 1
+        } else {
+            let scale = 1;
+
+            while (num >= 10) {
+                num = num / 10;
+                scale = scale + 1;
+            };
+
+            return scale
+        }
+    }
+
     // ===== Friend Functions =====
 
     // Not safe to expose!
@@ -814,104 +917,196 @@ module memechan::seed_pool {
 
     // ===== Tests =====
 
+    #[test_only]
+    use sui::test_utils::{assert_eq};
+
+    #[test]
+    public fun test_compute_scale() {
+        assert_eq(compute_scale(1), 1);
+        assert_eq(compute_scale(10), 2);
+        assert_eq(compute_scale(100), 3);
+        assert_eq(compute_scale(1000), 4);
+        assert_eq(compute_scale(10000), 5);
+        assert_eq(compute_scale(100000), 6);
+        assert_eq(compute_scale(1000000), 7);
+        assert_eq(compute_scale(10000000), 8);
+        assert_eq(compute_scale(100000000), 9);
+        assert_eq(compute_scale(1000000000), 10);
+        assert_eq(compute_scale(10000000000), 11);
+        assert_eq(compute_scale(100000000000), 12);
+        assert_eq(compute_scale(1000000000000), 13);
+        assert_eq(compute_scale(10000000000000), 14);
+        assert_eq(compute_scale(100000000000000), 15);
+        assert_eq(compute_scale(1000000000000000), 16);
+        assert_eq(compute_scale(10000000000000000), 17);
+        assert_eq(compute_scale(100000000000000000), 18);
+        assert_eq(compute_scale(1000000000000000000), 19);
+        assert_eq(compute_scale(10000000000000000000), 20);
+        assert_eq(compute_scale(100000000000000000000), 21);
+        assert_eq(compute_scale(1000000000000000000000), 22);
+        assert_eq(compute_scale(10000000000000000000000), 23);
+        assert_eq(compute_scale(100000000000000000000000), 24);
+
+        assert_eq(compute_scale(2), 1);
+        assert_eq(compute_scale(33), 2);
+        assert_eq(compute_scale(373), 3);
+        assert_eq(compute_scale(3982), 4);
+        assert_eq(compute_scale(31726), 5);
+        assert_eq(compute_scale(329823), 6);
+        assert_eq(compute_scale(2938734), 7);
+        assert_eq(compute_scale(90808278), 8);
+        assert_eq(compute_scale(619263941), 9);
+        assert_eq(compute_scale(8273041242), 10);
+        assert_eq(compute_scale(19726304187), 11);
+        assert_eq(compute_scale(982374194712), 12);
+        assert_eq(compute_scale(9726129361862), 13);
+        assert_eq(compute_scale(82937565173123), 14);
+        assert_eq(compute_scale(998417417298924), 15);
+        assert_eq(compute_scale(4198091278648124), 16);
+        assert_eq(compute_scale(99878126481209479), 17);
+        assert_eq(compute_scale(418726419247109274), 18);
+        assert_eq(compute_scale(9084127694861924804), 19);
+        assert_eq(compute_scale(98164928491809707412), 20);
+        assert_eq(compute_scale(479124024081402487491), 21);
+        assert_eq(compute_scale(4378120491274071286749), 22);
+        assert_eq(compute_scale(29861029471248129478192), 23);
+        assert_eq(compute_scale(412947019097049712479242), 24);
+    }
+    
+    #[test]
+    public fun test_compute_delta_s() {
+        let (alpha_abs, alpha_decimals) = compute_alpha_abs(
+            1,
+            default_gamma_m(),
+            default_omega_m(),
+            default_price_factor(),
+        );
+
+        let (beta, beta_decimals) = compute_beta(
+            1,
+            default_gamma_m(),
+            default_omega_m(),
+            default_price_factor(),
+            alpha_decimals
+        );
+
+
+        let _delta_s = compute_delta_s_(
+            alpha_abs,
+            beta,
+            895500000, // s_b
+            848476175625000, // delta_m
+            alpha_decimals,
+            beta_decimals,
+        );
+
+        // TODO: assert delta_s: 892451180 ==> should clean entire balance..
+    }
+
     #[test]
     public fun test_alpha_abs() {
-        let alpha_abs = compute_alpha_abs(
+        let (alpha_abs, _) = compute_alpha_abs(
             default_gamma_s(),
             default_gamma_m(),
             default_omega_m(),
             default_price_factor(),
         );
-        assert!(alpha_abs == 1_111_111_111_111, 0);
+        assert_eq(alpha_abs, 1_111_111_111_111);
 
-        let alpha_abs = compute_alpha_abs(
+        let (alpha_abs, _) = compute_alpha_abs(
             63_000,
             1_400_000_000_000_000,
             280_000_000_000_000,
             2,
         );
-        assert!(alpha_abs == 423_280_423_280, 0);
+        assert_eq(alpha_abs, 4_232_804_232_804);
         
-        let alpha_abs = compute_alpha_abs(
+        let (alpha_abs, _) = compute_alpha_abs(
             47_000,
             1_800_000_000_000_000,
             620_000_000_000_000,
             2,
         );
-        assert!(alpha_abs == 507_016_749_660, 0);
+        assert_eq(alpha_abs, 5_070_167_496_604);
         
-        let alpha_abs = compute_alpha_abs(
+        let (alpha_abs, _) = compute_alpha_abs(
             1000,
             6_900_000_000_000_000,
             1_830_000_000_000_000,
             2,
         );
-        assert!(alpha_abs == 6_480_000_000_000_000 , 0);
+        assert_eq(alpha_abs, 64_800_000_000_000);
         
-        let alpha_abs = compute_alpha_abs(
+        let (alpha_abs, _) = compute_alpha_abs(
             3_4000,
             5_600_000_000_000_000,
             1_800_000_000_000_000,
             2,
         );
-        assert!(alpha_abs == 3_460_207_612_456, 0);
+        assert_eq(alpha_abs, 34_602_076_124_567);
         
-        let alpha_abs = compute_alpha_abs(
+        let (alpha_abs, _) = compute_alpha_abs(
             9_1000,
             3_300_000_000_000_000,
             660_000_000_000_000,
             2,
         );
-        assert!(alpha_abs == 478_203_115_565, 0);
+        assert_eq(alpha_abs, 4_782_031_155_657);
     }
 
     #[test]
     public fun test_beta() {
-        let beta = compute_beta(
+        let (beta, _) = compute_beta(
             default_gamma_s(),
             default_gamma_m(),
             default_omega_m(),
             default_price_factor(),
+            1_000_000,
         );
         assert!(beta == 46_666_666_666_666_666, 0);
 
-        let beta = compute_beta(
+        let (beta, _) = compute_beta(
             63_000,
             1_400_000_000_000_000,
             280_000_000_000_000,
             2,
+            1_000_000,
         );
         assert!(beta ==  35_555_555_555_555_555, 0);
         
-        let beta = compute_beta(
+        let (beta, _) = compute_beta(
             47_000,
             1_800_000_000_000_000,
             620_000_000_000_000,
             2,
+            1_000_000,
         );
         assert!(beta == 50_212_765_957_446_808, 0);
         
-        let beta = compute_beta(
+        let (beta, _) = compute_beta(
             1000,
             6_900_000_000_000_000,
             1_830_000_000_000_000,
             2,
+            1_000_000,
         );
         assert!(beta == 10_140_000_000_000_000_000, 0);
         
-        let beta = compute_beta(
+        let (beta, _) = compute_beta(
             3_4000,
             5_600_000_000_000_000,
             1_800_000_000_000_000,
             2,
+            1_000_000,
         );
         assert!(beta == 223_529_411_764_705_882, 0);
         
-        let beta = compute_beta(
+        let (beta, _) = compute_beta(
             9_1000,
             3_300_000_000_000_000,
             660_000_000_000_000,
             2,
+            1_000_000,
         );
         assert!(beta == 58_021_978_021_978_021, 0);
     }
