@@ -149,4 +149,21 @@ module memechan::staking_pool {
     public fun vesting_table_len<S, Meme, LP>(pool: &StakingPool<S, Meme, LP>): u64 {
         table::length(&pool.vesting_table)
     }
+
+    public fun available_amount_to_unstake<S, Meme, LP>(
+        staking_pool: &mut StakingPool<S, Meme, LP>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): u64 {
+        let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
+
+        let amount_available_to_release = vesting::to_release(
+            vesting_data,
+            &staking_pool.vesting_config,
+            clock::timestamp_ms(clock)
+        );
+
+        amount_available_to_release
+    }
+
 }
