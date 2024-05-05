@@ -97,9 +97,26 @@ module memechan::index {
     public fun exists_seed_pool<S, Meme>(registry: &Registry): bool {
         table::contains(&registry.seed_pools, type_name::get<RegistryKey<S, Meme>>())
     }
+
+    // TODO: Not sure we should have the same RegistryKey with <S, Meme> instead of <S, Meme, LP> for staking & interest pools
+    public fun exists_staking_pool<S, Meme>(registry: &Registry): bool {
+        table::contains(&registry.staking_pools, type_name::get<RegistryKey<S, Meme>>())
+    }
+
+    public fun exists_interest_pool<S, Meme>(registry: &Registry): bool {
+        table::contains(&registry.interest_pools, type_name::get<RegistryKey<S, Meme>>())
+    }
     
     public fun add_seed_pool<S, Meme>(registry: &mut Registry, pool_address: address) {
         table::add(seed_pools_mut(registry), type_name::get<RegistryKey<S, Meme>>(), pool_address);
+    }
+
+    public fun add_staking_pool<S, Meme>(registry: &mut Registry, pool_address: address) {
+        table::add(staking_pools_mut(registry), type_name::get<RegistryKey<S, Meme>>(), pool_address);
+    }
+
+    public fun add_interest_pool<S, Meme>(registry: &mut Registry, pool_address: address) {
+        table::add(interest_pools_mut(registry), type_name::get<RegistryKey<S, Meme>>(), pool_address);
     }
     
     public fun assert_new_pool<S, Meme>(registry: &Registry) {
@@ -113,6 +130,14 @@ module memechan::index {
     
     public(friend) fun policies_mut(self: &mut Registry): &mut Table<TypeName, address> {
         &mut self.policies
+    }
+
+    public(friend) fun staking_pools_mut(self: &mut Registry): &mut Table<TypeName, address> {
+        &mut self.staking_pools
+    }
+
+    public(friend) fun interest_pools_mut(self: &mut Registry): &mut Table<TypeName, address> {
+        &mut self.interest_pools
     }
 
     // === Test Functions ===
