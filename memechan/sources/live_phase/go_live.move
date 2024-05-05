@@ -10,6 +10,7 @@ module memechan::go_live {
     use sui::clock::Clock;
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
 
+    use memechan::index::{Self, Registry};
     use memechan::vesting::{Self, VestingConfig};
     use memechan::events;
     use memechan::admin::Admin;
@@ -46,6 +47,7 @@ module memechan::go_live {
 
     // Admin endpoint
     public fun go_live_default<Meme, LP>(
+        registry: &mut Registry,
         admin_cap: &Admin,
         seed_pool: SeedPool<SUI, Meme>,
         sui_meta: &CoinMetadata<SUI>,
@@ -58,6 +60,7 @@ module memechan::go_live {
         let vesting_config = vesting::default_config(clock);
 
         go_live_<SUI, Meme, LP>(
+            registry,
             admin_cap,
             seed_pool,
             sui_meta,
@@ -72,6 +75,7 @@ module memechan::go_live {
 
     // Admin endpoint
     public fun go_live<Meme, LP>(
+        registry: &mut Registry,
         admin_cap: &Admin,
         seed_pool: SeedPool<SUI, Meme>,
         sui_meta: &CoinMetadata<SUI>,
@@ -92,6 +96,7 @@ module memechan::go_live {
         );
 
         go_live_<SUI, Meme, LP>(
+            registry,
             admin_cap,
             seed_pool,
             sui_meta,
@@ -106,6 +111,8 @@ module memechan::go_live {
     
     // Admin endpoint
     public fun go_live_<S, Meme, LP>(
+        // TODO: Not sure we should have &mut Registry instead of just &Registry here
+        registry: &mut Registry,
         _admin_cap: &Admin,
         seed_pool: SeedPool<S, Meme>,
         sui_meta: &CoinMetadata<S>,
@@ -197,9 +204,17 @@ module memechan::go_live {
             ctx,
         );
 
+        // 5. Adding addresses of Staking & Interest pools to Registry
+        let clamm_address = object::id_to_address(&object::id(&amm_pool));
+        let staking_pool_address = object::id_to_address(&object::id(&staking_pool));
+
+        index::add_interest_pool<S, Meme>(registry, clamm_address);
+        index::add_staking_pool<S, Meme>(registry, staking_pool_address);
+
+        // 6. Emit events
         events::go_live<S, Meme, LP>(
-            object::id_to_address(&object::id(&amm_pool)),
-            object::id_to_address(&object::id(&staking_pool))
+            clamm_address,
+            staking_pool_address
         );
 
         interest_pool::share(amm_pool);
@@ -221,6 +236,7 @@ module memechan::go_live {
 
     #[test_only]
     public fun go_live_default_test<Meme, LP>(
+        registry: &mut Registry,
         admin_cap: &Admin,
         seed_pool: SeedPool<MockSUI, Meme>,
         sui_meta: &CoinMetadata<MockSUI>,
@@ -233,6 +249,7 @@ module memechan::go_live {
         let vesting_config = vesting::default_config(clock);
 
         go_live_<MockSUI, Meme, LP>(
+            registry,
             admin_cap,
             seed_pool,
             sui_meta,
