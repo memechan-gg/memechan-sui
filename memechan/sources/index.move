@@ -98,7 +98,6 @@ module memechan::index {
         table::contains(&registry.seed_pools, type_name::get<RegistryKey<S, Meme>>())
     }
 
-    // TODO: Not sure we should have the same RegistryKey with <S, Meme> instead of <S, Meme, LP> for staking & interest pools
     public fun exists_staking_pool<S, Meme>(registry: &Registry): bool {
         table::contains(&registry.staking_pools, type_name::get<RegistryKey<S, Meme>>())
     }

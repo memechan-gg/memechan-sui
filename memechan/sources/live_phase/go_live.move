@@ -111,7 +111,6 @@ module memechan::go_live {
     
     // Admin endpoint
     public fun go_live_<S, Meme, LP>(
-        // TODO: Not sure we should have &mut Registry instead of just &Registry here
         registry: &mut Registry,
         _admin_cap: &Admin,
         seed_pool: SeedPool<S, Meme>,
