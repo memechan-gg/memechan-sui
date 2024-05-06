@@ -1,6 +1,4 @@
 module memechan::seed_pool {
-    use std::type_name;
-
     use sui::object::{Self, UID, id, id_to_address};
     use sui::table::{Self, Table};
     use sui::tx_context::{TxContext, sender};
@@ -14,7 +12,7 @@ module memechan::seed_pool {
     use suitears::math256::{sqrt_down};
 
     use memechan::math256::pow_2;
-    use memechan::index::{Self, Registry, policies_mut};
+    use memechan::index::{Self, Registry};
     use memechan::utils::mist;
     use memechan::staked_lp;
     use memechan::events;
@@ -574,8 +572,7 @@ module memechan::seed_pool {
         let pool_address = object::uid_to_address(&pool.id);
         let policy_address = id_to_address(&id(&policy));
 
-        index::add_seed_pool<S, Meme>(registry, pool_address);
-        table::add(policies_mut(registry), type_name::get<Meme>(), policy_address);
+        index::add_seed_pool<S, Meme>(registry, pool_address, policy_address);
 
         events::new_pool<S, Meme>(pool_address, coin_m_value, 0, policy_address);
 
