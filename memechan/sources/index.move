@@ -1,5 +1,5 @@
 module memechan::index {
-    use std::option::{Self, Option};
+    use std::option::{Self, Option, none};
     use std::type_name::{Self, TypeName};
 
     use sui::object::{Self, UID};
@@ -19,20 +19,17 @@ module memechan::index {
         seed_pools: Table<TypeName, address>,
         staking_pools: Table<TypeName, address>,
         interest_pools: Table<TypeName, address>,
-        policies: Table<TypeName, address>
+        policies: Table<TypeName, address>,
+        list: Table<TypeName, MemeData>,
     }
 
-    // struct RegistryV2 has key {
-    //     id: UID,
-    //     list: Table<TypeName, MemeData>,
-    // }
-
-    // struct MemeData has store, copy {
-    //     seed_pool: address,
-    //     staking_pool: Option<address>,
-    //     interest_pools: Option<address>,
-    //     policy: Option<address>,
-    // }
+    struct MemeData has store, copy {
+        seed_pool: address,
+        policy: address,
+        staking_pool: Option<address>,
+        interest_pool: Option<address>,
+        lp_type: Option<TypeName>,
+    }
 
     struct RegistryKey<phantom S, phantom Meme> has drop {}
 
@@ -45,6 +42,7 @@ module memechan::index {
                 staking_pools: table::new(ctx),
                 interest_pools: table::new(ctx),
                 policies: table::new(ctx),
+                list: table::new(ctx),
             }
         );
     }
@@ -106,16 +104,37 @@ module memechan::index {
         table::contains(&registry.interest_pools, type_name::get<RegistryKey<S, Meme>>())
     }
     
-    public fun add_seed_pool<S, Meme>(registry: &mut Registry, pool_address: address) {
+    public fun add_seed_pool<S, Meme>(
+        registry: &mut Registry,
+        pool_address: address,
+        policy_address: address,
+    ) {
         table::add(seed_pools_mut(registry), type_name::get<RegistryKey<S, Meme>>(), pool_address);
+        table::add(policies_mut(registry), type_name::get<Meme>(), policy_address);
+        
+        let meme_data = MemeData {
+            seed_pool: pool_address,
+            policy: policy_address,
+            staking_pool: none(),
+            interest_pool: none(),
+            lp_type: none(),
+        };
+        
+        table::add(&mut registry.list, type_name::get<RegistryKey<S, Meme>>(), meme_data);
     }
 
     public fun add_staking_pool<S, Meme>(registry: &mut Registry, pool_address: address) {
         table::add(staking_pools_mut(registry), type_name::get<RegistryKey<S, Meme>>(), pool_address);
+
+        let meme_data = table::borrow_mut(&mut registry.list, type_name::get<RegistryKey<S, Meme>>());
+        option::fill(&mut meme_data.staking_pool, pool_address);
     }
 
     public fun add_interest_pool<S, Meme>(registry: &mut Registry, pool_address: address) {
         table::add(interest_pools_mut(registry), type_name::get<RegistryKey<S, Meme>>(), pool_address);
+        
+        let meme_data = table::borrow_mut(&mut registry.list, type_name::get<RegistryKey<S, Meme>>());
+        option::fill(&mut meme_data.interest_pool, pool_address);
     }
     
     public fun assert_new_pool<S, Meme>(registry: &Registry) {
