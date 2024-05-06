@@ -40,10 +40,10 @@ module memechan::fee_distribution {
     ///
     /// A tuple containing the withdrawn balances of type M and S.
     ///
-    public fun withdraw<S, Meme>(
+    public(friend) fun withdraw_fees<S, Meme>(
         state: &mut FeeState<S, Meme>,
         user_stake: u64,
-        ctx: &mut TxContext
+        ctx: &TxContext
     ): (Balance<Meme>, Balance<S>) {
         let sender = tx_context::sender(ctx);
 
@@ -67,6 +67,30 @@ module memechan::fee_distribution {
             balance::split(&mut state.fees_meme, max_withdrawal_x),
             balance::split(&mut state.fees_s, max_withdrawal_y)
         )
+    }
+    
+    public(friend) fun get_fees_to_withdraw<S, Meme>(
+        state: &FeeState<S, Meme>,
+        user_stake: u64,
+        ctx: &TxContext,
+    ): (u64, u64) {
+        let sender = tx_context::sender(ctx);
+
+        if (!table::contains(&state.user_withdrawals_x, sender)) {
+            return (0, 0)
+        };
+
+        let user_withdrawals_x = table::borrow(&state.user_withdrawals_x, sender);
+        let max_withdrawal_x = get_max_withdraw(*user_withdrawals_x, state.fees_meme_total, user_stake, state.stakes_total);
+
+        if (!table::contains(&state.user_withdrawals_y, sender)) {
+            return (0, 0)
+        };
+
+        let user_withdrawals_y = table::borrow(&state.user_withdrawals_y, sender);
+        let max_withdrawal_y = get_max_withdraw(*user_withdrawals_y, state.fees_s_total, user_stake, state.stakes_total);
+
+        (max_withdrawal_x, max_withdrawal_y)
     }
 
     // ===== Friend Functions =====
@@ -123,13 +147,13 @@ module memechan::fee_distribution {
     /// # Returns
     ///
     /// A tuple containing the withdrawn balances of type M and S.
-    public(friend) fun update_stake<S, Meme>(
+    public(friend) fun withdraw_fees_and_update_stake<S, Meme>(
         user_old_stake: u64,
         user_stake_diff: u64,
         state: &mut FeeState<S, Meme>,
-        ctx: &mut TxContext
+        ctx: &TxContext
     ) : (Balance<Meme>, Balance<S>) {
-        let (coin_x, coin_y) = withdraw(state, user_old_stake, ctx);
+        let (coin_x, coin_y) = withdraw_fees(state, user_old_stake, ctx);
 
         let sender = tx_context::sender(ctx);
 
@@ -138,7 +162,6 @@ module memechan::fee_distribution {
         let user_withdrawals_x = table::borrow_mut(&mut state.user_withdrawals_x, sender);
         let withdraw_diff_x = get_withdraw_diff(*user_withdrawals_x, stake_diff);
         *user_withdrawals_x = *user_withdrawals_x - withdraw_diff_x;
-
 
         let user_withdrawals_y = table::borrow_mut(&mut state.user_withdrawals_y, sender);
         let withdraw_diff_y = get_withdraw_diff(*user_withdrawals_y, stake_diff);

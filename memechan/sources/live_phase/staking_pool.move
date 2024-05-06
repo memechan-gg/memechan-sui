@@ -85,7 +85,12 @@ module memechan::staking_pool {
 
         let vesting_old = vesting::current_stake(vesting_data);
 
-        let (balance_meme, balance_sui) = fee_distribution::update_stake(vesting_old, release_amount, &mut staking_pool.fee_state, ctx);
+        let (balance_meme, balance_sui) = fee_distribution::withdraw_fees_and_update_stake(
+            vesting_old,
+            release_amount,
+            &mut staking_pool.fee_state,
+            ctx
+        );
 
         vesting::release(vesting_data, release_amount);
 
@@ -104,7 +109,7 @@ module memechan::staking_pool {
 
     public fun withdraw_fees<S, Meme, LP>(staking_pool: &mut StakingPool<S, Meme, LP>, ctx: &mut TxContext): (Coin<Meme>, Coin<S>) {
         let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
-        let (balance_meme, balance_sui) = fee_distribution::withdraw(&mut staking_pool.fee_state, vesting::current_stake(vesting_data), ctx);
+        let (balance_meme, balance_sui) = fee_distribution::withdraw_fees(&mut staking_pool.fee_state, vesting::current_stake(vesting_data), ctx);
 
         (
             coin::from_balance(balance_meme, ctx),
@@ -112,6 +117,18 @@ module memechan::staking_pool {
         )
     }
 
+    public fun get_fees<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>, ctx: &mut TxContext): (u64, u64) {
+        let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
+        let (meme_amount, sui_amount) = fee_distribution::get_fees_to_withdraw(
+            &staking_pool.fee_state,
+            vesting::current_stake(vesting_data),
+            ctx
+        );
+
+        (meme_amount, sui_amount)
+    }
+
+    // TODO: Add getters
     public fun collect_fees<S, Meme, LP>(
         staking_pool: &mut StakingPool<S, Meme, LP>,
         pool: &mut InterestPool<Volatile>,
