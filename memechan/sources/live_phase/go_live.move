@@ -91,8 +91,8 @@ module memechan::go_live {
 
         let vesting_config = vesting::new_config(
             current_ts,
-            current_ts + cliff_delta,
-            current_ts + end_vesting_delta,
+            current_ts + cliff_delta, // 5 min
+            current_ts + cliff_delta + end_vesting_delta, // 1 hour
         );
 
         go_live_<SUI, Meme, LP>(

@@ -31,8 +31,8 @@ module memechan::vesting {
         cliff_ts: u64,
         end_ts: u64,
     ): VestingConfig {
-        assert!(start_ts >= cliff_ts, EInconsistentTimestamps);
-        assert!(cliff_ts >= end_ts, EInconsistentTimestamps);
+        assert!(start_ts <= cliff_ts, EInconsistentTimestamps);
+        assert!(cliff_ts <= end_ts, EInconsistentTimestamps);
 
         VestingConfig {
             start_ts,
