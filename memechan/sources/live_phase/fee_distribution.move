@@ -52,7 +52,7 @@ module memechan::fee_distribution {
         };
 
         let user_withdrawals_x = table::borrow_mut(&mut state.user_withdrawals_x, sender);
-        let max_withdrawal_x = get_max_withdraw(*user_withdrawals_x, balance::value(&state.fees_meme), user_stake, state.stakes_total);
+        let max_withdrawal_x = get_max_withdraw(*user_withdrawals_x, state.fees_meme_total, user_stake, state.stakes_total);
         *user_withdrawals_x = ((*user_withdrawals_x + max_withdrawal_x) as u64);
 
         if (!table::contains(&state.user_withdrawals_y, sender)) {
@@ -60,11 +60,8 @@ module memechan::fee_distribution {
         };
 
         let user_withdrawals_y = table::borrow_mut(&mut state.user_withdrawals_y, sender);
-        let max_withdrawal_y = get_max_withdraw(*user_withdrawals_y, balance::value(&state.fees_s), user_stake, state.stakes_total);
+        let max_withdrawal_y = get_max_withdraw(*user_withdrawals_y, state.fees_s_total, user_stake, state.stakes_total);
         *user_withdrawals_y = ((*user_withdrawals_y + max_withdrawal_y) as u64);
-
-        state.fees_meme_total = state.fees_meme_total - max_withdrawal_x;
-        state.fees_s_total = state.fees_s_total - max_withdrawal_y;
 
         (
             balance::split(&mut state.fees_meme, max_withdrawal_x),
