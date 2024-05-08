@@ -174,7 +174,6 @@ module memechan::go_live {
 
         let price = (amount_sui * SCALE) / amount_meme;
 
-
         let (amm_pool, admin, lp_tokens) = volatile_hooks::new_2_pool_with_hooks(
             clock,
             &decimals,
@@ -190,7 +189,6 @@ module memechan::go_live {
         );
 
         let pool_id = object::id(&amm_pool);
-        
         // 4. Create staking pool
         let staking_pool = staking_pool::new<S, Meme, LP>(
             pool_id,
