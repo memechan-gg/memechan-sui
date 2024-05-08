@@ -21,10 +21,13 @@ module memechan::staking_pool {
 
     friend memechan::go_live;
 
+    // ===== Constants =====
+
+    const PRECISION: u256 = 1_000_000_000_000_000;    
+
     struct StakingPool<phantom S, phantom Meme, phantom LP> has key, store {
         id: UID,
         amm_pool: ID,
-        balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
         vesting_table: Table<address, VestingData>,
         meme_cap: TreasuryCap<Meme>,
@@ -48,7 +51,6 @@ module memechan::staking_pool {
         let staking_pool = StakingPool {
             id: object::new(ctx),
             amm_pool,
-            balance_meme: balance::zero(),
             balance_lp,
             meme_cap,
             policy_cap,
@@ -65,9 +67,11 @@ module memechan::staking_pool {
     // and the CLAMM `LP` tokens.
     public fun unstake<S, Meme, LP>(
         staking_pool: &mut StakingPool<S, Meme, LP>,
+        pool: &mut InterestPool<Volatile>,
         coin_x: Token<Meme>,
         policy: &TokenPolicy<Meme>,
         clock: &Clock,
+        min_amounts: vector<u64>,
         ctx: &mut TxContext,
     ): (Coin<Meme>, Coin<S>) {
     
@@ -99,11 +103,23 @@ module memechan::staking_pool {
             token_ir::to_coin(policy, coin_x, ctx),
         );
 
-        balance::join(&mut balance_meme, balance::split(&mut staking_pool.balance_meme, release_amount));
+        let stake_diff = ((release_amount as u256) * PRECISION) / (vesting_old as u256);
+
+        let lp_amount = stake_diff * (balance::value(&staking_pool.balance_lp) as u256) / PRECISION;
+
+        let (coin_s, coin_m) = volatile::remove_liquidity_2_pool<S, Meme, LP>(
+            pool, 
+            coin::from_balance(balance::split(&mut staking_pool.balance_lp, (lp_amount as u64)), ctx),
+            min_amounts,
+            ctx
+        );
+
+        coin::join(&mut coin_s, coin::from_balance(balance_sui, ctx));
+        coin::join(&mut coin_m, coin::from_balance(balance_meme, ctx));
 
         (
-            coin::from_balance(balance_meme, ctx),
-            coin::from_balance(balance_sui, ctx)
+            coin_m,
+            coin_s
         )
     }
 
