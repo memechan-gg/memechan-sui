@@ -4,7 +4,6 @@ module memechan::staking_pool {
     use sui::balance::Balance;
     use sui::token::{Self, Token, TokenPolicy, TokenPolicyCap};
     use sui::clock::{Self, Clock};
-    use sui::balance;
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::tx_context::{sender, TxContext};
 
@@ -24,7 +23,6 @@ module memechan::staking_pool {
     struct StakingPool<phantom S, phantom Meme, phantom LP> has key, store {
         id: UID,
         amm_pool: ID,
-        balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
         vesting_table: Table<address, VestingData>,
         meme_cap: TreasuryCap<Meme>,
@@ -36,7 +34,6 @@ module memechan::staking_pool {
 
     public(friend) fun new<S, Meme, LP>(
         amm_pool: ID,
-        balance_meme: Balance<Meme>,
         stake_total: u64,
         balance_lp: Balance<LP>,
         vesting_config: VestingConfig,
@@ -49,7 +46,6 @@ module memechan::staking_pool {
         let staking_pool = StakingPool {
             id: object::new(ctx),
             amm_pool,
-            balance_meme,
             balance_lp,
             meme_cap,
             policy_cap,
@@ -95,18 +91,11 @@ module memechan::staking_pool {
 
         vesting::release(vesting_data, release_amount);
 
-        coin::burn(
-            &mut staking_pool.meme_cap,
-            token_ir::to_coin(policy, coin_x, ctx),
-        );
-
-        let remaining_balance = balance::value(&staking_pool.balance_meme);
-        let safe_value = if (remaining_balance > release_amount) release_amount else remaining_balance;
-
-        balance::join(&mut balance_meme, balance::split(&mut staking_pool.balance_meme, safe_value));
+        let coin_m = coin::from_balance(balance_meme, ctx);
+        coin::join(&mut coin_m, token_ir::to_coin(policy, coin_x, ctx));
 
         (
-            coin::from_balance(balance_meme, ctx),
+            coin_m,
             coin::from_balance(balance_sui, ctx)
         )
     }

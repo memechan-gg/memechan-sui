@@ -26,7 +26,6 @@ module memechan::go_live {
     struct AddLiquidityHook has drop {}
 
     const SCALE: u256 = 1_000_000_000_000_000_000; // 1e18
-    const TWENTY_PERCENT: u256 = 200_000_000_000_000_000; // 0.2e18
     
     const A: u256 = 400_000;
     const GAMMA: u256 = 145_000_000_000_000;
@@ -175,9 +174,6 @@ module memechan::go_live {
 
         let price = (amount_sui * SCALE) / amount_meme;
 
-        // Calculate the 80% value for the staking pool
-        let total_amount = amount_meme * SCALE / TWENTY_PERCENT;
-        let staking_pool_amount = total_amount * (SCALE - TWENTY_PERCENT) / SCALE;
 
         let (amm_pool, admin, lp_tokens) = volatile_hooks::new_2_pool_with_hooks(
             clock,
@@ -195,12 +191,9 @@ module memechan::go_live {
 
         let pool_id = object::id(&amm_pool);
         
-        let staking_pool_meme_balance = coin::mint_balance(&mut meme_cap, (staking_pool_amount as u64));
-
         // 4. Create staking pool
         let staking_pool = staking_pool::new<S, Meme, LP>(
             pool_id,
-            staking_pool_meme_balance,
             (seed_pool::gamma_m(&params) as u64),
             coin::into_balance(lp_tokens),
             vesting_config,
