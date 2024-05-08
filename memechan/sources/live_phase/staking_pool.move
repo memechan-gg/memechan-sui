@@ -36,6 +36,7 @@ module memechan::staking_pool {
 
     public(friend) fun new<S, Meme, LP>(
         amm_pool: ID,
+        balance_meme: Balance<Meme>,
         stake_total: u64,
         balance_lp: Balance<LP>,
         vesting_config: VestingConfig,
@@ -48,7 +49,7 @@ module memechan::staking_pool {
         let staking_pool = StakingPool {
             id: object::new(ctx),
             amm_pool,
-            balance_meme: balance::zero(),
+            balance_meme,
             balance_lp,
             meme_cap,
             policy_cap,
@@ -99,7 +100,10 @@ module memechan::staking_pool {
             token_ir::to_coin(policy, coin_x, ctx),
         );
 
-        balance::join(&mut balance_meme, balance::split(&mut staking_pool.balance_meme, release_amount));
+        let remaining_balance = balance::value(&staking_pool.balance_meme);
+        let safe_value = if (remaining_balance > release_amount) release_amount else remaining_balance;
+
+        balance::join(&mut balance_meme, balance::split(&mut staking_pool.balance_meme, safe_value));
 
         (
             coin::from_balance(balance_meme, ctx),
