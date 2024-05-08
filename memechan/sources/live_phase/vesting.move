@@ -35,7 +35,7 @@ module memechan::vesting {
     ): VestingConfig {
         assert!(start_ts <= cliff_ts, EInconsistentTimestamps);
         assert!(cliff_ts <= end_ts, EInconsistentTimestamps);
-        // `end_ts` must be greater than `start_ts`, otherwise the functino {duration} will attempt to divide by zero.
+        // `end_ts` must be greater than `start_ts`, otherwise the function {duration} will attempt to divide by zero.
         assert!(start_ts < end_ts, EInconsistentTimestamps);
 
         VestingConfig {

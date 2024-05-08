@@ -637,10 +637,15 @@ module memechan::integration {
             ctx(scenario_mut),
         );
 
+        let (fee_s_amount, fee_m_amount) = staking_pool::get_fees<SUI, BODEN, LP_COIN>(&staking_pool, ctx(scenario_mut));
+
         let (coin_s, coin_m) = staking_pool::withdraw_fees<SUI, BODEN, LP_COIN>(
             &mut staking_pool,
             ctx(scenario_mut),
         );
+
+        assert_eq(fee_s_amount, coin::value(&coin_s));
+        assert_eq(fee_m_amount, coin::value(&coin_m));
 
         // TODO: More fee tests with unstaking
 
