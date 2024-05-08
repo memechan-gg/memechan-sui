@@ -1,4 +1,5 @@
 module memechan::events {
+    use std::type_name::{Self, TypeName};
     use sui::event::emit;
 
     friend memechan::seed_pool;
@@ -12,9 +13,10 @@ module memechan::events {
         policy_address: address,
     }
     
-    struct GoLive< phantom S, phantom Meme, phantom LP> has copy, drop {
+    struct GoLive< phantom S, phantom Meme> has copy, drop {
         clamm_address: address,
         staking_pool_address: address,
+        lp_type: TypeName,
     }
 
     struct Swap<phantom CoinIn, phantom CoinOut, T: drop + copy + store> has copy, drop {
@@ -52,7 +54,7 @@ module memechan::events {
         clamm_address: address,
         staking_pool_address: address,
     ) {
-        emit(GoLive<S, Meme, LP>{ clamm_address, staking_pool_address });
+        emit(GoLive<S, Meme>{ clamm_address, staking_pool_address, lp_type: type_name::get<LP>() });
     }
 
     public(friend) fun swap<CoinIn, CoinOut, T: copy + drop + store>(
