@@ -1,5 +1,7 @@
 module memechan::vesting {
     use sui::clock::{Self, Clock};
+
+    use memechan::math::mul_div;
     
     friend memechan::staking_pool;
     friend memechan::seed_pool;
@@ -33,6 +35,8 @@ module memechan::vesting {
     ): VestingConfig {
         assert!(start_ts <= cliff_ts, EInconsistentTimestamps);
         assert!(cliff_ts <= end_ts, EInconsistentTimestamps);
+        // `end_ts` must be greater than `start_ts`, otherwise the functino {duration} will attempt to divide by zero.
+        assert!(start_ts < end_ts, EInconsistentTimestamps);
 
         VestingConfig {
             start_ts,
@@ -63,7 +67,8 @@ module memechan::vesting {
     public fun total_vested(self: &VestingData, config: &VestingConfig, current_ts: u64): u64 {
         if (current_ts < config.cliff_ts) return 0;
         if (current_ts > config.end_ts) return self.notional;
-        (self.notional * (current_ts - config.start_ts)) / duration(config)
+        // Avoid overflow
+        mul_div(self.notional, (current_ts - config.start_ts), duration(config))
     }
 
     public fun duration(config: &VestingConfig): u64 {
