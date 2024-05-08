@@ -70,7 +70,6 @@ module memechan::staking_pool {
         clock: &Clock,
         ctx: &mut TxContext,
     ): (Coin<Meme>, Coin<S>) {
-    
         let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
         
         let amount_available_to_release = vesting::to_release(
@@ -94,12 +93,8 @@ module memechan::staking_pool {
 
         vesting::release(vesting_data, release_amount);
 
-        coin::burn(
-            &mut staking_pool.meme_cap,
-            token_ir::to_coin(policy, coin_x, ctx),
-        );
-
-        balance::join(&mut balance_meme, balance::split(&mut staking_pool.balance_meme, release_amount));
+        let coin_meme = token_ir::to_coin(policy, coin_x, ctx);
+        balance::join(&mut balance_meme, coin::into_balance(coin_meme));
 
         (
             coin::from_balance(balance_meme, ctx),
