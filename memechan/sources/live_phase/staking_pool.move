@@ -140,6 +140,11 @@ module memechan::staking_pool {
             ctx,
         );
 
+        if (coin::value(&lp_coin) == 0) {
+            coin::destroy_zero(lp_coin);
+            return
+        };
+
         let min_amounts = vector[1, 1,];
 
         let (coin_sui, coin_meme) = volatile::remove_liquidity_2_pool<S, Meme, LP>(
