@@ -76,19 +76,14 @@ module memechan::fee_distribution {
     ): (u64, u64) {
         let sender = tx_context::sender(ctx);
 
-        if (!table::contains(&state.user_withdrawals_x, sender)) {
-            return (0, 0)
-        };
+        let user_withdrawals_x = if (table::contains(&state.user_withdrawals_x, sender))
+            *table::borrow(&state.user_withdrawals_x, sender) else 0;
+        let max_withdrawal_x = get_max_withdraw(user_withdrawals_x, state.fees_meme_total, user_stake, state.stakes_total);
 
-        let user_withdrawals_x = table::borrow(&state.user_withdrawals_x, sender);
-        let max_withdrawal_x = get_max_withdraw(*user_withdrawals_x, state.fees_meme_total, user_stake, state.stakes_total);
 
-        if (!table::contains(&state.user_withdrawals_y, sender)) {
-            return (0, 0)
-        };
-
-        let user_withdrawals_y = table::borrow(&state.user_withdrawals_y, sender);
-        let max_withdrawal_y = get_max_withdraw(*user_withdrawals_y, state.fees_s_total, user_stake, state.stakes_total);
+        let user_withdrawals_y = if (table::contains(&state.user_withdrawals_y, sender)) 
+            *table::borrow(&state.user_withdrawals_y, sender) else 0;
+        let max_withdrawal_y = get_max_withdraw(user_withdrawals_y, state.fees_s_total, user_stake, state.stakes_total);
 
         (max_withdrawal_x, max_withdrawal_y)
     }
