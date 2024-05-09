@@ -771,7 +771,7 @@ module memechan::seed_pool {
     ) {
 
         if (!table::contains(&pool.accounting, beneficiary)) {
-            table::add(&mut pool.accounting, beneficiary, new_vesting_data(amount));
+            table::add(&mut pool.accounting, beneficiary, new_vesting_data(0));
         };
 
         let position = table::borrow_mut(&mut pool.accounting, beneficiary);
