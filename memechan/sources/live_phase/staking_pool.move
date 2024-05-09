@@ -111,6 +111,8 @@ module memechan::staking_pool {
     }
 
     public fun get_fees<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>, ctx: &mut TxContext): (u64, u64) {
+        if (!table::contains(&staking_pool.vesting_table, sender(ctx))) return (0, 0);
+
         let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
         let (meme_amount, sui_amount) = fee_distribution::get_fees_to_withdraw(
             &staking_pool.fee_state,
@@ -170,6 +172,8 @@ module memechan::staking_pool {
         clock: &Clock,
         ctx: &mut TxContext,
     ): u64 {
+        if (!table::contains(&staking_pool.vesting_table, sender(ctx))) return 0;
+
         let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
 
         let amount_available_to_release = vesting::to_release(
