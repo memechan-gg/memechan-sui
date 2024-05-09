@@ -25,14 +25,14 @@ module memechan::go_live {
 
     struct AddLiquidityHook has drop {}
 
-    const SCALE: u256 = 1_000_000_000_000_000_000; // 1e18
+    const SCALE: u256 = 1_000_000_000_000_000; // 1e15 because meme coins have 6 decimals and sui has 9.
     
     const A: u256 = 400_000;
     const GAMMA: u256 = 145_000_000_000_000;
 
     const ALLOWED_EXTRA_PROFIT: u256 = 2000000000000; // 18 decimals
     const ADJUSTMENT_STEP: u256 = 146000000000000; // 18 decimals
-    const MA_TIME: u256 = 600_000; // 10 minutes
+    const MA_TIME: u256 = 30000; // 30 seconds as meme coins are very volatile
 
     const MID_FEE: u256 = 26000000; // (0.26%) swap fee when the pool is balanced
     const OUT_FEE: u256 = 45000000; // (0.45%) swap fee when the pool is out balance
