@@ -148,6 +148,11 @@ module memechan::staking_pool {
         };
 
         let min_amounts = vector[1, 1,];
+        
+        // The default admin fees are 20% of all the fees. 
+        let extra_fees = coin::take(&mut staking_pool.balance_lp, coin::value(&lp_coin) * 4, ctx);
+
+        coin::join(&mut lp_coin, extra_fees);
 
         let (coin_sui, coin_meme) = volatile::remove_liquidity_2_pool<S, Meme, LP>(
             pool,
