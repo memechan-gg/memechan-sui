@@ -15,8 +15,9 @@ module memechan::go_live {
     use memechan::events;
     use memechan::admin::Admin;
     use memechan::seed_pool::{Self as seed_pool, SeedPool, gamma_s};
-    use memechan::staking_pool;
-    use clamm::interest_pool;
+    use memechan::staking_pool::{Self, StakingPool};
+    use clamm::interest_pool::{Self, InterestPool, Request};
+    use clamm::curves::Volatile;
     use clamm::interest_clamm_volatile as volatile_hooks;
     use suitears::coin_decimals;
     use suitears::owner;
@@ -44,6 +45,19 @@ module memechan::go_live {
     const EBondingPoolNotReady: u64 = 0;
     const EBondingPoolMemeBalanceNotEmpty: u64 = 1;
     const EQuoteSupplyMismatch: u64 = 2;
+    const EAddLiquidityNotAllowed: u64 = 3;
+
+    public fun start_add_liquidity_request_and_approve<S, Meme, LP>(
+        staking_pool: &StakingPool<S, Meme, LP>, 
+        amm_pool: &InterestPool<Volatile>,
+        clock: &Clock
+    ): Request {
+        assert!(clock::timestamp_ms(clock) >= staking_pool::end_ts(staking_pool), EAddLiquidityNotAllowed);
+
+        let start_request = interest_pool::start_add_liquidity(amm_pool);
+        interest_pool::approve(&mut start_request, AddLiquidityHook {});
+        start_request
+    }
 
     // Admin endpoint
     public fun go_live_default<Meme, LP>(

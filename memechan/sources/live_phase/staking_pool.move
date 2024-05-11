@@ -1,7 +1,7 @@
 module memechan::staking_pool {
     use sui::object::{Self, ID, UID};
     use sui::table::{Self, Table};
-    use sui::balance::Balance;
+    use sui::balance::{Self, Balance};
     use sui::token::{Self, Token, TokenPolicy, TokenPolicyCap};
     use sui::clock::{Self, Clock};
     use sui::coin::{Self, Coin, TreasuryCap};
@@ -17,6 +17,8 @@ module memechan::staking_pool {
     use clamm::curves::Volatile;
 
     use clamm::pool_admin::PoolAdmin;
+
+    const PRECISION: u128 = 1_000_000_000; // 1e9
 
     friend memechan::go_live;
 
@@ -148,9 +150,20 @@ module memechan::staking_pool {
         };
 
         let min_amounts = vector[1, 1,];
+
+        let total_staking_pool_lp_balance = balance::value(&staking_pool.balance_lp);
+        let lp_total_supply = volatile::lp_coin_supply<LP>(pool);
+
+        // Our Lp Balance / Total Supply
+        let percentage_owned = (total_staking_pool_lp_balance as u128) * PRECISION / (lp_total_supply as u128);
+
+        let all_extra_fees = ((coin::value(&lp_coin) * 4) as u128);
+        
+        // we only take half of the fees to help IP for other LPs.
+        let amount_to_take = (all_extra_fees * percentage_owned / PRECISION) / 2;
         
         // The default admin fees are 20% of all the fees. 
-        let extra_fees = coin::take(&mut staking_pool.balance_lp, coin::value(&lp_coin) * 4, ctx);
+        let extra_fees = coin::take(&mut staking_pool.balance_lp, (amount_to_take as u64), ctx);
 
         coin::join(&mut lp_coin, extra_fees);
 
@@ -160,7 +173,6 @@ module memechan::staking_pool {
             min_amounts,
             ctx,
         );
-        
         
         fee_distribution::add_fees<S, Meme>(&mut staking_pool.fee_state, coin_meme, coin_sui);
     }
@@ -190,4 +202,5 @@ module memechan::staking_pool {
         amount_available_to_release
     }
 
+    public fun end_ts<S, Meme, LP>(self: &StakingPool<S, Meme, LP>): u64 { vesting::end_ts(&self.vesting_config) }
 }
