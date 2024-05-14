@@ -1,17 +1,19 @@
 #[test_only]
 module memechan::integration {
     use std::vector;
+    use std::type_name;
     use sui::table;
     use sui::transfer;
     use sui::clock;
-    use sui::test_utils::assert_eq;
+    use sui::vec_set;
+    use sui::test_utils::{assert_eq, destroy};
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
     use sui::test_scenario::{Self as test, Scenario, next_tx, ctx};
     use sui::token::{Self, TokenPolicy};
     use clamm::interest_clamm_volatile as volatile;
-    use clamm::interest_pool::InterestPool;
+    use clamm::interest_pool::{Self, InterestPool};
     use clamm::curves::Volatile;
-    use memechan::go_live;
+    use memechan::go_live::{Self, AddLiquidityHook};
     use memechan::boden;
     use memechan::utils::mist;
     use memechan::lp_coin::{Self, LP_COIN};
@@ -663,7 +665,95 @@ module memechan::integration {
         test::return_shared(registry);
         test::end(scenario);
     }
-    
+
+    #[test]
+    fun go_live_trade_and_allow_other_lps() {
+        let (scenario, alice, _, admin) = start_test_();
+        let scenario_mut = &mut scenario;
+        
+        // Initiate S joe boden token
+        next_tx(scenario_mut, alice);
+        {
+            boden::init_for_testing(ctx(scenario_mut));
+        };
+
+        next_tx(scenario_mut, alice);
+
+        let registry = test::take_shared<Registry>(scenario_mut);
+        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
+        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+
+        let (pool, m_token) = seed_pool::new_full_for_testing<SUI, BODEN>(
+            &mut registry,
+            boden_coin_cap, // BODEN
+            ctx(scenario_mut)
+        );
+
+        let (lp_treasury, lp_meta) = lp_coin::new(ctx(scenario_mut));
+        let sui_meta = sui::new(ctx(scenario_mut));
+
+        go_live::go_live_default_test<BODEN, LP_COIN>(
+            &mut registry,
+            &admin,
+            pool,
+            &sui_meta,
+            &boden_metadata,
+            &lp_meta,
+            lp_treasury,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        // Trade
+        next_tx(scenario_mut, alice);
+        let clamm_pool = test::take_shared<InterestPool<Volatile>>(scenario_mut);
+
+        let output = volatile::swap<SUI, BODEN, LP_COIN>(
+            &mut clamm_pool,
+            &clock,
+            coin::mint_for_testing<SUI>(mist(10_000), ctx(scenario_mut)),
+            1,
+            ctx(scenario_mut),
+        );
+
+        next_tx(scenario_mut, alice);
+        let staking_pool = test::take_shared<StakingPool<SUI, BODEN, LP_COIN>>(scenario_mut);
+
+        // increase clock to allow new LPs
+        clock::increment_for_testing(&mut clock, staking_pool::end_ts(&staking_pool));
+
+        let request = go_live::start_add_liquidity_request_and_approve(&staking_pool, &clamm_pool, &clock);
+
+        assert_eq(vec_set::contains(&interest_pool::approvals(&request), &type_name::get<AddLiquidityHook>()), true);
+
+        let (request, lp_coin) = volatile::add_liquidity_2_pool_with_hooks<SUI, BODEN, LP_COIN>(
+            &mut clamm_pool,
+            &clock,
+            request,
+            coin::mint_for_testing<SUI>(mist(10_000), ctx(scenario_mut)),
+            coin::mint_for_testing<BODEN>(mist(1_000_000), ctx(scenario_mut)),
+            0,
+            ctx(scenario_mut)
+        );   
+
+        // TODO: More fee tests with unstaking
+        
+        destroy(request);
+        destroy(lp_coin);
+        token::burn_for_testing(m_token);
+        admin::burn_for_testing(admin);
+        coin::burn_for_testing(output);
+        clock::destroy_for_testing(clock);
+        transfer::public_transfer(sui_meta, @0x0);
+        transfer::public_transfer(lp_meta, @0x0);
+        test::return_shared(staking_pool);
+        test::return_shared(clamm_pool);
+        test::return_shared(boden_metadata);
+        test::return_shared(registry);
+        test::end(scenario);
+    }
+
     fun start_test(): (Scenario, address, address) {
         let scenario = scenario();
         let (alice, bob) = people();
