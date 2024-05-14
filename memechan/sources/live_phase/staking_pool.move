@@ -18,6 +18,9 @@ module memechan::staking_pool {
 
     use clamm::pool_admin::PoolAdmin;
 
+    #[test_only]
+    use sui::test_utils::assert_eq;
+
     const PRECISION: u128 = 1_000_000_000; // 1e9
 
     friend memechan::go_live;
@@ -151,19 +154,13 @@ module memechan::staking_pool {
 
         let min_amounts = vector[1, 1,];
 
-        let total_staking_pool_lp_balance = balance::value(&staking_pool.balance_lp);
-        let lp_total_supply = volatile::lp_coin_supply<LP>(pool);
+        let staking_pool_balance = balance::value(&staking_pool.balance_lp);
+        let total_lp_balance = volatile::lp_coin_supply<LP>(pool);
 
-        // Our Lp Balance / Total Supply
-        let percentage_owned = (total_staking_pool_lp_balance as u128) * PRECISION / (lp_total_supply as u128);
-
-        let all_extra_fees = ((coin::value(&lp_coin) * 4) as u128);
-        
-        // we only take half of the fees to help IP for other LPs.
-        let amount_to_take = (all_extra_fees * percentage_owned / PRECISION) / 2;
+        let amount_to_take = calculate_admin_amount(total_lp_balance, staking_pool_balance, coin::value(&lp_coin));
         
         // The default admin fees are 20% of all the fees. 
-        let extra_fees = coin::take(&mut staking_pool.balance_lp, (amount_to_take as u64), ctx);
+        let extra_fees = coin::take(&mut staking_pool.balance_lp, amount_to_take, ctx);
 
         coin::join(&mut lp_coin, extra_fees);
 
@@ -203,4 +200,36 @@ module memechan::staking_pool {
     }
 
     public fun end_ts<S, Meme, LP>(self: &StakingPool<S, Meme, LP>): u64 { vesting::end_ts(&self.vesting_config) }
+
+    fun calculate_admin_amount(total_lp_balance:u64, staking_pool_balance: u64, admin_amount: u64): u64 {
+        let (staking_pool_balance, total_lp_balance, admin_amount) = (
+            (staking_pool_balance as u128),
+            (total_lp_balance as u128),
+            (admin_amount as u128) * 4
+        );
+
+        let percentage_owned = staking_pool_balance * PRECISION / total_lp_balance;
+
+        ((admin_amount * percentage_owned / PRECISION) as u64) / 2
+    }
+
+    // Tests
+
+    #[test]
+    fun test_calculate_admin_amount() {
+
+        // We own 20% of all protocol fees.
+        // This means that the remaining 80% fees can be found by calculating our amount * 4
+        // We only take 50% of the trading fees we earned to compensate other LPs for IP.
+        // 8 * 0.2 / 2 = 0.8 ~ 0
+        assert_eq(calculate_admin_amount(100, 20, 2), 0);
+
+        // 12 * 0.2 / 2 = 1.2 ~ 1 (we own 20% trading fees)
+        assert_eq(calculate_admin_amount(100, 20, 3), 1);
+        
+        // 12 / 2 = 6 (we own all trading fees)
+        assert_eq(calculate_admin_amount(100, 100, 3), 6);
+        // 12 / 2 = 6 (we own half of all trading fees)
+        assert_eq(calculate_admin_amount(100, 50, 3), 3);
+    }
 }
