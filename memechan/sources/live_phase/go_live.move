@@ -242,6 +242,39 @@ module memechan::go_live {
         owner::destroy(decimals_cap);
     }
 
+    public fun extract_excess_liquidity<S, Meme, LP>(
+        _admin: &Admin,
+        amm_pool: &mut InterestPool<Volatile>,
+        staking_pool: &mut StakingPool<S, Meme, LP>,
+        gamma_m: u64,
+        omega_m: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let total_supply = staking_pool::total_supply(staking_pool);
+
+        let extra_liquidity = total_supply - (gamma_m + omega_m);
+
+        assert!(extra_liquidity > 0, 0);
+
+        let amount_of_meme_to_remove = 
+            volatile_hooks::coin_balance<Meme, LP>(amm_pool);
+
+        let lp_to_burn = volatile_hooks::quote_add_liquidity<LP>(amm_pool, clock, vector[0, extra_liquidity]);
+
+        let lp_coin = staking_pool::remove_extra_liquidity_start(staking_pool, lp_to_burn, ctx);
+
+        let extra_meme =volatile_hooks::remove_liquidity_one_coin<Meme, LP>(
+            amm_pool,
+            clock,
+            lp_coin,
+            amount_of_meme_to_remove,
+            ctx,
+        );
+
+        staking_pool::remove_extra_liquidity_collect(staking_pool, extra_meme);
+    }
+
     // === Test Functions ===
 
     #[test_only]

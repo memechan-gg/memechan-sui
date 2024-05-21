@@ -204,6 +204,10 @@ module memechan::staking_pool {
         amount_available_to_release
     }
 
+    public fun total_supply<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>): u64 {
+        coin::total_supply(&staking_pool.meme_cap)
+    }
+
     public fun fee_state<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>): &FeeState<S, Meme> {
         &staking_pool.fee_state
     }
@@ -220,6 +224,21 @@ module memechan::staking_pool {
         let percentage_owned = staking_pool_balance * PRECISION / total_lp_balance;
 
         ((admin_amount * percentage_owned / PRECISION) as u64) / 2
+    }
+
+    public(friend) fun remove_extra_liquidity_start<S, Meme, LP>(
+        self: &mut StakingPool<S, Meme, LP>,
+        lp_amount: u64,
+        ctx: &mut TxContext
+    ): Coin<LP> {
+        coin::from_balance(balance::split(&mut self.balance_lp, lp_amount), ctx)
+    }
+    
+    public(friend) fun remove_extra_liquidity_collect<S, Meme, LP>(
+        self: &mut StakingPool<S, Meme, LP>,
+        meme_coins: Coin<Meme>,
+    ) {
+        coin::burn(&mut self.meme_cap, meme_coins);
     }
 
     // Tests
