@@ -59,9 +59,9 @@ module memechan::seed_pool {
     const EBondingCurveMustBeNegativelySloped: u64 = 1;
     const EBondingCurveInterceptMustBePositive: u64 = 2;
     const EPoolIsLocked: u64 = 3;
-    const EMemeSupplyNotGamma: u64 = 4;
+    const EMemeStakingSupplyNotGamma: u64 = 4;
     const EQuoteSupplyNotZero: u64 = 5;
-    const EMemeTotalSupplyNotGammaOmega: u64 = 6;
+    const EMemeAMMSupplyNotOmega: u64 = 6;
     const EMemeCoinsShouldHaveZeroTotalSupply: u64 = 7;
     const ESlippage: u64 = 8;
     const EGammaSAboveRelativeLimit: u64 = 9;
@@ -544,7 +544,7 @@ module memechan::seed_pool {
 
         let launch_coin = coin::mint<Meme>(
             &mut meme_coin_cap,
-            ((gamma_m + omega_m) as u64),
+            (omega_m as u64),
             ctx);
 
         let balance_m: Balance<Meme> = balance::increase_supply(coin::supply_mut(&mut meme_coin_cap), (gamma_m as u64));
@@ -600,9 +600,9 @@ module memechan::seed_pool {
         let coin_s_value = coin::value(&coin_s);
         let launch_coin_value = coin::value(&launch_coin);
 
-        assert!(coin_m_value == (gamma_m as u64), EMemeSupplyNotGamma);
+        assert!(coin_m_value == (gamma_m as u64), EMemeStakingSupplyNotGamma);
         assert!(coin_s_value == 0, EQuoteSupplyNotZero);
-        assert!(launch_coin_value == ((gamma_m + omega_m) as u64), EMemeTotalSupplyNotGammaOmega);
+        assert!(launch_coin_value == (omega_m as u64), EMemeAMMSupplyNotOmega);
         
         index::assert_new_pool<S, Meme>(registry);
 
@@ -771,7 +771,7 @@ module memechan::seed_pool {
     ) {
 
         if (!table::contains(&pool.accounting, beneficiary)) {
-            table::add(&mut pool.accounting, beneficiary, new_vesting_data(amount));
+            table::add(&mut pool.accounting, beneficiary, new_vesting_data(0));
         };
 
         let position = table::borrow_mut(&mut pool.accounting, beneficiary);

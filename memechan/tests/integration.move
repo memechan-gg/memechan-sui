@@ -3,7 +3,9 @@ module memechan::integration {
     use std::vector;
     use sui::table;
     use sui::transfer;
+    use sui::balance;
     use sui::clock;
+    use sui::test_utils::destroy;
     use sui::test_utils::assert_eq;
     use sui::coin::{Self, TreasuryCap, CoinMetadata};
     use sui::test_scenario::{Self as test, Scenario, next_tx, ctx};
@@ -12,6 +14,7 @@ module memechan::integration {
     use clamm::interest_pool::InterestPool;
     use clamm::curves::Volatile;
     use memechan::go_live;
+    use memechan::fee_distribution;
     use memechan::boden;
     use memechan::utils::mist;
     use memechan::lp_coin::{Self, LP_COIN};
@@ -148,6 +151,385 @@ module memechan::integration {
         clock::destroy_for_testing(clock);
         test::return_shared(seed_pool);
         test::return_shared(token_policy);
+        test::return_shared(registry);
+        test::end(scenario);
+    }
+    
+    #[test]
+    fun seed_pool_2e2_z() {
+        let (scenario, alice, bob, admin) = start_test_();
+
+        let scenario_mut = &mut scenario;
+                
+        // Initiate S joe boden token
+        next_tx(scenario_mut, alice);
+        {
+            boden::init_for_testing(ctx(scenario_mut));
+        };
+
+        next_tx(scenario_mut, alice);
+
+        let registry = test::take_shared<Registry>(scenario_mut);
+        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
+        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
+            
+        assert_eq(table::is_empty(index::seed_pools(&registry)), true);
+            
+        seed_pool::new<SUI, BODEN>(
+            &mut registry,
+            boden_coin_cap, // BODEN
+            0,
+            0,
+            default_price_factor(),
+            (690 as u64),
+            (900_000_000_000_000 as u64),
+            (200_000_000_000_000 as u64),
+            0,
+            ctx(scenario_mut)
+        );
+
+        next_tx(scenario_mut, bob);
+
+        let token_policy = test::take_shared<TokenPolicy<BODEN>>(scenario_mut);
+        let seed_pool = test::take_shared<SeedPool<SUI, BODEN>>(scenario_mut);
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+
+        let meme_monies = vector[];
+        let amt_raised = 0;
+        let meme_tokens_in_pool = (default_gamma_m() as u64);
+
+        let sui_amt = 690;
+
+        loop {
+            next_tx(scenario_mut, bob);
+
+            let amt = sui(sui_amt);
+            let sui_mony = coin::mint_for_testing<SUI>(amt, ctx(scenario_mut));
+
+            let staked_sboden = seed_pool::buy_meme<SUI, BODEN>(
+                &mut seed_pool,
+                &mut sui_mony,
+                0,
+                &clock,
+                ctx(scenario_mut),
+            );
+            amt_raised = amt_raised + amt;
+            meme_tokens_in_pool = meme_tokens_in_pool - staked_lp::balance(&staked_sboden);
+            
+            assert!(seed_pool::balance_s<SUI, BODEN>(&seed_pool) == amt_raised, 0);
+            assert!(seed_pool::balance_m<SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
+
+            vector::push_back(&mut meme_monies, staked_lp::balance(&staked_sboden));
+
+            coin::burn_for_testing(sui_mony);
+            staked_lp::destroy_for_testing(staked_sboden);
+
+
+            if (is_ready_to_launch<SUI, BODEN>(&seed_pool)) {
+                break
+            }
+        };
+
+        let (lp_treasury, lp_meta) = lp_coin::new(ctx(scenario_mut));
+        let sui_meta = sui::new(ctx(scenario_mut));
+
+        go_live::go_live_default_test<BODEN, LP_COIN>(
+            &mut registry,
+            &admin,
+            seed_pool,
+            &sui_meta,
+            &boden_metadata,
+            &lp_meta,
+            lp_treasury,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        // Trade
+        next_tx(scenario_mut, alice);
+        let clamm_pool = test::take_shared<InterestPool<Volatile>>(scenario_mut);
+
+        assert!(
+            volatile::coin_balance<SUI, LP_COIN>(&mut clamm_pool) == 655500000000, 0
+        );
+        
+        assert!(
+            volatile::coin_balance<BODEN, LP_COIN>(&mut clamm_pool) == 200_000_000_000_000, 0
+        );
+
+        destroy(admin);
+        destroy(boden_metadata);
+        destroy(lp_meta);
+        destroy(sui_meta);
+        clock::destroy_for_testing(clock);
+        test::return_shared(token_policy);
+        test::return_shared(clamm_pool);
+        test::return_shared(registry);
+        test::end(scenario);
+    }
+
+    #[test]
+    fun seed_pool_2e2_with_unstake_before_trading() {
+        let (scenario, alice, bob, admin) = start_test_();
+
+        let scenario_mut = &mut scenario;
+                
+        // Initiate S joe boden token
+        next_tx(scenario_mut, alice);
+        {
+            boden::init_for_testing(ctx(scenario_mut));
+        };
+
+        next_tx(scenario_mut, alice);
+
+        let registry = test::take_shared<Registry>(scenario_mut);
+        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
+        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
+            
+        assert_eq(table::is_empty(index::seed_pools(&registry)), true);
+            
+        seed_pool::new<SUI, BODEN>(
+            &mut registry,
+            boden_coin_cap, // BODEN
+            0,
+            0,
+            default_price_factor(),
+            (690 as u64),
+            (900_000_000_000_000 as u64),
+            (200_000_000_000_000 as u64),
+            0,
+            ctx(scenario_mut)
+        );
+
+        next_tx(scenario_mut, bob);
+
+        let token_policy = test::take_shared<TokenPolicy<BODEN>>(scenario_mut);
+        let seed_pool = test::take_shared<SeedPool<SUI, BODEN>>(scenario_mut);
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+
+        let meme_monies = vector[];
+        let amt_raised = 0;
+        let meme_tokens_in_pool = (default_gamma_m() as u64);
+
+        let sui_amt = 690;
+
+        next_tx(scenario_mut, bob);
+
+        let amt = sui(sui_amt);
+        let sui_mony = coin::mint_for_testing<SUI>(amt, ctx(scenario_mut));
+
+        let staked_sboden = seed_pool::buy_meme<SUI, BODEN>(
+            &mut seed_pool,
+            &mut sui_mony,
+            0,
+            &clock,
+            ctx(scenario_mut),
+        );
+        amt_raised = amt_raised + amt;
+        meme_tokens_in_pool = meme_tokens_in_pool - staked_lp::balance(&staked_sboden);
+            
+        assert!(seed_pool::balance_s<SUI, BODEN>(&seed_pool) == amt_raised, 0);
+        assert!(seed_pool::balance_m<SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
+
+        vector::push_back(&mut meme_monies, staked_lp::balance(&staked_sboden));
+
+        coin::burn_for_testing(sui_mony);
+
+
+        let (lp_treasury, lp_meta) = lp_coin::new(ctx(scenario_mut));
+        let sui_meta = sui::new(ctx(scenario_mut));
+
+        go_live::go_live_default_test<BODEN, LP_COIN>(
+            &mut registry,
+            &admin,
+            seed_pool,
+            &sui_meta,
+            &boden_metadata,
+            &lp_meta,
+            lp_treasury,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        // Trade
+        next_tx(scenario_mut, bob);
+
+        let clamm_pool = test::take_shared<InterestPool<Volatile>>(scenario_mut);
+        let staking_pool = test::take_shared<StakingPool<SUI, BODEN, LP_COIN>>(scenario_mut);
+        clock::set_for_testing(&mut clock, 1747843168);
+    
+        let meme_token = staked_lp::into_token(staked_sboden, &clock, &token_policy, ctx(scenario_mut));
+
+        let (coin_m, coin_s) = staking_pool::unstake(
+            &mut staking_pool,
+            meme_token,
+            &token_policy,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        assert!(coin::value(&coin_m) == 900_000_000_000_000, 0);
+        assert!(coin::value(&coin_s) == 0, 0);
+        
+        // let output = volatile::swap<SUI, BODEN, LP_COIN>(
+        //     &mut clamm_pool,
+        //     &clock,
+        //     coin::mint_for_testing<SUI>(mist(10), ctx(scenario_mut)),
+        //     1,
+        //     ctx(scenario_mut),
+        // );
+
+        destroy(coin_m);
+        destroy(coin_s);
+        destroy(admin);
+        destroy(boden_metadata);
+        destroy(lp_meta);
+        destroy(sui_meta);
+        clock::destroy_for_testing(clock);
+        test::return_shared(token_policy);
+        test::return_shared(staking_pool);
+        test::return_shared(clamm_pool);
+        test::return_shared(registry);
+        test::end(scenario);
+    }
+    
+    #[test]
+    fun seed_pool_2e2_with_unstake_after_trading() {
+        let (scenario, alice, bob, admin) = start_test_();
+
+        let scenario_mut = &mut scenario;
+                
+        // Initiate S joe boden token
+        next_tx(scenario_mut, alice);
+        {
+            boden::init_for_testing(ctx(scenario_mut));
+        };
+
+        next_tx(scenario_mut, alice);
+
+        let registry = test::take_shared<Registry>(scenario_mut);
+        let boden_metadata = test::take_shared<CoinMetadata<BODEN>>(scenario_mut);
+        let boden_coin_cap = test::take_from_sender<TreasuryCap<BODEN>>(scenario_mut);
+            
+        assert_eq(table::is_empty(index::seed_pools(&registry)), true);
+            
+        seed_pool::new<SUI, BODEN>(
+            &mut registry,
+            boden_coin_cap, // BODEN
+            0,
+            0,
+            default_price_factor(),
+            (690 as u64),
+            (900_000_000_000_000 as u64),
+            (200_000_000_000_000 as u64),
+            0,
+            ctx(scenario_mut)
+        );
+
+        next_tx(scenario_mut, bob);
+
+        let token_policy = test::take_shared<TokenPolicy<BODEN>>(scenario_mut);
+        let seed_pool = test::take_shared<SeedPool<SUI, BODEN>>(scenario_mut);
+        let clock = clock::create_for_testing(ctx(scenario_mut));
+
+        let meme_monies = vector[];
+        let amt_raised = 0;
+        let meme_tokens_in_pool = (default_gamma_m() as u64);
+
+        let sui_amt = 690;
+
+        next_tx(scenario_mut, bob);
+
+        let amt = sui(sui_amt);
+        let sui_mony = coin::mint_for_testing<SUI>(amt, ctx(scenario_mut));
+
+        let staked_sboden = seed_pool::buy_meme<SUI, BODEN>(
+            &mut seed_pool,
+            &mut sui_mony,
+            0,
+            &clock,
+            ctx(scenario_mut),
+        );
+        amt_raised = amt_raised + amt;
+        meme_tokens_in_pool = meme_tokens_in_pool - staked_lp::balance(&staked_sboden);
+            
+        assert!(seed_pool::balance_s<SUI, BODEN>(&seed_pool) == amt_raised, 0);
+        assert!(seed_pool::balance_m<SUI, BODEN>(&seed_pool) == meme_tokens_in_pool, 0);
+
+        vector::push_back(&mut meme_monies, staked_lp::balance(&staked_sboden));
+
+        coin::burn_for_testing(sui_mony);
+
+
+        let (lp_treasury, lp_meta) = lp_coin::new(ctx(scenario_mut));
+        let sui_meta = sui::new(ctx(scenario_mut));
+
+        go_live::go_live_default_test<BODEN, LP_COIN>(
+            &mut registry,
+            &admin,
+            seed_pool,
+            &sui_meta,
+            &boden_metadata,
+            &lp_meta,
+            lp_treasury,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        // Trade
+        next_tx(scenario_mut, alice);
+
+        let clamm_pool = test::take_shared<InterestPool<Volatile>>(scenario_mut);
+        let staking_pool = test::take_shared<StakingPool<SUI, BODEN, LP_COIN>>(scenario_mut);
+        clock::set_for_testing(&mut clock, 1747843168);
+
+        let output = volatile::swap<SUI, BODEN, LP_COIN>(
+            &mut clamm_pool,
+            &clock,
+            coin::mint_for_testing<SUI>(mist(1_000), ctx(scenario_mut)),
+            1,
+            ctx(scenario_mut),
+        );
+
+        destroy(output);
+
+        next_tx(scenario_mut, bob);
+    
+        let meme_token = staked_lp::into_token(staked_sboden, &clock, &token_policy, ctx(scenario_mut));
+
+        staking_pool::collect_fees(
+            &mut staking_pool,
+            &mut clamm_pool,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        let fee_state = staking_pool::fee_state(&staking_pool);
+
+        let fee_meme_amt = balance::value(fee_distribution::fees_meme<SUI, BODEN>(fee_state));
+        let fee_sui_amt = balance::value(fee_distribution::fees_s<SUI, BODEN>(fee_state));
+
+        let (coin_m, coin_s) = staking_pool::unstake(
+            &mut staking_pool,
+            meme_token,
+            &token_policy,
+            &clock,
+            ctx(scenario_mut),
+        );
+
+        assert!(coin::value(&coin_m) == 900_000_000_000_000 + fee_meme_amt, 0);
+        assert!(coin::value(&coin_s) == fee_sui_amt, 0);
+
+        destroy(coin_m);
+        destroy(coin_s);
+        destroy(admin);
+        destroy(boden_metadata);
+        destroy(lp_meta);
+        destroy(sui_meta);
+        clock::destroy_for_testing(clock);
+        test::return_shared(token_policy);
+        test::return_shared(staking_pool);
+        test::return_shared(clamm_pool);
         test::return_shared(registry);
         test::end(scenario);
     }

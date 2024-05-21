@@ -24,6 +24,7 @@ module memechan::staking_pool {
     struct StakingPool<phantom S, phantom Meme, phantom LP> has key, store {
         id: UID,
         amm_pool: ID,
+        // Deprecated!
         balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
         vesting_table: Table<address, VestingData>,
@@ -48,6 +49,7 @@ module memechan::staking_pool {
         let staking_pool = StakingPool {
             id: object::new(ctx),
             amm_pool,
+            // Deprecated!
             balance_meme: balance::zero(),
             balance_lp,
             meme_cap,
@@ -70,7 +72,6 @@ module memechan::staking_pool {
         clock: &Clock,
         ctx: &mut TxContext,
     ): (Coin<Meme>, Coin<S>) {
-    
         let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
         
         let amount_available_to_release = vesting::to_release(
@@ -85,7 +86,7 @@ module memechan::staking_pool {
 
         let vesting_old = vesting::current_stake(vesting_data);
 
-        let (balance_meme, balance_sui) = fee_distribution::withdraw_fees_and_update_stake(
+        let (meme_fee_bal, sui_fee_bal) = fee_distribution::withdraw_fees_and_update_stake(
             vesting_old,
             release_amount,
             &mut staking_pool.fee_state,
@@ -94,16 +95,14 @@ module memechan::staking_pool {
 
         vesting::release(vesting_data, release_amount);
 
-        coin::burn(
-            &mut staking_pool.meme_cap,
-            token_ir::to_coin(policy, coin_x, ctx),
-        );
+        let stake = token_ir::to_coin(policy, coin_x, ctx);
+        let stake_bal = coin::balance_mut(&mut stake);
 
-        balance::join(&mut balance_meme, balance::split(&mut staking_pool.balance_meme, release_amount));
+        balance::join(stake_bal, meme_fee_bal);
 
         (
-            coin::from_balance(balance_meme, ctx),
-            coin::from_balance(balance_sui, ctx)
+            stake,
+            coin::from_balance(sui_fee_bal, ctx)
         )
     }
 
@@ -183,4 +182,7 @@ module memechan::staking_pool {
         amount_available_to_release
     }
 
+    public fun fee_state<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>): &FeeState<S, Meme> {
+        &staking_pool.fee_state
+    }
 }

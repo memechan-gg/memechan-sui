@@ -1,4 +1,5 @@
 module memechan::fee_distribution {
+    // use std::debug::print;
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};
@@ -215,5 +216,33 @@ module memechan::fee_distribution {
     fun get_withdraw_diff(user_withdrawals: u64, stake_diff: u256) : u64 {
         let withdraw_diff_x = ((user_withdrawals as u256) * stake_diff) / PRECISION;
         (withdraw_diff_x as u64)
+    }
+
+    public fun fees_meme<S, Meme>(self: &FeeState<S, Meme>): &Balance<Meme> {
+        &self.fees_meme
+    }
+
+    public fun fees_s<S, Meme>(self: &FeeState<S, Meme>): &Balance<S> {
+        &self.fees_s
+    }
+
+    public fun user_withdrawals_x<S, Meme>(self: &FeeState<S, Meme>): &Table<address, u64> {
+        &self.user_withdrawals_x
+    }
+
+    public fun user_withdrawals_y<S, Meme>(self: &FeeState<S, Meme>): &Table<address, u64> {
+        &self.user_withdrawals_y
+    }
+
+    public fun stakes_total<S, Meme>(self: &FeeState<S, Meme>): u64 {
+        self.stakes_total
+    }
+
+    public fun fees_meme_total<S, Meme>(self: &FeeState<S, Meme>): u64 {
+        self.fees_meme_total
+    }
+    
+    public fun fees_s_total<S, Meme>(self: &FeeState<S, Meme>): u64 {
+        self.fees_s_total
     }
 }
