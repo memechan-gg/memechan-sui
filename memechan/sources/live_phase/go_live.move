@@ -15,8 +15,9 @@ module memechan::go_live {
     use memechan::events;
     use memechan::admin::Admin;
     use memechan::seed_pool::{Self as seed_pool, SeedPool, gamma_s};
-    use memechan::staking_pool;
-    use clamm::interest_pool;
+    use memechan::staking_pool::{Self, StakingPool};
+    use clamm::interest_pool::{Self, InterestPool, Request};
+    use clamm::curves::Volatile;
     use clamm::interest_clamm_volatile as volatile_hooks;
     use suitears::coin_decimals;
     use suitears::owner;
@@ -25,14 +26,14 @@ module memechan::go_live {
 
     struct AddLiquidityHook has drop {}
 
-    const SCALE: u256 = 1_000_000_000_000_000_000; // 1e18
+    const SCALE: u256 = 1_000_000_000_000_000; // 1e15 because meme coins have 6 decimals and sui has 9.
     
     const A: u256 = 400_000;
     const GAMMA: u256 = 145_000_000_000_000;
 
     const ALLOWED_EXTRA_PROFIT: u256 = 2000000000000; // 18 decimals
     const ADJUSTMENT_STEP: u256 = 146000000000000; // 18 decimals
-    const MA_TIME: u256 = 600_000; // 10 minutes
+    const MA_TIME: u256 = 30000; // 30 seconds as meme coins are very volatile
 
     const MID_FEE: u256 = 26000000; // (0.26%) swap fee when the pool is balanced
     const OUT_FEE: u256 = 45000000; // (0.45%) swap fee when the pool is out balance
@@ -44,6 +45,19 @@ module memechan::go_live {
     const EBondingPoolNotReady: u64 = 0;
     const EBondingPoolMemeBalanceNotEmpty: u64 = 1;
     const EQuoteSupplyMismatch: u64 = 2;
+    const EAddLiquidityNotAllowed: u64 = 3;
+
+    public fun start_add_liquidity_request_and_approve<S, Meme, LP>(
+        staking_pool: &StakingPool<S, Meme, LP>, 
+        amm_pool: &InterestPool<Volatile>,
+        clock: &Clock
+    ): Request {
+        assert!(clock::timestamp_ms(clock) >= staking_pool::end_ts(staking_pool), EAddLiquidityNotAllowed);
+
+        let start_request = interest_pool::start_add_liquidity(amm_pool);
+        interest_pool::approve(&mut start_request, AddLiquidityHook {});
+        start_request
+    }
 
     // Admin endpoint
     public fun go_live_default<Meme, LP>(
@@ -189,7 +203,7 @@ module memechan::go_live {
         );
 
         let pool_id = object::id(&amm_pool);
-
+        
         // 4. Create staking pool
         let staking_pool = staking_pool::new<S, Meme, LP>(
             pool_id,
