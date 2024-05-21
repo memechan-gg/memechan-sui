@@ -1,5 +1,4 @@
 module memechan::fee_distribution {
-    // use std::debug::print;
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::table::{Self, Table};

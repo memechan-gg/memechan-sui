@@ -257,22 +257,33 @@ module memechan::go_live {
 
         assert!(extra_liquidity > 0, 0);
 
-        let amount_of_meme_to_remove = 
-            volatile_hooks::coin_balance<Meme, LP>(amm_pool);
+        let lp_coin = staking_pool::remove_extra_liquidity_start(staking_pool, ctx);
 
-        let lp_to_burn = volatile_hooks::quote_add_liquidity<LP>(amm_pool, clock, vector[0, extra_liquidity]);
-
-        let lp_coin = staking_pool::remove_extra_liquidity_start(staking_pool, lp_to_burn, ctx);
-
-        let extra_meme =volatile_hooks::remove_liquidity_one_coin<Meme, LP>(
+        let (coin_sui, coin_meme) = volatile_hooks::remove_liquidity_2_pool<S, Meme, LP>(
             amm_pool,
-            clock,
             lp_coin,
-            amount_of_meme_to_remove,
+            vector[0, 0],
             ctx,
         );
 
-        staking_pool::remove_extra_liquidity_collect(staking_pool, extra_meme);
+        let meme_coin_to_burn = coin::split(&mut coin_meme, extra_liquidity, ctx);
+
+        let start_req = interest_pool::start_add_liquidity(amm_pool);
+        interest_pool::approve(&mut start_req, AddLiquidityHook {});
+
+        let (finish_req, lp_coin) = volatile_hooks::add_liquidity_2_pool_with_hooks<S, Meme, LP>(
+            amm_pool,
+            clock,
+            start_req,
+            coin_sui,
+            coin_meme,
+            0,
+            ctx,
+        );
+
+        staking_pool::remove_extra_liquidity_collect(staking_pool, meme_coin_to_burn, lp_coin);
+
+        interest_pool::finish(amm_pool, finish_req);
     }
 
     // === Test Functions ===

@@ -211,6 +211,10 @@ module memechan::staking_pool {
     public fun fee_state<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>): &FeeState<S, Meme> {
         &staking_pool.fee_state
     }
+
+    public fun balance_lp<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>): &Balance<LP> {
+        &staking_pool.balance_lp
+    }
     
     public fun end_ts<S, Meme, LP>(self: &StakingPool<S, Meme, LP>): u64 { vesting::end_ts(&self.vesting_config) }
 
@@ -228,17 +232,19 @@ module memechan::staking_pool {
 
     public(friend) fun remove_extra_liquidity_start<S, Meme, LP>(
         self: &mut StakingPool<S, Meme, LP>,
-        lp_amount: u64,
         ctx: &mut TxContext
     ): Coin<LP> {
-        coin::from_balance(balance::split(&mut self.balance_lp, lp_amount), ctx)
+        let lp_balance = balance::value(&self.balance_lp);
+        coin::from_balance(balance::split(&mut self.balance_lp, lp_balance), ctx)
     }
     
     public(friend) fun remove_extra_liquidity_collect<S, Meme, LP>(
         self: &mut StakingPool<S, Meme, LP>,
         meme_coins: Coin<Meme>,
+        lp_coin: Coin<LP>,
     ) {
         coin::burn(&mut self.meme_cap, meme_coins);
+        balance::join(&mut self.balance_lp, coin::into_balance(lp_coin));
     }
 
     // Tests
