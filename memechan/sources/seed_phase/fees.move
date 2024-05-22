@@ -1,7 +1,11 @@
 module memechan::fees {
     use suitears::math256::mul_div_up;
 
+    // ===== Constants =====
+
     const PRECISION: u256 = 1_000_000_000_000_000_000;
+
+    // ===== Structs =====
 
     struct Fees has store, copy, drop {
         fee_in_percent: u256,
@@ -14,6 +18,8 @@ module memechan::fees {
             fee_out_percent
         }
     }
+
+    // ===== Getters =====
 
     public fun fee_in_percent(fees: &Fees): u256 {
         fees.fee_in_percent
