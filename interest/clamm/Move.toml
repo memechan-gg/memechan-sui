@@ -4,7 +4,7 @@ edition = "2024.beta"
 license = "MIT"
 authors = ["Jose Cerqueira (jose@interestprotocol.com)"]
 version = "4.0.0-alpha"
-published-at = "0x429dbf2fc849c0b4146db09af38c104ae7a3ed746baf835fa57fee27fa5ff382"
+published-at = "0x2a106ca08831543cb7420d9e3893b11cf38573c02346ca337c048db6c36f3f5a"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.22.0" }
