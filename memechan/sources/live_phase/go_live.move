@@ -242,6 +242,50 @@ module memechan::go_live {
         owner::destroy(decimals_cap);
     }
 
+    public fun extract_excess_liquidity<S, Meme, LP>(
+        _admin: &Admin,
+        amm_pool: &mut InterestPool<Volatile>,
+        staking_pool: &mut StakingPool<S, Meme, LP>,
+        gamma_m: u64,
+        omega_m: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let total_supply = staking_pool::total_supply(staking_pool);
+
+        let extra_liquidity = total_supply - (gamma_m + omega_m);
+
+        assert!(extra_liquidity > 0, 0);
+
+        let lp_coin = staking_pool::remove_extra_liquidity_start(staking_pool, ctx);
+
+        let (coin_sui, coin_meme) = volatile_hooks::remove_liquidity_2_pool<S, Meme, LP>(
+            amm_pool,
+            lp_coin,
+            vector[0, 0],
+            ctx,
+        );
+
+        let meme_coin_to_burn = coin::split(&mut coin_meme, extra_liquidity, ctx);
+
+        let start_req = interest_pool::start_add_liquidity(amm_pool);
+        interest_pool::approve(&mut start_req, AddLiquidityHook {});
+
+        let (finish_req, lp_coin) = volatile_hooks::add_liquidity_2_pool_with_hooks<S, Meme, LP>(
+            amm_pool,
+            clock,
+            start_req,
+            coin_sui,
+            coin_meme,
+            0,
+            ctx,
+        );
+
+        staking_pool::remove_extra_liquidity_collect(staking_pool, meme_coin_to_burn, lp_coin);
+
+        interest_pool::finish(amm_pool, finish_req);
+    }
+
     // === Test Functions ===
 
     #[test_only]
