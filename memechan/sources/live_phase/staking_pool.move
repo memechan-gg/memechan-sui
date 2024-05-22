@@ -1,7 +1,7 @@
 module memechan::staking_pool {
     use sui::object::{Self, ID, UID};
     use sui::table::{Self, Table};
-    use sui::balance::Balance;
+    use sui::balance::{Self, Balance};
     use sui::token::{Self, Token, TokenPolicy, TokenPolicyCap};
     use sui::clock::{Self, Clock};
     use sui::coin::{Self, Coin, TreasuryCap};
@@ -18,11 +18,18 @@ module memechan::staking_pool {
 
     use clamm::pool_admin::PoolAdmin;
 
+    #[test_only]
+    use sui::test_utils::assert_eq;
+
+    const PRECISION: u128 = 1_000_000_000; // 1e9
+
     friend memechan::go_live;
 
     struct StakingPool<phantom S, phantom Meme, phantom LP> has key, store {
         id: UID,
         amm_pool: ID,
+        // Deprecated!
+        balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
         vesting_table: Table<address, VestingData>,
         meme_cap: TreasuryCap<Meme>,
@@ -46,6 +53,8 @@ module memechan::staking_pool {
         let staking_pool = StakingPool {
             id: object::new(ctx),
             amm_pool,
+            // Deprecated!
+            balance_meme: balance::zero(),
             balance_lp,
             meme_cap,
             policy_cap,
@@ -67,7 +76,6 @@ module memechan::staking_pool {
         clock: &Clock,
         ctx: &mut TxContext,
     ): (Coin<Meme>, Coin<S>) {
-    
         let vesting_data = table::borrow(&staking_pool.vesting_table, sender(ctx));
         
         let amount_available_to_release = vesting::to_release(
@@ -82,7 +90,7 @@ module memechan::staking_pool {
 
         let vesting_old = vesting::current_stake(vesting_data);
 
-        let (balance_meme, balance_sui) = fee_distribution::withdraw_fees_and_update_stake(
+        let (meme_fee_bal, sui_fee_bal) = fee_distribution::withdraw_fees_and_update_stake(
             vesting_old,
             release_amount,
             &mut staking_pool.fee_state,
@@ -91,12 +99,14 @@ module memechan::staking_pool {
 
         vesting::release(vesting_data, release_amount);
 
-        let coin_m = coin::from_balance(balance_meme, ctx);
-        coin::join(&mut coin_m, token_ir::to_coin(policy, coin_x, ctx));
+        let stake = token_ir::to_coin(policy, coin_x, ctx);
+        let stake_bal = coin::balance_mut(&mut stake);
+
+        balance::join(stake_bal, meme_fee_bal);
 
         (
-            coin_m,
-            coin::from_balance(balance_sui, ctx)
+            stake,
+            coin::from_balance(sui_fee_bal, ctx)
         )
     }
 
@@ -149,13 +159,22 @@ module memechan::staking_pool {
 
         let min_amounts = vector[1, 1,];
 
+        let staking_pool_balance = balance::value(&staking_pool.balance_lp);
+        let total_lp_balance = volatile::lp_coin_supply<LP>(pool);
+
+        let amount_to_take = calculate_admin_amount(total_lp_balance, staking_pool_balance, coin::value(&lp_coin));
+        
+        // The default admin fees are 20% of all the fees. 
+        let extra_fees = coin::take(&mut staking_pool.balance_lp, amount_to_take, ctx);
+
+        coin::join(&mut lp_coin, extra_fees);
+
         let (coin_sui, coin_meme) = volatile::remove_liquidity_2_pool<S, Meme, LP>(
             pool,
             lp_coin,
             min_amounts,
             ctx,
         );
-        
         
         fee_distribution::add_fees<S, Meme>(&mut staking_pool.fee_state, coin_meme, coin_sui);
     }
@@ -185,4 +204,66 @@ module memechan::staking_pool {
         amount_available_to_release
     }
 
+    public fun total_supply<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>): u64 {
+        coin::total_supply(&staking_pool.meme_cap)
+    }
+
+    public fun fee_state<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>): &FeeState<S, Meme> {
+        &staking_pool.fee_state
+    }
+
+    public fun balance_lp<S, Meme, LP>(staking_pool: &StakingPool<S, Meme, LP>): &Balance<LP> {
+        &staking_pool.balance_lp
+    }
+    
+    public fun end_ts<S, Meme, LP>(self: &StakingPool<S, Meme, LP>): u64 { vesting::end_ts(&self.vesting_config) }
+
+    fun calculate_admin_amount(total_lp_balance:u64, staking_pool_balance: u64, admin_amount: u64): u64 {
+        let (staking_pool_balance, total_lp_balance, admin_amount) = (
+            (staking_pool_balance as u128),
+            (total_lp_balance as u128),
+            (admin_amount as u128) * 4
+        );
+
+        let percentage_owned = staking_pool_balance * PRECISION / total_lp_balance;
+
+        ((admin_amount * percentage_owned / PRECISION) as u64) / 2
+    }
+
+    public(friend) fun remove_extra_liquidity_start<S, Meme, LP>(
+        self: &mut StakingPool<S, Meme, LP>,
+        ctx: &mut TxContext
+    ): Coin<LP> {
+        let lp_balance = balance::value(&self.balance_lp);
+        coin::from_balance(balance::split(&mut self.balance_lp, lp_balance), ctx)
+    }
+    
+    public(friend) fun remove_extra_liquidity_collect<S, Meme, LP>(
+        self: &mut StakingPool<S, Meme, LP>,
+        meme_coins: Coin<Meme>,
+        lp_coin: Coin<LP>,
+    ) {
+        coin::burn(&mut self.meme_cap, meme_coins);
+        balance::join(&mut self.balance_lp, coin::into_balance(lp_coin));
+    }
+
+    // Tests
+
+    #[test]
+    fun test_calculate_admin_amount() {
+
+        // We own 20% of all protocol fees.
+        // This means that the remaining 80% fees can be found by calculating our amount * 4
+        // We only take 50% of the trading fees we earned to compensate other LPs for IP.
+        // 8 * 0.2 / 2 = 0.8 ~ 0
+        assert_eq(calculate_admin_amount(100, 20, 2), 0);
+
+        // 12 * 0.2 / 2 = 1.2 ~ 1 (we own 20% trading fees)
+        assert_eq(calculate_admin_amount(100, 20, 3), 1);
+        
+        // 12 / 2 = 6 (we own all trading fees)
+        assert_eq(calculate_admin_amount(100, 100, 3), 6);
+        // 12 / 2 = 6 (we own half of all trading fees)
+        assert_eq(calculate_admin_amount(100, 50, 3), 3);
+    }
 }

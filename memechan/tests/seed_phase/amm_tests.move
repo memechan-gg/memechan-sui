@@ -52,13 +52,11 @@ module memechan::seed_pool_tests {
         {
             let request = request<SUI, USDC>(scenario_mut);
 
-            assert_eq(seed_pool::meme_coin_supply<SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
+            assert_eq(seed_pool::meme_coin_supply<SUI, USDC>(&request.pool), BASE_TOKEN_LAUNCHED);
             assert_eq(seed_pool::ticket_coin_supply<SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
             assert_eq(seed_pool::balance_m<SUI, USDC>(&request.pool), BASE_TOKENS_CURVED);
             assert_eq(seed_pool::balance_s<SUI, USDC>(&request.pool), 0);
-            // assert_eq(seed_pool::decimals_x<SUI, USDC>(&request.pool), USDC_DECIMAL_SCALAR);
-            // assert_eq(seed_pool::decimals_y<SUI, USDC>(&request.pool), SUI_DECIMAL_SCALAR);
-            assert_eq(seed_pool::seed_liquidity<SUI, USDC>(&request.pool), BASE_TOKENS_CURVED + BASE_TOKEN_LAUNCHED);
+            assert_eq(seed_pool::seed_liquidity<SUI, USDC>(&request.pool), BASE_TOKEN_LAUNCHED);
             assert_eq(seed_pool::is_ready_to_launch<SUI, USDC>(&request.pool), false);
             assert_eq(seed_pool::admin_balance_m<SUI, USDC>(&request.pool), 0);
             assert_eq(seed_pool::admin_balance_s<SUI, USDC>(&request.pool), 0);

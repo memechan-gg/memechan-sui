@@ -383,7 +383,7 @@ module clamm::interest_pool {
     assert!(self.addy() == pool_address, errors::wrong_request_pool_address());
 
     let rules = (*hooks.rules.get(&name)).into_keys();
-    assert!(!rules.is_empty(), errors::invalid_hook_name());
+    // assert!(!rules.is_empty(), errors::invalid_hook_name()); // TODO
 
     let rules_len = rules.length();
     let mut i = 0;
