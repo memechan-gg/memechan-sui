@@ -625,16 +625,6 @@ module memechan::integration {
         let staking_pool = test::take_shared<StakingPool<SUI, BODEN, LP_COIN>>(scenario_mut);
         clock::set_for_testing(&mut clock, 1747843168);
 
-        // let output = volatile::swap<SUI, BODEN, LP_COIN>(
-        //     &mut clamm_pool,
-        //     &clock,
-        //     coin::mint_for_testing<SUI>(mist(1_000), ctx(scenario_mut)),
-        //     1,
-        //     ctx(scenario_mut),
-        // );
-
-        // destroy(output);
-
         next_tx(scenario_mut, bob);
 
         let total_supply = staking_pool::total_supply(&staking_pool);
@@ -644,10 +634,10 @@ module memechan::integration {
         assert!(staked_lp::balance(&staked_sboden) == 900_000_000_000_000, 0);
         // assert that correct INCORRECT supply
         assert!(total_supply == 900_000_000_000_000 + (900_000_000_000_000 + 200_000_000_000_000), 0);
+        print(&total_supply);
 
-        let (amt_before, _) = volatile::quote_swap<SUI, BODEN, LP_COIN>(&mut clamm_pool, &clock, mist(1));
-
-        print(&amt_before);
+        // let (amt_before, _) = volatile::quote_swap<SUI, BODEN, LP_COIN>(&mut clamm_pool, &clock, mist(1));
+        // print(&amt_before);
 
         go_live::extract_excess_liquidity(
             &admin,
@@ -662,38 +652,11 @@ module memechan::integration {
         let total_supply = staking_pool::total_supply(&staking_pool);
         // print(&total_supply);
         assert!(total_supply == 900_000_000_000_000 + 200_000_000_000_000, 0);
+        // print(&total_supply);
 
-        let (amt_after, _) = volatile::quote_swap<SUI, BODEN, LP_COIN>(&mut clamm_pool, &clock, 1);
-
-        print(&amt_after);
+        // let (amt_after, _) = volatile::quote_swap<SUI, BODEN, LP_COIN>(&mut clamm_pool, &clock, mist(1));
+        // print(&amt_after);
     
-        // let meme_token = staked_lp::into_token(staked_sboden, &clock, &token_policy, ctx(scenario_mut));
-
-        // staking_pool::collect_fees(
-        //     &mut staking_pool,
-        //     &mut clamm_pool,
-        //     &clock,
-        //     ctx(scenario_mut),
-        // );
-
-        // let fee_state = staking_pool::fee_state(&staking_pool);
-
-        // let fee_meme_amt = balance::value(fee_distribution::fees_meme<SUI, BODEN>(fee_state));
-        // let fee_sui_amt = balance::value(fee_distribution::fees_s<SUI, BODEN>(fee_state));
-
-        // let (coin_m, coin_s) = staking_pool::unstake(
-        //     &mut staking_pool,
-        //     meme_token,
-        //     &token_policy,
-        //     &clock,
-        //     ctx(scenario_mut),
-        // );
-
-        // assert!(coin::value(&coin_m) == 900_000_000_000_000 + fee_meme_amt, 0);
-        // assert!(coin::value(&coin_s) == fee_sui_amt, 0);
-
-        // destroy(coin_m);
-        // destroy(coin_s);
         destroy(admin);
         destroy(staked_sboden);
         destroy(boden_metadata);
