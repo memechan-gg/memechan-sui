@@ -28,8 +28,6 @@ module memechan::staking_pool {
     struct StakingPool<phantom S, phantom Meme, phantom LP> has key, store {
         id: UID,
         amm_pool: ID,
-        // Deprecated!
-        balance_meme: Balance<Meme>,
         balance_lp: Balance<LP>,
         vesting_table: Table<address, VestingData>,
         meme_cap: TreasuryCap<Meme>,
@@ -53,8 +51,6 @@ module memechan::staking_pool {
         let staking_pool = StakingPool {
             id: object::new(ctx),
             amm_pool,
-            // Deprecated!
-            balance_meme: balance::zero(),
             balance_lp,
             meme_cap,
             policy_cap,

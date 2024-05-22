@@ -2,7 +2,7 @@
 
 [move]
 version = 1
-manifest_digest = "4C606891380EC020F36A202F665CDC1134BA2DF2947FFD39AA1D3C87AB21762F"
+manifest_digest = "66E6B4A62E4A95F34812342AAFF9B60051613E829AF226006E0F105A7F48206C"
 deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
 dependencies = [
   { name = "CLAMM" },
@@ -41,6 +41,6 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.22.0"
+compiler-version = "1.25.0"
 edition = "legacy"
 flavor = "sui"
