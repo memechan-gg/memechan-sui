@@ -59,9 +59,9 @@ module memechan::seed_pool {
     const EBondingCurveMustBeNegativelySloped: u64 = 1;
     const EBondingCurveInterceptMustBePositive: u64 = 2;
     const EPoolIsLocked: u64 = 3;
-    const EMemeSupplyNotGamma: u64 = 4;
+    const EMemeStakingSupplyNotGamma: u64 = 4;
     const EQuoteSupplyNotZero: u64 = 5;
-    const EMemeTotalSupplyNotGammaOmega: u64 = 6;
+    const EMemeAMMSupplyNotOmega: u64 = 6;
     const EMemeCoinsShouldHaveZeroTotalSupply: u64 = 7;
     const ESlippage: u64 = 8;
     const EGammaSAboveRelativeLimit: u64 = 9;
@@ -544,7 +544,7 @@ module memechan::seed_pool {
 
         let launch_coin = coin::mint<Meme>(
             &mut meme_coin_cap,
-            ((gamma_m + omega_m) as u64),
+            (omega_m as u64),
             ctx);
 
         let balance_m: Balance<Meme> = balance::increase_supply(coin::supply_mut(&mut meme_coin_cap), (gamma_m as u64));
@@ -600,9 +600,9 @@ module memechan::seed_pool {
         let coin_s_value = coin::value(&coin_s);
         let launch_coin_value = coin::value(&launch_coin);
 
-        assert!(coin_m_value == (gamma_m as u64), EMemeSupplyNotGamma);
+        assert!(coin_m_value == (gamma_m as u64), EMemeStakingSupplyNotGamma);
         assert!(coin_s_value == 0, EQuoteSupplyNotZero);
-        assert!(launch_coin_value == ((gamma_m + omega_m) as u64), EMemeTotalSupplyNotGammaOmega);
+        assert!(launch_coin_value == (omega_m as u64), EMemeAMMSupplyNotOmega);
         
         index::assert_new_pool<S, Meme>(registry);
 
@@ -910,6 +910,161 @@ module memechan::seed_pool {
         
         balance::join(&mut pool.balance_m, balance::create_for_testing(coin_m_amount));
         balance::join(&mut pool.balance_s, coin::into_balance(coin_s));
+    }
+
+    #[test_only]
+    public entry fun new_incorrect<S, Meme>(
+        registry: &mut Registry,
+        meme_coin_cap: TreasuryCap<Meme>,
+        fee_in_percent: u256,
+        fee_out_percent: u256,
+        price_factor: u64,
+        gamma_s: u64,
+        gamma_m: u64,
+        omega_m: u64,
+        sell_delay_ms: u64,
+        ctx: &mut TxContext
+    ) {
+        let pool = new_incorrect_<S, Meme>(
+            registry,
+            meme_coin_cap,
+            fee_in_percent,
+            fee_out_percent,
+            price_factor,
+            gamma_s,
+            gamma_m,
+            omega_m,
+            sell_delay_ms,
+            ctx,
+        );
+        share_object(pool);
+    }
+
+
+    #[test_only]
+    fun new_incorrect_<S, Meme>(
+        registry: &mut Registry,
+        meme_coin_cap: TreasuryCap<Meme>,
+        fee_in_percent: u256,
+        fee_out_percent: u256,
+        price_factor: u64,
+        gamma_s: u64,
+        gamma_m: u64,
+        omega_m: u64,
+        sell_delay_ms: u64,
+        ctx: &mut TxContext
+    ): SeedPool<S, Meme> {
+        assert!(balance::supply_value(coin::supply(&mut meme_coin_cap)) == 0, EMemeCoinsShouldHaveZeroTotalSupply);
+
+        let launch_coin = coin::mint<Meme>(
+            &mut meme_coin_cap,
+            ((omega_m + gamma_m) as u64),
+            ctx);
+
+        let balance_m: Balance<Meme> = balance::increase_supply(coin::supply_mut(&mut meme_coin_cap), (gamma_m as u64));
+        let coin_m_value = balance::value(&balance_m);
+
+        let (policy, policy_cap) = token_ir::init_token<Meme>(&meme_coin_cap, ctx);
+
+        let pool = new_pool_internal_incorrect<S, Meme>(
+            registry,
+            balance_m,
+            coin::zero(ctx),
+            launch_coin,
+            meme_coin_cap,
+            policy_cap,
+            fee_in_percent,
+            fee_out_percent,
+            price_factor,
+            gamma_s,
+            gamma_m,
+            omega_m,
+            sell_delay_ms,
+            ctx,
+        );
+
+        let pool_address = object::uid_to_address(&pool.id);
+        let policy_address = id_to_address(&id(&policy));
+
+        index::add_seed_pool<S, Meme>(registry, pool_address, policy_address);
+
+        events::new_pool<S, Meme>(pool_address, coin_m_value, 0, policy_address);
+
+        token::share_policy(policy);
+        pool
+    }
+
+    #[test_only]
+    fun new_pool_internal_incorrect<S, Meme>(
+        registry: &Registry,
+        coin_m: Balance<Meme>,
+        coin_s: Coin<S>,
+        launch_coin: Coin<Meme>,
+        meme_cap: TreasuryCap<Meme>,
+        policy_cap: TokenPolicyCap<Meme>,
+        fee_in_percent: u256,
+        fee_out_percent: u256,
+        price_factor: u64,
+        gamma_s: u64,
+        gamma_m: u64,
+        omega_m: u64,
+        sell_delay_ms: u64,
+        ctx: &mut TxContext
+    ): SeedPool<S, Meme> {
+        let coin_m_value = balance::value(&coin_m);
+        let coin_s_value = coin::value(&coin_s);
+        let launch_coin_value = coin::value(&launch_coin);
+
+        assert!(coin_m_value == (gamma_m as u64), EMemeStakingSupplyNotGamma);
+        assert!(coin_s_value == 0, EQuoteSupplyNotZero);
+        assert!(launch_coin_value == ((omega_m + gamma_m) as u64), EMemeAMMSupplyNotOmega);
+        
+        index::assert_new_pool<S, Meme>(registry);
+
+        let (alpha_abs, alpha_decimals) = compute_alpha_abs(
+            (gamma_s as u256),
+            (gamma_m as u256),
+            (omega_m as u256),
+            price_factor,
+        );
+
+        let (beta, beta_decimals) = compute_beta(
+            (gamma_s as u256),
+            (gamma_m as u256),
+            (omega_m as u256),
+            price_factor,
+            alpha_decimals,
+        );
+
+        let pool = SeedPool<S, Meme> {
+            id: object::new(ctx),
+            balance_m: coin_m,
+            balance_s: coin::into_balance(coin_s),
+            fees: new_fees(
+                fee_in_percent,
+                fee_out_percent,
+            ),
+            locked: false,
+            launch_balance: coin::into_balance(launch_coin),
+            admin_balance_m: balance::zero(),
+            admin_balance_s: balance::zero(),
+            params: Params {
+                alpha_abs,
+                beta,
+                gamma_s,
+                gamma_m,
+                omega_m,
+                price_factor,
+                sell_delay_ms,
+                alpha_decimals,
+                beta_decimals,
+            },
+            accounting: table::new<address, VestingData>(ctx),
+            meme_cap,
+            policy_cap,
+        };
+
+        pool
     }
 
     // ===== Tests =====

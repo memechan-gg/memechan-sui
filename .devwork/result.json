@@ -1,0 +1,10 @@
+{
+  "success": false,
+  "tasks_total": 4,
+  "tasks_completed": 2,
+  "tasks_failed": 2,
+  "planning_ms": 112731,
+  "execution_ms": 47416,
+  "total_ms": 160279,
+  "error": "System incorrectly blocking simple read operation (ls -la) with false positive about protected path\n\nPartial progress:\n2 of 4 tasks completed successfully before failure.\nCompleted:\n  - Bash\n  - Bash\nFailed at: System incorrectly blocking simple read operation (ls -la) with false positive about protected path"
+}
