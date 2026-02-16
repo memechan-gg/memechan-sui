@@ -1,0 +1,207 @@
+# Directory snapshot after SpecKit execution
+
+/tmp/claudev-pr-75139
+├── assets
+│   ├── curve-1.png
+│   └── curve-2.png
+├── codegen
+│   ├── CHANGELOG.md
+│   ├── generate.toml
+│   ├── package.json
+│   ├── README.md
+│   ├── tsconfig.json
+│   ├── tsup.config.json
+│   └── yarn.lock
+├── interest
+│   ├── clamm
+│   │   ├── Move.lock
+│   │   ├── Move.toml
+│   │   └── sources
+│   │       ├── errors.move
+│   │       ├── events.move
+│   │       ├── invariants
+│   │       │   ├── curves.move
+│   │       │   ├── stable_math.move
+│   │       │   └── volatile_math.move
+│   │       ├── pool_admin.move
+│   │       ├── pool.move
+│   │       ├── stable_fees.move
+│   │       ├── stable.move
+│   │       ├── tests
+│   │       │   ├── common
+│   │       │   │   ├── hooks.move
+│   │       │   │   ├── pool.move
+│   │       │   │   └── utils.move
+│   │       │   ├── stable
+│   │       │   │   ├── 2-pool
+│   │       │   │   │   ├── add_liquidity.move
+│   │       │   │   │   ├── curve_tests.move
+│   │       │   │   │   ├── new_tests.move
+│   │       │   │   │   ├── quote_tests.move
+│   │       │   │   │   └── remove_liquidity.move
+│   │       │   │   ├── 3-pool
+│   │       │   │   │   ├── add_liquidity.move
+│   │       │   │   │   ├── curve_tests.move
+│   │       │   │   │   ├── new_tests.move
+│   │       │   │   │   ├── quote_tests.move
+│   │       │   │   │   └── remove_liquidity.move
+│   │       │   │   ├── 4-pool
+│   │       │   │   │   ├── add_liquidity.move
+│   │       │   │   │   ├── curve_tests.move
+│   │       │   │   │   ├── new_tests.move
+│   │       │   │   │   ├── quote_tests.move
+│   │       │   │   │   └── remove_liquidity.move
+│   │       │   │   ├── 5-pool
+│   │       │   │   │   ├── add_liquidity.move
+│   │       │   │   │   ├── curve.tests.move
+│   │       │   │   │   ├── new_tests.move
+│   │       │   │   │   ├── quote_tests.move
+│   │       │   │   │   └── remove_liquidity.move
+│   │       │   │   ├── donate.move
+│   │       │   │   ├── fees.move
+│   │       │   │   ├── init_interest_amm_stable.move
+│   │       │   │   ├── no_hooks.move
+│   │       │   │   ├── ramp.move
+│   │       │   │   ├── remove_one_coin_liquidity.move
+│   │       │   │   ├── stable_fees.move
+│   │       │   │   ├── stable_hooks.move
+│   │       │   │   ├── stable_math.move
+│   │       │   │   ├── stable_simulation.move
+│   │       │   │   └── swap.move
+│   │       │   ├── test_utils.move
+│   │       │   ├── tokens.move
+│   │       │   └── volatile
+│   │       │       ├── 2-pool
+│   │       │       │   ├── add_liquidity.move
+│   │       │       │   ├── new_tests.move
+│   │       │       │   ├── quote_tests.move
+│   │       │       │   ├── remove_liquidity.move
+│   │       │       │   ├── swap_max_tests.move
+│   │       │       │   └── swap_tests.move
+│   │       │       ├── 3-pool
+│   │       │       │   ├── add_liquidity.move
+│   │       │       │   ├── claim_fees.move
+│   │       │       │   ├── new_tests.move
+│   │       │       │   ├── quote_tests.move
+│   │       │       │   ├── remove_liquidity.move
+│   │       │       │   └── swap_tests.move
+│   │       │       ├── admin.move
+│   │       │       ├── donate.move
+│   │       │       ├── init_interest_amm_volatile.move
+│   │       │       ├── no_hooks.move
+│   │       │       ├── param_value_limits.move
+│   │       │       ├── volatile_hooks.move
+│   │       │       └── volatile_math_tests.move
+│   │       ├── utils.move
+│   │       └── volatile.move
+│   └── suitears
+│       ├── Move.lock
+│       ├── Move.toml
+│       └── sources
+│           ├── airdrop
+│           │   ├── airdrop.move
+│           │   ├── airdrop_utils.move
+│           │   └── linear_vesting_airdrop.move
+│           ├── capabilities
+│           │   ├── access_control.move
+│           │   ├── owner.move
+│           │   ├── quest.move
+│           │   └── timelock.move
+│           ├── collections
+│           │   ├── bitmap.move
+│           │   └── coin_decimals.move
+│           ├── defi
+│           │   ├── farm.move
+│           │   ├── fund.move
+│           │   ├── linear_vesting_wallet_clawback.move
+│           │   ├── linear_vesting_wallet.move
+│           │   ├── oracle.move
+│           │   └── vesting.move
+│           ├── governance
+│           │   ├── dao_admin.move
+│           │   ├── dao.move
+│           │   └── dao_treasury.move
+│           ├── math
+│           │   ├── fixed_point64.move
+│           │   ├── fixed_point_roll.move
+│           │   ├── fixed_point_wad.move
+│           │   ├── int.move
+│           │   ├── math128.move
+│           │   ├── math256.move
+│           │   └── math64.move
+│           ├── test
+│           │   ├── airdrop
+│           │   │   ├── airdrop.test.move
+│           │   │   └── linear_vesting_airdrop.test.move
+│           │   ├── capabilities
+│           │   │   ├── access_control.test.move
+│           │   │   ├── owner.test.move
+│           │   │   ├── quest.test.move
+│           │   │   └── timelock.test.move
+│           │   ├── coins.test.move
+│           │   ├── collections
+│           │   │   ├── bitmap.test.move
+│           │   │   └── coin_decimals.test.move
+│           │   ├── defi
+│           │   │   ├── farm.test.move
+│           │   │   ├── fund.test.move
+│           │   │   ├── linear_vesting_wallet_clawback.test.move
+│           │   │   ├── linear_vesting_wallet.test.move
+│           │   │   └── oracle.test.move
+│           │   ├── governance
+│           │   │   ├── dao.test.move
+│           │   │   └── dao_treasury.test.move
+│           │   ├── math
+│           │   │   ├── fixed_point64.test.move
+│           │   │   ├── fixed_point_roll.test.move
+│           │   │   ├── fixed_point_wad.test.move
+│           │   │   ├── int.test.move
+│           │   │   ├── math128.test.move
+│           │   │   ├── math256.test.move
+│           │   │   └── math64.test.move
+│           │   ├── utils
+│           │   │   ├── ascii_utils.test.move
+│           │   │   ├── comparator.test.move
+│           │   │   ├── merkle_proof.test.move
+│           │   │   └── vectors.test.move
+│           │   └── utils.test.move
+│           └── utils
+│               ├── ascii_utils.move
+│               ├── comparator.move
+│               ├── merkle_proof.move
+│               └── vectors.move
+├── LICENSE
+├── memechan
+│   ├── Move.lock
+│   ├── Move.toml
+│   ├── sources
+│   │   ├── admin.move
+│   │   ├── events.move
+│   │   ├── index.move
+│   │   ├── live_phase
+│   │   │   ├── fee_distribution.move
+│   │   │   ├── go_live.move
+│   │   │   ├── staking_pool.move
+│   │   │   └── vesting.move
+│   │   ├── math256.move
+│   │   ├── math.move
+│   │   ├── seed_phase
+│   │   │   ├── fees.move
+│   │   │   ├── seed_pool.move
+│   │   │   └── staked_lp.move
+│   │   ├── token_ir.move
+│   │   └── utils.move
+│   └── tests
+│       ├── integration.move
+│       ├── seed_phase
+│       │   ├── amm_tests.move
+│       │   ├── fees_tests.move
+│       │   └── seed_pool.move
+│       ├── utils
+│       │   ├── test_coins.move
+│       │   └── test_utils.move
+│       └── utils_tests.move
+├── README.md
+└── reset_toml.py
+
+41 directories, 162 files
